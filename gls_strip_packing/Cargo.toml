@@ -1,0 +1,7 @@
+[package]
+name = "gls_strip_packing"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+jagua-rs = { path = "../jagua-rs/jagua-rs" , version = "0.2.0", features = ["double-precision"]}
