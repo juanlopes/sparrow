@@ -29,7 +29,7 @@ use crate::sampl::search::search_placement;
 const N_UNIFORM: usize = 100;
 const N_CD: usize = 2;
 
-const TIME_LIMIT: Duration = Duration::from_secs(60);
+const TIME_LIMIT: Duration = Duration::from_secs(10 * 60);
 
 const WEIGHT_INIT_RANGE: (fsize, fsize) = (1.0, 5.0);
 
@@ -83,11 +83,11 @@ impl GLSOptimizer {
                 item_id: item.id,
                 d_transf,
             };
-
+            self.write_svg(log::LevelFilter::Debug);
             self.place_item(None, new_p_opt);
         }
         self.ot.sync(&self.prob.layout);
-        self.write_svg(log::LevelFilter::Debug);
+        self.write_svg(log::LevelFilter::Info);
 
         self
     }
@@ -100,6 +100,7 @@ impl GLSOptimizer {
 
         while start.elapsed() < TIME_LIMIT {
             self.separate_layout();
+            self.write_svg(log::LevelFilter::Info);
             let mut next_width;
             if self.ot.get_total_overlap() == 0.0 {
                 if current_width < best.0 {
@@ -113,6 +114,7 @@ impl GLSOptimizer {
 
             if next_width != current_width {
                 self.change_strip_width(next_width);
+                current_width = next_width;
             }
         }
 
@@ -137,7 +139,8 @@ impl GLSOptimizer {
                 let n_mov = self.modify();
                 let abs_overlap = self.ot.get_total_overlap();
                 let w_overlap = self.ot.get_total_weighted_overlap();
-                debug!("[i:{}]  w_o: {:.3} -> {:.3}, n_mov: {}, abs_o: {:.3} (min: {:.3})", n_iter_no_improv,w_overlap_before,w_overlap,n_mov,abs_overlap,min_overlap);
+                self.write_svg(log::LevelFilter::Debug);
+                info!("[i:{}]  w_o: {:.3} -> {:.3}, n_mov: {}, abs_o: {:.3} (min: {:.3})", n_iter_no_improv,w_overlap_before,w_overlap,n_mov,abs_overlap,min_overlap);
                 if abs_overlap < min_overlap {
                     min_overlap = abs_overlap;
                     min_sol = (self.prob.create_solution(None), self.ot.clone());
@@ -148,7 +151,7 @@ impl GLSOptimizer {
                 }
                 if abs_overlap == 0.0 {
                     warn!("separation reached zero overlap");
-                    break;
+                    return;
                 }
                 self.ot.increment_weights();
             }
@@ -158,7 +161,7 @@ impl GLSOptimizer {
             } else {
                 n_strikes += 1;
             }
-            debug!("strike {}/{}: {:.3} -> {:.3}", n_strikes, N_STRIKES, init_overlap, min_overlap);
+            warn!("strike {}/{}: {:.3} -> {:.3}", n_strikes, N_STRIKES, init_overlap, min_overlap);
         }
     }
 
@@ -251,7 +254,7 @@ impl GLSOptimizer {
         self.ot.sync(&self.prob.layout);
     }
 
-    fn write_svg(&self, log_level: log::LevelFilter){
+    fn write_svg(&mut self, log_level: log::LevelFilter){
         //skip if this log level is ignored by the logger
         if log_level > log::max_level() {
             return;
@@ -274,6 +277,7 @@ impl GLSOptimizer {
             &layout_to_svg(layout, &self.instance, DRAW_OPTIONS),
             Path::new(&filename),
         );
+        self.svg_counter += 1;
         warn!("wrote layout to disk: file:///{}", filename);
     }
 }

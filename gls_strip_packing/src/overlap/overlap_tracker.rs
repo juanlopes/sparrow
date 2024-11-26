@@ -7,6 +7,7 @@ use jagua_rs::entities::placed_item::PItemKey;
 use jagua_rs::fsize;
 use rand::Rng;
 use slotmap::SecondaryMap;
+use crate::FLOAT_ULPS;
 use crate::overlap::{overlap, overlap_proxy};
 
 #[derive(Clone, Copy, Debug)]
@@ -89,13 +90,7 @@ impl OverlapTracker {
     pub fn move_item(&mut self, l: &Layout, old_key: PItemKey, new_key: PItemKey) {
         //update keys in the pair maps
         {
-            let mut old_map = self.pair_overlap.remove(old_key).unwrap();
-            old_map.remove(old_key);
-            old_map.insert(new_key, OTEntry::default());
-            old_map.iter_mut().for_each(|(_, e)| e.overlap = 0.0);
-            self.pair_overlap.insert(new_key, old_map);
-
-            for (_, m) in self.pair_overlap.iter_mut() {
+            for (k, m) in self.pair_overlap.iter_mut() {
                 let old_ot_entry = m.remove(old_key).unwrap();
                 let new_ot_entry = OTEntry {
                     weight: old_ot_entry.weight,
@@ -103,6 +98,11 @@ impl OverlapTracker {
                 };
                 m.insert(new_key, new_ot_entry);
             }
+            let mut old_map = self.pair_overlap.remove(old_key).unwrap();
+            old_map.remove(old_key);
+            old_map.insert(new_key, OTEntry::default());
+            old_map.iter_mut().for_each(|(_, e)| e.overlap = 0.0);
+            self.pair_overlap.insert(new_key, old_map);
         }
 
         //update keys in the bin map
@@ -193,13 +193,13 @@ impl OverlapTracker {
     }
 
     pub fn get_overlap(&self, pk: PItemKey) -> fsize {
-        self.bin_overlap.get(pk).map_or(0.0, |e| 2.0 * e.overlap) +
+        self.bin_overlap.get(pk).map_or(0.0, |e| e.overlap) +
         self.pair_overlap.get(pk).map_or(0.0, |m| m.values().map(|e| e.overlap).sum())
     }
 
     pub fn get_weighted_overlap(&self, pk: PItemKey) -> fsize {
         self.bin_overlap.get(pk)
-            .map_or(0.0, |e| 2.0 * e.overlap * e.weight) +
+            .map_or(0.0, |e| e.overlap * e.weight) +
         self.pair_overlap.get(pk)
             .map_or(0.0, |m|
                 m.values()
@@ -227,8 +227,8 @@ fn tracker_symmetrical(ot: &OverlapTracker) -> bool {
             let ot1 = ot.pair_overlap[pk1][pk2];
             let ot2 = ot.pair_overlap[pk2][pk1];
 
-            assert_approx_eq!(fsize, ot1.weight, ot2.weight, ulps = 6);
-            assert_approx_eq!(fsize, ot1.overlap, ot2.overlap, ulps = 6);
+            assert_approx_eq!(fsize, ot1.weight, ot2.weight, ulps = FLOAT_ULPS);
+            assert_approx_eq!(fsize, ot1.overlap, ot2.overlap, ulps = FLOAT_ULPS);
         }
     }
     true
@@ -253,7 +253,7 @@ fn tracker_matches_layout(ot: &OverlapTracker, l: &Layout) -> bool {
             match collisions.contains(&(pi2.into())) {
                 true => {
                     let calc_overlap = overlap_proxy::poly_overlap_proxy(&pi1.shape, &pi2.shape, l.bin.bbox());
-                    assert_approx_eq!(fsize, calc_overlap, stored_overlap, ulps = 6);
+                    assert_approx_eq!(fsize, calc_overlap, stored_overlap, ulps = FLOAT_ULPS);
                 }
                 false => {
                     assert_eq!(stored_overlap, 0.0);
@@ -262,8 +262,8 @@ fn tracker_matches_layout(ot: &OverlapTracker, l: &Layout) -> bool {
         }
         if collisions.contains(&HazardEntity::BinExterior) {
             let bin_overlap = ot.get_bin_overlap(pk1);
-            let calc_overlap = 2.0 * overlap_proxy::bin_overlap_proxy(&pi1.shape, l.bin.bbox());
-            assert_approx_eq!(fsize, calc_overlap, bin_overlap, ulps = 6);
+            let calc_overlap = overlap_proxy::bin_overlap_proxy(&pi1.shape, l.bin.bbox());
+            assert_approx_eq!(fsize, calc_overlap, bin_overlap, ulps = FLOAT_ULPS);
         } else {
             assert_eq!(ot.get_bin_overlap(pk1), 0.0);
         }

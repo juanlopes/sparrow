@@ -22,6 +22,8 @@ mod opt;
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 
+const FLOAT_ULPS: i64 = 8;
+
 const OUTPUT_DIR: &str = "../output";
 
 const DRAW_OPTIONS: SvgDrawOptions = SvgDrawOptions{
@@ -29,7 +31,7 @@ const DRAW_OPTIONS: SvgDrawOptions = SvgDrawOptions{
     quadtree: false,
     haz_prox_grid: false,
     surrogate: false,
-    overlap_lines: false,
+    overlap_lines: true,
 };
 
 const INPUT_FILE: &str = "../jagua-rs/assets/swim.json";
@@ -39,8 +41,14 @@ const RNG_SEED: Option<usize> = Some(0);
 pub static EPOCH: Lazy<Instant> = Lazy::new(Instant::now);
 
 fn main() {
-    io::init_logger(log::LevelFilter::Debug);
-    
+
+    if cfg!(debug_assertions) {
+        io::init_logger(log::LevelFilter::Debug);
+    }
+    else {
+        io::init_logger(log::LevelFilter::Info);
+    }
+
     let json_instance = io::read_json_instance(Path::new(&INPUT_FILE));
     
     let cde_config = CDEConfig{

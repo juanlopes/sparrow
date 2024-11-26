@@ -38,7 +38,7 @@ pub fn bin_overlap_proxy(s: &SimplePolygon, bin_bbox: AARectangle) -> fsize {
     };
     let penalty = s.surrogate().convex_hull_area.sqrt();
 
-    deficit * penalty
+    2.0 * deficit * penalty
 }
 
 

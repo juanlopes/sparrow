@@ -53,7 +53,8 @@ impl<'a> SampleEvaluator<'a> {
         }
 
         if self.coll_buff.is_empty() {
-            SampleEval::Valid(0.0)
+            let v = self.shape_buff.bbox.x_max + 0.1 * self.shape_buff.bbox.y_max;
+            SampleEval::Valid(v)
         }
         else {
             let w_overlap = match self.current_pk {
