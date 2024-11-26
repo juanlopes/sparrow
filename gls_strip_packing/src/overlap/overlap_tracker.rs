@@ -76,7 +76,7 @@ impl OverlapTracker {
         }
 
         for pk in new_keys {
-            self.compute_overlap_for_key(l, pk);
+            self.compute_and_set_overlap_for_key(l, pk);
         }
 
         debug_assert!(tracker_symmetrical(self));
@@ -111,12 +111,12 @@ impl OverlapTracker {
             self.bin_overlap.insert(new_key, new_bin_ot_entry);
         }
 
-        self.compute_overlap_for_key(l, new_key);
+        self.compute_and_set_overlap_for_key(l, new_key);
 
         debug_assert!(tracker_symmetrical(self));
     }
 
-    fn compute_overlap_for_key(&mut self, l: &Layout, pk: PItemKey){
+    fn compute_and_set_overlap_for_key(&mut self, l: &Layout, pk: PItemKey){
         let pi = &l.placed_items[pk];
         let shape = pi.shape.as_ref();
         let mut ol_haz = vec![];

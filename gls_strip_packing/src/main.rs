@@ -10,6 +10,8 @@ mod opt;
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 
+const OUTPUT_DIR: &str = "output";
+
 pub static EPOCH: Lazy<Instant> = Lazy::new(Instant::now);
 
 fn main() {
