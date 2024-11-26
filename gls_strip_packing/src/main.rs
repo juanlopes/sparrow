@@ -3,6 +3,9 @@ use mimalloc::MiMalloc;
 use once_cell::sync::Lazy;
 
 mod io;
+mod sampl;
+mod overlap;
+mod opt;
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
