@@ -37,7 +37,7 @@ impl BestSamples {
         }
         if modified {
             self.samples
-                .sort_by(|a, b| a.0.partial_cmp(&b.0).expect("failed to compare samples"));
+                .sort_by(|a, b| a.1.cmp(&b.1));
         } else {
             //debug!("sample not added to bests");
         }

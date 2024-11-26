@@ -1,9 +1,11 @@
 use std::iter;
+use std::ops::Range;
 use float_cmp::assert_approx_eq;
 use jagua_rs::collision_detection::hazard::HazardEntity;
 use jagua_rs::entities::layout::Layout;
 use jagua_rs::entities::placed_item::PItemKey;
 use jagua_rs::fsize;
+use rand::Rng;
 use slotmap::SecondaryMap;
 use crate::overlap::{overlap, overlap_proxy};
 
@@ -24,6 +26,7 @@ impl Default for OTEntry {
 
 const INCREMENT: fsize = 1.2;
 
+#[derive(Clone, Debug)]
 pub struct OverlapTracker {
     pub pair_overlap: SecondaryMap<PItemKey, SecondaryMap<PItemKey, OTEntry>>,
     pub bin_overlap: SecondaryMap<PItemKey, OTEntry>,
@@ -80,6 +83,7 @@ impl OverlapTracker {
         }
 
         debug_assert!(tracker_symmetrical(self));
+        debug_assert!(tracker_matches_layout(self, l));
     }
 
     pub fn move_item(&mut self, l: &Layout, old_key: PItemKey, new_key: PItemKey) {
@@ -114,6 +118,7 @@ impl OverlapTracker {
         self.compute_and_set_overlap_for_key(l, new_key);
 
         debug_assert!(tracker_symmetrical(self));
+        debug_assert!(tracker_matches_layout(self, l));
     }
 
     fn compute_and_set_overlap_for_key(&mut self, l: &Layout, pk: PItemKey){
@@ -155,24 +160,36 @@ impl OverlapTracker {
         debug_assert!(tracker_symmetrical(self));
     }
 
-    pub fn rescale(&mut self) {
-        todo!()
+    pub fn randomize_weights(&mut self, range: Range<fsize>, rng: &mut impl Rng) {
+        for e in self.bin_overlap.values_mut() {
+            e.weight = rng.gen_range(range.clone());
+        }
+        for pk1 in self.bin_overlap.keys() {
+            for pk2 in self.bin_overlap.keys() {
+                if pk1 <= pk2 {
+                    let random_weight = rng.gen_range(range.clone());
+                    self.pair_overlap[pk1][pk2].weight = random_weight;
+                    self.pair_overlap[pk2][pk1].weight = random_weight;
+                }
+            }
+        }
+        assert!(tracker_symmetrical(self));
     }
 
-    pub fn get_pair_weight(&self, pk1: PItemKey, pk2: PItemKey) -> Option<fsize> {
-        self.pair_overlap.get(pk1)?.get(pk2).map(|e| e.weight)
+    pub fn get_pair_weight(&self, pk1: PItemKey, pk2: PItemKey) -> fsize {
+        self.pair_overlap[pk1][pk2].weight
     }
 
-    pub fn get_bin_weight(&self, pk: PItemKey) -> Option<fsize> {
-        self.bin_overlap.get(pk).map(|e| e.weight)
+    pub fn get_bin_weight(&self, pk: PItemKey) -> fsize {
+        self.bin_overlap[pk].weight
     }
 
-    pub fn get_pair_overlap(&self, pk1: PItemKey, pk2: PItemKey) -> Option<fsize> {
-        self.pair_overlap.get(pk1)?.get(pk2).map(|e| e.overlap)
+    pub fn get_pair_overlap(&self, pk1: PItemKey, pk2: PItemKey) -> fsize {
+        self.pair_overlap[pk1][pk2].overlap
     }
 
-    pub fn get_bin_overlap(&self, pk: PItemKey) -> Option<fsize> {
-        self.bin_overlap.get(pk).map(|e| 2.0 * e.overlap)
+    pub fn get_bin_overlap(&self, pk: PItemKey) -> fsize {
+        self.bin_overlap[pk].overlap
     }
 
     pub fn get_overlap(&self, pk: PItemKey) -> fsize {
@@ -190,6 +207,18 @@ impl OverlapTracker {
                     .sum()
             )
     }
+
+    pub fn get_total_overlap(&self) -> fsize {
+        self.bin_overlap.keys()
+            .map(|pk| self.get_overlap(pk))
+            .sum()
+    }
+
+    pub fn get_total_weighted_overlap(&self) -> fsize {
+        self.bin_overlap.keys()
+            .map(|pk| self.get_weighted_overlap(pk))
+            .sum()
+    }
 }
 
 fn tracker_symmetrical(ot: &OverlapTracker) -> bool {
@@ -198,9 +227,47 @@ fn tracker_symmetrical(ot: &OverlapTracker) -> bool {
             let ot1 = ot.pair_overlap[pk1][pk2];
             let ot2 = ot.pair_overlap[pk2][pk1];
 
-            assert_approx_eq!(fsize, ot1.weight, ot2.weight, ulps = 2);
-            assert_approx_eq!(fsize, ot1.overlap, ot2.overlap, ulps = 2);
+            assert_approx_eq!(fsize, ot1.weight, ot2.weight, ulps = 6);
+            assert_approx_eq!(fsize, ot1.overlap, ot2.overlap, ulps = 6);
         }
     }
+    true
+}
+
+fn tracker_matches_layout(ot: &OverlapTracker, l: &Layout) -> bool {
+    assert!(ot
+        .pair_overlap
+        .keys()
+        .all(|k| l.placed_items.contains_key(k)));
+    assert!(ot
+        .bin_overlap
+        .keys()
+        .all(|k| l.placed_items.contains_key(k)));
+
+    for (pk1, pi1) in l.placed_items.iter() {
+        let mut collisions = vec![];
+        l.cde().collect_poly_collisions(&pi1.shape, &[pi1.into()], &mut collisions);
+        assert_eq!(ot.get_pair_overlap(pk1, pk1), 0.0);
+        for (pk2, pi2) in l.placed_items.iter().filter(|(k, _)| *k != pk1) {
+            let stored_overlap = ot.get_pair_overlap(pk1, pk2);
+            match collisions.contains(&(pi2.into())) {
+                true => {
+                    let calc_overlap = overlap_proxy::poly_overlap_proxy(&pi1.shape, &pi2.shape, l.bin.bbox());
+                    assert_approx_eq!(fsize, calc_overlap, stored_overlap, ulps = 6);
+                }
+                false => {
+                    assert_eq!(stored_overlap, 0.0);
+                }
+            }
+        }
+        if collisions.contains(&HazardEntity::BinExterior) {
+            let bin_overlap = ot.get_bin_overlap(pk1);
+            let calc_overlap = 2.0 * overlap_proxy::bin_overlap_proxy(&pi1.shape, l.bin.bbox());
+            assert_approx_eq!(fsize, calc_overlap, bin_overlap, ulps = 6);
+        } else {
+            assert_eq!(ot.get_bin_overlap(pk1), 0.0);
+        }
+    }
+
     true
 }

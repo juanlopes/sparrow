@@ -3,6 +3,7 @@ use jagua_rs::fsize;
 use jagua_rs::geometry::d_transformation::DTransformation;
 use jagua_rs::geometry::primitives::point::Point;
 use rand::prelude::SmallRng;
+use rand::Rng;
 
 pub const K_SUCC: fsize = 1.1;
 pub const K_FAIL: fsize = 0.9;
@@ -14,7 +15,7 @@ pub fn coordinate_descent(
     start: (DTransformation, SampleEval),
     evaluator: &mut SampleEvaluator,
     min_dim: fsize,
-    rng: &mut SmallRng,
+    rng: &mut impl Rng,
 ) -> (DTransformation, SampleEval, usize) {
 
     let mut counter = 0;
@@ -32,12 +33,14 @@ pub fn coordinate_descent(
         let min_child = match cd_state.dir {
             Some(_) => {
                 cd_state.gen_directional_children(current_step, evaluator)
-                    .into_iter().min_by_key(|c| c.eval)
+                    .into_iter()
+                    .min_by_key(|c| c.eval)
                     .unwrap()
             }
             None => {
                 cd_state.gen_all_children(current_step, evaluator)
-                    .into_iter().min_by_key(|c| c.eval)
+                    .into_iter()
+                    .min_by_key(|c| c.eval)
                     .unwrap()
             }
         };
@@ -64,7 +67,7 @@ impl CDState {
     pub fn gen_all_children(&self, step_size: fsize, evaluator: &mut SampleEvaluator) -> [CDState; 8]{
         CDDirection::all_directions()
             .map(|d| {
-                let step = d.step(self.state.translation.into(), step_size);
+                let step = d.step(self.state.translation().into(), step_size);
                 let child_state = DTransformation::new(self.state.rotation(), (step.0, step.1));
                 CDState {
                     state: child_state,
@@ -77,7 +80,7 @@ impl CDState {
     pub fn gen_directional_children(&self, step_size: fsize, evaluator: &mut SampleEvaluator) -> [CDState; 3]{
         self.dir.unwrap().neighboring()
             .map(|d| {
-                let step = d.step(self.state.translation.into(), step_size);
+                let step = d.step(self.state.translation().into(), step_size);
                 let child_state = DTransformation::new(self.state.rotation(), (step.0, step.1));
                 CDState {
                     state: child_state,

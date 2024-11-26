@@ -69,7 +69,7 @@ impl<'a> SampleEvaluator<'a> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Copy)]
 pub enum SampleEval{
     Colliding(usize, fsize),
     Valid(fsize)

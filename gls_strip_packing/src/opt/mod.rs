@@ -1,2 +1,1 @@
-mod gls_optimizer;
-mod search;
+pub mod gls_optimizer;

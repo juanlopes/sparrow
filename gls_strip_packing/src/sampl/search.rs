@@ -42,11 +42,13 @@ pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, ot: &
 
     for start in best_samples.samples.clone() {
         let descended = coordinate_descent(start.clone(), &mut evaluator, item_min_dim, rng);
-        debug!("CD: {:?} -> {:?}, transl: {:.3} -> {:.3}, #{}",
+        debug!("CD: {:?} -> {:?}, transl: ({:.3},{:.3}) -> ({:.3},{:.3}) #{}",
             start.1,
             descended.1,
-            start.0.translation(),
-            descended.0.translation(),
+            start.0.translation().0,
+            start.0.translation().1,
+            descended.0.translation().0,
+            descended.0.translation().1,
             descended.2,
         );
         best_samples.report(descended.0, descended.1);

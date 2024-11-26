@@ -14,12 +14,12 @@ where I : Iterator<Item=HazardEntity> {
                 let other_pk = l.hazard_to_p_item_key(&haz).unwrap();
                 let other_shape = &l.placed_items[other_pk].shape;
                 let overlap = poly_overlap_proxy(s, other_shape, l.bin.bbox());
-                let weight = ot.get_pair_weight(ref_pk, other_pk).unwrap();
+                let weight = ot.get_pair_weight(ref_pk, other_pk);
                 overlap * weight
             }
             HazardEntity::BinExterior => {
                 let overlap = bin_overlap_proxy(s, l.bin.bbox());
-                let weight = ot.get_bin_weight(ref_pk).unwrap();
+                let weight = ot.get_bin_weight(ref_pk);
                 overlap * weight
             }
             _ => unimplemented!("unsupported hazard entity")

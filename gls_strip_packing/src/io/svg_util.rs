@@ -97,6 +97,26 @@ impl SvgLayoutTheme {
             qz_stroke_opac: 0.9,
         }
     }
+
+    pub(crate) const GRAY_THEME: SvgLayoutTheme = SvgLayoutTheme {
+        stroke_width_multiplier: 2.5,
+        bin_fill: Color(0xD6, 0xD6, 0xD6),
+        item_fill: Color(0x8F, 0x8F, 0x8F),
+        hole_fill: Color(0xFF, 0xFF, 0xFF),
+        qz_fill: [
+            Color(0x63, 0x63, 0x63), //GRAY
+            Color(0x63, 0x63, 0x63), //GRAY
+            Color(0x63, 0x63, 0x63), //GRAY
+            Color(0x63, 0x63, 0x63), //GRAY
+            Color(0x63, 0x63, 0x63), //GRAY
+            Color(0x63, 0x63, 0x63), //GRAY
+            Color(0x63, 0x63, 0x63), //GRAY
+            Color(0x63, 0x63, 0x63), //GRAY
+            Color(0x63, 0x63, 0x63), //GRAY
+            Color(0x63, 0x63, 0x63), //GRAY
+        ],
+        qz_stroke_opac: 0.9,
+    };
 }
 
 pub fn change_brightness(color: Color, fraction: fsize) -> Color {

@@ -4,7 +4,7 @@ use jagua_rs::geometry::d_transformation::DTransformation;
 use jagua_rs::geometry::geo_enums::AllowedRotation;
 use jagua_rs::geometry::primitives::aa_rectangle::AARectangle;
 use rand::distributions::Uniform;
-use rand::prelude::Distribution;
+use rand::prelude::{Distribution, SliceRandom};
 use rand::Rng;
 
 #[derive(Clone, Debug)]
