@@ -31,7 +31,7 @@ const N_CD: usize = 2;
 
 const TIME_LIMIT: Duration = Duration::from_secs(10 * 60);
 
-const WEIGHT_INIT_RANGE: (fsize, fsize) = (1.0, 5.0);
+const WEIGHT_INIT_RANGE: (fsize, fsize) = (1.0, 2.0);
 
 const N_STRIKES: usize = 5;
 
@@ -110,6 +110,9 @@ impl GLSOptimizer {
             }
             else {
                 next_width = current_width * (1.0 + R_EXPAND);
+                if next_width > best.0 {
+                    next_width = current_width;
+                }
             }
 
             if next_width != current_width {

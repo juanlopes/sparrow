@@ -5,9 +5,9 @@ use jagua_rs::collision_detection::hazard::HazardEntity;
 use jagua_rs::entities::layout::Layout;
 use jagua_rs::entities::placed_item::PItemKey;
 use jagua_rs::fsize;
+use jagua_rs::util::fpa::FPA;
 use rand::Rng;
 use slotmap::SecondaryMap;
-use crate::FLOAT_ULPS;
 use crate::overlap::{overlap, overlap_proxy};
 
 #[derive(Clone, Copy, Debug)]
@@ -227,8 +227,8 @@ fn tracker_symmetrical(ot: &OverlapTracker) -> bool {
             let ot1 = ot.pair_overlap[pk1][pk2];
             let ot2 = ot.pair_overlap[pk2][pk1];
 
-            assert_approx_eq!(fsize, ot1.weight, ot2.weight, ulps = FLOAT_ULPS);
-            assert_approx_eq!(fsize, ot1.overlap, ot2.overlap, ulps = FLOAT_ULPS);
+            assert_approx_eq!(fsize, ot1.weight, ot2.weight, epsilon = FPA::tolerance());
+            assert_approx_eq!(fsize, ot1.overlap, ot2.overlap, epsilon = FPA::tolerance());
         }
     }
     true
@@ -253,7 +253,7 @@ fn tracker_matches_layout(ot: &OverlapTracker, l: &Layout) -> bool {
             match collisions.contains(&(pi2.into())) {
                 true => {
                     let calc_overlap = overlap_proxy::poly_overlap_proxy(&pi1.shape, &pi2.shape, l.bin.bbox());
-                    assert_approx_eq!(fsize, calc_overlap, stored_overlap, ulps = FLOAT_ULPS);
+                    assert_approx_eq!(fsize, calc_overlap, stored_overlap, epsilon = FPA::tolerance());
                 }
                 false => {
                     assert_eq!(stored_overlap, 0.0);
@@ -263,7 +263,7 @@ fn tracker_matches_layout(ot: &OverlapTracker, l: &Layout) -> bool {
         if collisions.contains(&HazardEntity::BinExterior) {
             let bin_overlap = ot.get_bin_overlap(pk1);
             let calc_overlap = overlap_proxy::bin_overlap_proxy(&pi1.shape, l.bin.bbox());
-            assert_approx_eq!(fsize, calc_overlap, bin_overlap, ulps = FLOAT_ULPS);
+            assert_approx_eq!(fsize, calc_overlap, bin_overlap, epsilon = FPA::tolerance());
         } else {
             assert_eq!(ot.get_bin_overlap(pk1), 0.0);
         }

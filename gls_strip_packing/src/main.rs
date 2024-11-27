@@ -22,8 +22,6 @@ mod opt;
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 
-const FLOAT_ULPS: i64 = 8;
-
 const OUTPUT_DIR: &str = "../output";
 
 const DRAW_OPTIONS: SvgDrawOptions = SvgDrawOptions{
