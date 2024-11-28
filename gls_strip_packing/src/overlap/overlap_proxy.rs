@@ -3,7 +3,9 @@ use jagua_rs::geometry::geo_enums::GeoPosition;
 use jagua_rs::geometry::geo_traits::{DistanceFrom, Shape};
 use jagua_rs::geometry::primitives::aa_rectangle::AARectangle;
 use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
+
 pub const DIAM_FRAC_NORMALIZER: fsize = 1.0 / 1000.0;
+
 pub fn poly_overlap_proxy(s1: &SimplePolygon, s2: &SimplePolygon, bin_bbox: AARectangle) -> fsize {
     let mut deficit = 0.0;
 
@@ -29,16 +31,16 @@ pub fn bin_overlap_proxy(s: &SimplePolygon, bin_bbox: AARectangle) -> fsize {
     let deficit = match AARectangle::from_intersection(&s_bbox, &bin_bbox) {
         Some(r) => {
             let negative_area = s_bbox.area() - r.area();
-            negative_area.sqrt()
+            negative_area
         },
         None => {
             //no intersection, guide towards intersection with bin
-            s_bbox.area().sqrt() + s_bbox.centroid().distance(bin_bbox.centroid())
+            s_bbox.area() + s_bbox.centroid().distance(bin_bbox.centroid())
         }
     };
-    let penalty = s.surrogate().convex_hull_area.sqrt();
+    let penalty = s.surrogate().convex_hull_area;
 
-    2.0 * deficit * penalty
+    2.0 * deficit.sqrt() * penalty
 }
 
 

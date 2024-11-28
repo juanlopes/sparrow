@@ -18,3 +18,7 @@ humantime = "2.1.0"
 tap = "1.0.1"
 slotmap = "1.0"
 float-cmp = "0.10.0"
+ordered-float = "4.5.0"
+
+
+[profile.release]

@@ -7,6 +7,7 @@ use jagua_rs::entities::problems::strip_packing::SPProblem;
 use jagua_rs::io::parser::Parser;
 use jagua_rs::util::config::{CDEConfig, SPSurrogateConfig};
 use jagua_rs::util::polygon_simplification::PolySimplConfig;
+use log::warn;
 use mimalloc::MiMalloc;
 use once_cell::sync::Lazy;
 use rand::prelude::SmallRng;
@@ -22,8 +23,6 @@ mod opt;
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 
-const OUTPUT_DIR: &str = "../output";
-
 const DRAW_OPTIONS: SvgDrawOptions = SvgDrawOptions{
     theme: SvgLayoutTheme::GRAY_THEME,
     quadtree: false,
@@ -34,8 +33,13 @@ const DRAW_OPTIONS: SvgDrawOptions = SvgDrawOptions{
 
 const INPUT_FILE: &str = "../jagua-rs/assets/swim.json";
 
-const RNG_SEED: Option<usize> = Some(0);
+const OUTPUT_DIR: &str = "../output";
 
+const SVG_OUTPUT_DIR: &str = "../output/svg";
+
+//const RNG_SEED: Option<usize> = Some(12079827122912017592);
+
+const RNG_SEED: Option<usize> = None;
 pub static EPOCH: Lazy<Instant> = Lazy::new(Instant::now);
 
 fn main() {
@@ -70,7 +74,11 @@ fn main() {
 
     let rng = match RNG_SEED {
         Some(seed) => SmallRng::seed_from_u64(seed as u64),
-        None => SmallRng::from_entropy(),
+        None => {
+            let seed = rand::random();
+            warn!("No seed provided, using: {}", seed);
+            SmallRng::seed_from_u64(seed)
+        }
     };
 
     let problem= SPProblem::new(sp_instance.clone(), 7000.0, cde_config);

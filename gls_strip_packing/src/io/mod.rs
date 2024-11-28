@@ -8,7 +8,7 @@ use svg::Document;
 
 use jagua_rs::io::json_instance::JsonInstance;
 
-use crate::EPOCH;
+use crate::{EPOCH, OUTPUT_DIR};
 pub mod layout_to_svg;
 pub mod svg_export;
 pub mod svg_util;
@@ -32,6 +32,8 @@ pub fn write_svg(document: &Document, path: &Path) {
 }
 
 pub fn init_logger(level_filter: LevelFilter) {
+    //remove old log file
+    let _ = fs::remove_file(format!("{}/log.txt", OUTPUT_DIR));
     fern::Dispatch::new()
         // Perform allocation-free log formatting
         .format(|out, message, record| {
@@ -57,6 +59,7 @@ pub fn init_logger(level_filter: LevelFilter) {
         // Add blanket level filter -
         .level(level_filter)
         .chain(std::io::stdout())
+        .chain(fern::log_file(format!("{OUTPUT_DIR}/log.txt")).unwrap())
         .apply()
         .expect("could not initialize logger");
     log!(
