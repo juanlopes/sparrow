@@ -6,9 +6,9 @@ use rand::prelude::SmallRng;
 use rand::Rng;
 
 pub const K_SUCC: fsize = 1.1;
-pub const K_FAIL: fsize = 0.9;
+pub const K_FAIL: fsize = 0.5;
 
-pub const STEP_INIT_RATIO: fsize = 0.01; // 1% of items min dimension
+pub const STEP_INIT_RATIO: fsize = 0.05; // 5% of items min dimension
 pub const STEP_MIN_RATIO: fsize = 0.001; // 0.1% of items min dimension
 
 pub fn coordinate_descent(

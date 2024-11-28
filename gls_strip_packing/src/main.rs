@@ -19,6 +19,7 @@ mod io;
 mod sampl;
 mod overlap;
 mod opt;
+mod broad;
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;

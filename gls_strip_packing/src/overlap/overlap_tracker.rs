@@ -1,11 +1,12 @@
 use std::iter;
 use std::ops::Range;
-use float_cmp::assert_approx_eq;
+use float_cmp::{approx_eq, assert_approx_eq};
 use jagua_rs::collision_detection::hazard::HazardEntity;
 use jagua_rs::entities::layout::Layout;
 use jagua_rs::entities::placed_item::PItemKey;
 use jagua_rs::fsize;
 use jagua_rs::util::fpa::FPA;
+use log::{info, warn};
 use rand::Rng;
 use slotmap::SecondaryMap;
 use crate::overlap::{overlap, overlap_proxy};
@@ -139,7 +140,7 @@ impl OverlapTracker {
                     let overlap = overlap_proxy::bin_overlap_proxy(shape, l.bin.bbox());
                     self.bin_overlap[pk].overlap = overlap;
                 }
-                _ => {}
+                _ => unimplemented!("unsupported hazard entity")
             }
         }
     }
@@ -161,6 +162,7 @@ impl OverlapTracker {
     }
 
     pub fn randomize_weights(&mut self, range: Range<fsize>, rng: &mut impl Rng) {
+        info!("randomizing weights in range {:.3} to {:.3}", range.start, range.end);
         for e in self.bin_overlap.values_mut() {
             e.weight = rng.gen_range(range.clone());
         }
@@ -173,7 +175,7 @@ impl OverlapTracker {
                 }
             }
         }
-        assert!(tracker_symmetrical(self));
+        debug_assert!(tracker_symmetrical(self));
     }
 
     pub fn get_pair_weight(&self, pk1: PItemKey, pk2: PItemKey) -> fsize {
@@ -253,10 +255,36 @@ fn tracker_matches_layout(ot: &OverlapTracker, l: &Layout) -> bool {
             match collisions.contains(&(pi2.into())) {
                 true => {
                     let calc_overlap = overlap_proxy::poly_overlap_proxy(&pi1.shape, &pi2.shape, l.bin.bbox());
-                    assert_approx_eq!(fsize, calc_overlap, stored_overlap, epsilon = FPA::tolerance());
+                    let calc_overlap2 = overlap_proxy::poly_overlap_proxy(&pi2.shape, &pi1.shape, l.bin.bbox());
+                    if !approx_eq!(fsize, calc_overlap, stored_overlap, epsilon = 0.001 * stored_overlap) {
+                        let mut opposite_collisions = vec![];
+                        l.cde().collect_poly_collisions(&pi2.shape, &[pi2.into()], &mut opposite_collisions);
+                        if opposite_collisions.contains(&(pi1.into())) {
+                            dbg!(&pi1.shape.points, &pi2.shape.points);
+                            dbg!(stored_overlap, calc_overlap, calc_overlap2, opposite_collisions, HazardEntity::from(pi1), HazardEntity::from(pi2));
+                            panic!("overlap tracker error");
+                        }
+                        else {
+                            //detecting collisions is not symmetrical (in edge cases)
+                            warn!("inconsistent overlap");
+                        }
+                    }
                 }
                 false => {
-                    assert_eq!(stored_overlap, 0.0);
+                    if stored_overlap != 0.0 {
+                        let calc_overlap = overlap_proxy::poly_overlap_proxy(&pi1.shape, &pi2.shape, l.bin.bbox());
+                        let mut opposite_collisions = vec![];
+                        l.cde().collect_poly_collisions(&pi2.shape, &[pi2.into()], &mut opposite_collisions);
+                        if !opposite_collisions.contains(&(pi1.into())) {
+                            dbg!(&pi1.shape.points, &pi2.shape.points);
+                            dbg!(stored_overlap, calc_overlap, opposite_collisions, HazardEntity::from(pi1), HazardEntity::from(pi2));
+                            panic!("overlap tracker error");
+                        }
+                        else{
+                            //detecting collisions is not symmetrical (in edge cases)
+                            warn!("inconsistent overlap");
+                        }
+                    }
                 }
             }
         }

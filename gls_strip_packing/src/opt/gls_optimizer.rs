@@ -1,5 +1,9 @@
-use std::path::Path;
-use std::time::{Duration, Instant};
+use crate::io::layout_to_svg::layout_to_svg;
+use crate::overlap::overlap_tracker;
+use crate::overlap::overlap_tracker::OverlapTracker;
+use crate::sampl::evaluator::SampleEval;
+use crate::sampl::search::{search_placement, SearchConfig};
+use crate::{io, DRAW_OPTIONS, OUTPUT_DIR, SVG_OUTPUT_DIR};
 use itertools::Itertools;
 use jagua_rs::entities::bin::Bin;
 use jagua_rs::entities::instances::instance_generic::InstanceGeneric;
@@ -16,38 +20,36 @@ use jagua_rs::geometry::geo_traits::Shape;
 use jagua_rs::geometry::primitives::aa_rectangle::AARectangle;
 use jagua_rs::util::fpa::FPA;
 use log::{debug, info, warn};
+use ordered_float::OrderedFloat;
 use rand::prelude::SliceRandom;
 use rand::rngs::SmallRng;
+use rand::Rng;
+use std::cmp::{min, Reverse};
+use std::path::Path;
+use std::process::id;
+use std::time::{Duration, Instant};
 use tap::Tap;
-use crate::{io, DRAW_OPTIONS, OUTPUT_DIR};
-use crate::io::layout_to_svg::layout_to_svg;
-use crate::overlap::overlap_tracker;
-use crate::overlap::overlap_tracker::OverlapTracker;
-use crate::sampl::evaluator::SampleEval;
-use crate::sampl::search::search_placement;
 
 const N_UNIFORM: usize = 100;
 const N_CD: usize = 2;
 
-const TIME_LIMIT: Duration = Duration::from_secs(10 * 60);
+const TIME_LIMIT: Duration = Duration::from_secs(120 * 60);
 
-const WEIGHT_INIT_RANGE: (fsize, fsize) = (1.0, 2.0);
+const RNG_WEIGHT_RANGE: (fsize, fsize) = (1.0, 2.0);
 
 const N_STRIKES: usize = 5;
+const N_ITER_NO_IMPROV: usize = 100;
 
 const R_SHRINK: fsize = 0.005;
 const R_EXPAND: fsize = 0.002;
 
-const N_ITER_NO_IMPROV: usize = 100;
-
-pub struct GLSOptimizer{
+pub struct GLSOptimizer {
     pub prob: SPProblem,
     pub instance: SPInstance,
     pub rng: SmallRng,
     pub ot: OverlapTracker,
     pub svg_counter: usize,
 }
-
 
 impl GLSOptimizer {
     pub fn new(prob: SPProblem, instance: SPInstance, rng: SmallRng) -> Self {
@@ -69,16 +71,20 @@ impl GLSOptimizer {
 
         for item_id in item_ids_to_add {
             let item = self.instance.item(item_id);
+            let search_config = SearchConfig {
+                n_bin_samples: N_UNIFORM * 10,
+                n_focussed_samples: 0,
+                n_coord_descents: N_CD,
+            };
             let (d_transf, eval) = search_placement(
                 &self.prob.layout,
                 item,
                 None,
                 &self.ot,
-                N_UNIFORM * 10,
-                N_CD,
-                &mut self.rng
+                search_config,
+                &mut self.rng,
             );
-            let new_p_opt = PlacingOption{
+            let new_p_opt = PlacingOption {
                 layout_idx: STRIP_LAYOUT_IDX,
                 item_id: item.id,
                 d_transf,
@@ -107,8 +113,7 @@ impl GLSOptimizer {
                     best = (current_width, self.prob.create_solution(None), self.ot.clone());
                 }
                 next_width = current_width * (1.0 - R_SHRINK);
-            }
-            else {
+            } else {
                 next_width = current_width * (1.0 + R_EXPAND);
                 if next_width > best.0 {
                     next_width = current_width;
@@ -124,15 +129,16 @@ impl GLSOptimizer {
         best.1
     }
 
-    fn separate_layout(&mut self){
+    fn separate_layout(&mut self) {
         let mut n_strikes = 0;
         let mut min_overlap = self.ot.get_total_overlap();
+        let init_overlap = min_overlap;
         let mut min_sol = (self.prob.create_solution(None), self.ot.clone());
 
         while n_strikes < N_STRIKES {
             self.rollback(&min_sol.0, &min_sol.1);
-            self.ot.randomize_weights(WEIGHT_INIT_RANGE.0..WEIGHT_INIT_RANGE.1, &mut self.rng);
-            let init_overlap = self.ot.get_total_overlap();
+            self.ot.randomize_weights(RNG_WEIGHT_RANGE.0..RNG_WEIGHT_RANGE.1, &mut self.rng);
+            let init_min_overlap = min_overlap;
 
             let mut n_iter_no_improv = 0;
             let mut improved = false;
@@ -143,7 +149,7 @@ impl GLSOptimizer {
                 let abs_overlap = self.ot.get_total_overlap();
                 let w_overlap = self.ot.get_total_weighted_overlap();
                 self.write_svg(log::LevelFilter::Debug);
-                info!("[i:{}]  w_o: {:.3} -> {:.3}, n_mov: {}, abs_o: {:.3} (min: {:.3})", n_iter_no_improv,w_overlap_before,w_overlap,n_mov,abs_overlap,min_overlap);
+                info!("[i:{}]  w_o: {:.3} -> {:.3}, n_mov: {}, abs_o: {:.3} (min: {:.3}, x{:.3})",n_iter_no_improv,w_overlap_before,w_overlap,n_mov,abs_overlap,min_overlap,abs_overlap / min_overlap);
                 if abs_overlap < min_overlap {
                     min_overlap = abs_overlap;
                     min_sol = (self.prob.create_solution(None), self.ot.clone());
@@ -159,13 +165,19 @@ impl GLSOptimizer {
                 self.ot.increment_weights();
             }
 
-            if min_overlap < init_overlap * 0.99 {
+            if min_overlap < init_min_overlap * 0.99 {
                 n_strikes = 0;
             } else {
                 n_strikes += 1;
             }
-            warn!("strike {}/{}: {:.3} -> {:.3}", n_strikes, N_STRIKES, init_overlap, min_overlap);
+            warn!(
+                "strike {}/{}: {:.3} -> {:.3}",
+                n_strikes, N_STRIKES, init_min_overlap, min_overlap
+            );
         }
+
+        warn!("separation improved from {:.3} to {:.3}",init_overlap, min_overlap);
+        self.rollback(&min_sol.0, &min_sol.1);
     }
 
     pub fn rollback(&mut self, solution: &Solution, ot: &OverlapTracker){
@@ -183,16 +195,20 @@ impl GLSOptimizer {
         for pk in overlapping_pks {
             if self.ot.get_overlap(pk) > 0.0 {
                 let item = self.instance.item(self.prob.layout.placed_items[pk].item_id);
+                let search_config = SearchConfig {
+                    n_bin_samples: N_UNIFORM / 2,
+                    n_focussed_samples: N_UNIFORM / 2,
+                    n_coord_descents: N_CD,
+                };
                 let (d_transf, eval) = search_placement(
                     &self.prob.layout,
                     item,
                     Some(pk),
                     &self.ot,
-                    N_UNIFORM,
-                    N_CD,
-                    &mut self.rng
+                    search_config,
+                    &mut self.rng,
                 );
-                let new_p_opt = PlacingOption{
+                let new_p_opt = PlacingOption {
                     layout_idx: STRIP_LAYOUT_IDX,
                     item_id: item.id,
                     d_transf,
@@ -233,7 +249,7 @@ impl GLSOptimizer {
         let mut new_prob = SPProblem::new(
             self.instance.clone(),
             new_width,
-            self.prob.layout.bin.base_cde.config()
+            self.prob.layout.bin.base_cde.config(),
         );
 
         //place all the items in the new problem, shift if past the fault position
@@ -242,13 +258,11 @@ impl GLSOptimizer {
                 true => pi.d_transf,
                 false => pi.d_transf.compose().translate(shift).decompose(),
             };
-            new_prob.place_item(
-                PlacingOption{
-                    layout_idx: STRIP_LAYOUT_IDX,
-                    item_id: pi.item_id,
-                    d_transf
-                }
-            );
+            new_prob.place_item(PlacingOption {
+                layout_idx: STRIP_LAYOUT_IDX,
+                item_id: pi.item_id,
+                d_transf,
+            });
         }
 
         self.prob = new_prob;
@@ -257,7 +271,7 @@ impl GLSOptimizer {
         self.ot.sync(&self.prob.layout);
     }
 
-    fn write_svg(&mut self, log_level: log::LevelFilter){
+    fn write_svg(&mut self, log_level: log::LevelFilter) {
         //skip if this log level is ignored by the logger
         if log_level > log::max_level() {
             return;
@@ -265,14 +279,14 @@ impl GLSOptimizer {
 
         if self.svg_counter == 0 {
             //remove all .svg files from the output folder
-            let _ = std::fs::remove_dir_all(OUTPUT_DIR);
-            std::fs::create_dir_all(OUTPUT_DIR).unwrap();
+            let _ = std::fs::remove_dir_all(SVG_OUTPUT_DIR);
+            std::fs::create_dir_all(SVG_OUTPUT_DIR).unwrap();
         }
 
         let layout = &self.prob.layout;
         let filename = format!(
             "{}/{}_{:.2}.svg",
-            OUTPUT_DIR,
+            SVG_OUTPUT_DIR,
             self.svg_counter,
             layout.bin.bbox().x_max
         );
