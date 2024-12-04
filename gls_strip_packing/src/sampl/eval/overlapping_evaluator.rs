@@ -5,14 +5,16 @@ use jagua_rs::entities::layout::Layout;
 use jagua_rs::entities::placed_item::PItemKey;
 use jagua_rs::entities::placing_option::PlacingOption;
 use jagua_rs::fsize;
+use jagua_rs::geometry::d_transformation::DTransformation;
 use jagua_rs::geometry::geo_traits::{Transformable, TransformableFrom};
 use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
 use jagua_rs::geometry::transformation::Transformation;
 use jagua_rs::util::fpa::FPA;
 use crate::overlap::overlap::{calculate_unweighted_overlap_shape, calculate_weighted_overlap};
 use crate::overlap::overlap_tracker::OverlapTracker;
+use crate::sampl::eval::{SampleEval, SampleEvaluator};
 
-pub struct SampleEvaluator<'a> {
+pub struct OverlappingSampleEvaluator<'a> {
     layout: &'a Layout,
     item: &'a Item,
     current_pk: Option<PItemKey>,
@@ -22,7 +24,7 @@ pub struct SampleEvaluator<'a> {
     n_evals: usize,
 }
 
-impl<'a> SampleEvaluator<'a> {
+impl<'a> OverlappingSampleEvaluator<'a> {
     pub fn new(layout: &'a Layout, item: &'a Item, current_pk: Option<PItemKey>, ot: &'a OverlapTracker) -> Self {
         Self {
             layout,
@@ -34,13 +36,15 @@ impl<'a> SampleEvaluator<'a> {
             n_evals: 0,
         }
     }
+}
 
-    pub fn eval(&mut self, transf: impl Into<Transformation>) -> SampleEval {
+impl<'a> SampleEvaluator for OverlappingSampleEvaluator<'a> {
+    fn eval(&mut self, dt: DTransformation) -> SampleEval {
         self.n_evals += 1;
         let cde = self.layout.cde();
 
         self.coll_buff.clear();
-        self.shape_buff.transform_from(&self.item.shape, &transf.into());
+        self.shape_buff.transform_from(&self.item.shape, &dt.into());
 
         match self.current_pk {
             Some(current_pk) => {
@@ -68,29 +72,8 @@ impl<'a> SampleEvaluator<'a> {
             SampleEval::Colliding(self.coll_buff.len(), w_overlap)
         }
     }
-}
 
-#[derive(Clone, Debug, PartialEq, Copy)]
-pub enum SampleEval{
-    Colliding(usize, fsize),
-    Valid(fsize)
-}
-
-impl PartialOrd for SampleEval {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        match (self, other) {
-            (SampleEval::Valid(s1), SampleEval::Valid(s2)) => FPA(*s1).partial_cmp(&FPA(*s2)),
-            (SampleEval::Colliding(_, s1), SampleEval::Colliding(_, s2)) => FPA(*s1).partial_cmp(&FPA(*s2)),
-            (SampleEval::Valid(_), _) => Some(Ordering::Less),
-            (_, SampleEval::Valid(_)) => Some(Ordering::Greater),
-        }
+    fn n_evals(&self) -> usize {
+        self.n_evals
     }
 }
-
-impl Ord for SampleEval {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.partial_cmp(other).unwrap()
-    }
-}
-
-impl Eq for SampleEval {}

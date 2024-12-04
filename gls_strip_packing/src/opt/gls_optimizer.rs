@@ -1,7 +1,6 @@
 use crate::io::layout_to_svg::layout_to_svg;
 use crate::overlap::overlap_tracker;
 use crate::overlap::overlap_tracker::OverlapTracker;
-use crate::sampl::evaluator::SampleEval;
 use crate::sampl::search::{search_placement, SearchConfig};
 use crate::{io, DRAW_OPTIONS, OUTPUT_DIR, SVG_OUTPUT_DIR};
 use itertools::Itertools;
@@ -28,7 +27,10 @@ use std::cmp::{min, Reverse};
 use std::path::Path;
 use std::process::id;
 use std::time::{Duration, Instant};
+use rand::distributions::WeightedIndex;
+use rand::distributions::Distribution;
 use tap::Tap;
+use crate::sampl::eval::overlapping_evaluator::OverlappingSampleEvaluator;
 
 const N_UNIFORM: usize = 100;
 const N_CD: usize = 2;
@@ -64,23 +66,25 @@ impl GLSOptimizer {
     }
 
     fn initial(mut self) -> Self {
-        let item_ids_to_add = self.prob.missing_item_qtys().iter().enumerate()
-            .flat_map(|(item_id, qty)| std::iter::repeat(item_id).take(*qty as usize))
-            .collect_vec()
-            .tap_mut(|v| v.shuffle(&mut self.rng));
+        while !self.prob.missing_item_qtys().iter().all(|qty| *qty == 0) {
+            let weights = self.prob.missing_item_qtys().iter().enumerate()
+                .map(|(id, qty)| self.instance.item(id).shape.area * (*qty as fsize).sqrt());
 
-        for item_id in item_ids_to_add {
+            let item_id = WeightedIndex::new(weights).unwrap().sample(&mut self.rng);
+
             let item = self.instance.item(item_id);
             let search_config = SearchConfig {
                 n_bin_samples: N_UNIFORM * 10,
                 n_focussed_samples: 0,
                 n_coord_descents: N_CD,
             };
+            let evaluator = OverlappingSampleEvaluator::new(&self.prob.layout, item, None, &self.ot);
+
             let (d_transf, eval) = search_placement(
                 &self.prob.layout,
                 item,
                 None,
-                &self.ot,
+                evaluator,
                 search_config,
                 &mut self.rng,
             );
@@ -134,6 +138,7 @@ impl GLSOptimizer {
         let mut min_overlap = self.ot.get_total_overlap();
         let init_overlap = min_overlap;
         let mut min_sol = (self.prob.create_solution(None), self.ot.clone());
+        self.ot.randomize_weights(RNG_WEIGHT_RANGE.0..RNG_WEIGHT_RANGE.1, &mut self.rng);
 
         while n_strikes < N_STRIKES {
             self.rollback(&min_sol.0, &min_sol.1);
@@ -177,7 +182,7 @@ impl GLSOptimizer {
         }
 
         warn!("separation improved from {:.3} to {:.3}",init_overlap, min_overlap);
-        self.rollback(&min_sol.0, &min_sol.1);
+        //self.rollback(&min_sol.0, &min_sol.1);
     }
 
     pub fn rollback(&mut self, solution: &Solution, ot: &OverlapTracker){
@@ -188,6 +193,7 @@ impl GLSOptimizer {
     fn modify(&mut self) -> usize {
         let overlapping_pks = self.prob.layout.placed_items.keys()
             .filter(|pk| self.ot.get_overlap(*pk) > 0.0)
+            .sorted_by_key(|pk| self.ot.move_history[*pk])
             .collect_vec();
 
         let mut n_mov = 0;
@@ -200,11 +206,13 @@ impl GLSOptimizer {
                     n_focussed_samples: N_UNIFORM / 2,
                     n_coord_descents: N_CD,
                 };
+                let evaluator = OverlappingSampleEvaluator::new(&self.prob.layout, item, Some(pk), &self.ot);
+
                 let (d_transf, eval) = search_placement(
                     &self.prob.layout,
                     item,
                     Some(pk),
-                    &self.ot,
+                    evaluator,
                     search_config,
                     &mut self.rng,
                 );
@@ -298,4 +306,3 @@ impl GLSOptimizer {
         warn!("wrote layout to disk: file:///{}", filename);
     }
 }
-

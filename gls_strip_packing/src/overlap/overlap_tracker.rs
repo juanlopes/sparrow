@@ -12,6 +12,15 @@ use slotmap::SecondaryMap;
 use crate::overlap::{overlap, overlap_proxy};
 
 #[derive(Clone, Copy, Debug)]
+pub struct Counter(usize);
+impl Counter {
+    pub fn next(&mut self) -> usize {
+        self.0 += 1;
+        self.0
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
 pub struct OTEntry {
     pub weight: fsize,
     pub overlap: fsize,
@@ -32,6 +41,8 @@ const INCREMENT: fsize = 1.2;
 pub struct OverlapTracker {
     pub pair_overlap: SecondaryMap<PItemKey, SecondaryMap<PItemKey, OTEntry>>,
     pub bin_overlap: SecondaryMap<PItemKey, OTEntry>,
+    pub move_history: SecondaryMap<PItemKey, usize>,
+    pub move_counter: Counter,
 }
 
 impl OverlapTracker {
@@ -39,6 +50,8 @@ impl OverlapTracker {
         Self {
             pair_overlap: SecondaryMap::with_capacity(capacity),
             bin_overlap: SecondaryMap::with_capacity(capacity),
+            move_history: SecondaryMap::with_capacity(capacity),
+            move_counter: Counter(0),
         }
     }
 
@@ -58,6 +71,7 @@ impl OverlapTracker {
                 m.remove(pk);
             }
             self.bin_overlap.remove(pk);
+            self.move_history.remove(pk);
         }
 
         //add all the keys that are in the layout but not in the tracker
@@ -76,7 +90,7 @@ impl OverlapTracker {
                     m.insert(pk, OTEntry::default());
                 }
                 self.bin_overlap.insert(pk, OTEntry::default());
-
+                self.move_history.insert(pk, self.move_counter.next());
             }
         }
 
@@ -114,6 +128,11 @@ impl OverlapTracker {
                 overlap: 0.0
             };
             self.bin_overlap.insert(new_key, new_bin_ot_entry);
+        }
+
+        {
+            self.move_history.remove(old_key);
+            self.move_history.insert(new_key, self.move_counter.next());
         }
 
         self.compute_and_set_overlap_for_key(l, new_key);

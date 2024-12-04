@@ -1,9 +1,9 @@
-use crate::sampl::evaluator::{SampleEval, SampleEvaluator};
+use std::thread::current;
 use jagua_rs::fsize;
 use jagua_rs::geometry::d_transformation::DTransformation;
 use jagua_rs::geometry::primitives::point::Point;
-use rand::prelude::SmallRng;
 use rand::Rng;
+use crate::sampl::eval::{SampleEval, SampleEvaluator};
 
 pub const K_SUCC: fsize = 1.1;
 pub const K_FAIL: fsize = 0.5;
@@ -13,12 +13,11 @@ pub const STEP_MIN_RATIO: fsize = 0.001; // 0.1% of items min dimension
 
 pub fn coordinate_descent(
     start: (DTransformation, SampleEval),
-    evaluator: &mut SampleEvaluator,
+    evaluator: &mut impl SampleEvaluator,
     min_dim: fsize,
     rng: &mut impl Rng,
-) -> (DTransformation, SampleEval, usize) {
+) -> (DTransformation, SampleEval) {
 
-    let mut counter = 0;
     let step_limit = min_dim * STEP_MIN_RATIO;
     let mut current_step = min_dim * STEP_INIT_RATIO;
 
@@ -29,15 +28,14 @@ pub fn coordinate_descent(
     };
 
     while current_step > step_limit {
-        counter += 1;
-        let min_child = match cd_state.dir {
-            Some(_) => {
+        let min_child = match (cd_state.dir, rng.gen_bool(0.2)) {
+            (Some(_), false) => {
                 cd_state.gen_directional_children(current_step, evaluator)
                     .into_iter()
                     .min_by_key(|c| c.eval)
                     .unwrap()
             }
-            None => {
+            (None, _) | (_, true) => {
                 cd_state.gen_all_children(current_step, evaluator)
                     .into_iter()
                     .min_by_key(|c| c.eval)
@@ -53,7 +51,7 @@ pub fn coordinate_descent(
         }
     }
 
-    (cd_state.state, cd_state.eval, counter)
+    (cd_state.state, cd_state.eval)
 }
 
 struct CDState {
@@ -64,7 +62,7 @@ struct CDState {
 
 impl CDState {
 
-    pub fn gen_all_children(&self, step_size: fsize, evaluator: &mut SampleEvaluator) -> [CDState; 8]{
+    pub fn gen_all_children(&self, step_size: fsize, evaluator: &mut impl SampleEvaluator) -> [CDState; 8]{
         CDDirection::all_directions()
             .map(|d| {
                 let step = d.step(self.state.translation().into(), step_size);
@@ -77,7 +75,7 @@ impl CDState {
             })
     }
 
-    pub fn gen_directional_children(&self, step_size: fsize, evaluator: &mut SampleEvaluator) -> [CDState; 3]{
+    pub fn gen_directional_children(&self, step_size: fsize, evaluator: &mut impl SampleEvaluator) -> [CDState; 3]{
         self.dir.unwrap().neighboring()
             .map(|d| {
                 let step = d.step(self.state.translation().into(), step_size);

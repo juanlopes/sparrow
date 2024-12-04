@@ -9,12 +9,13 @@ use jagua_rs::geometry::d_transformation::DTransformation;
 use jagua_rs::geometry::geo_traits::Shape;
 use jagua_rs::geometry::primitives::aa_rectangle::AARectangle;
 use jagua_rs::geometry::primitives::circle::Circle;
-use log::debug;
+use log::{debug, info};
 use rand::Rng;
 use crate::overlap::overlap_tracker::OverlapTracker;
 use crate::sampl::best_samples::BestSamples;
 use crate::sampl::coord_descent::coordinate_descent;
-use crate::sampl::evaluator::{SampleEval, SampleEvaluator};
+use crate::sampl::eval::{SampleEval, SampleEvaluator};
+use crate::sampl::hpg_biased_sampler::HPGBiasedSampler;
 use crate::sampl::uniform_sampler::{UniformAARectSampler};
 
 pub struct SearchConfig {
@@ -23,15 +24,13 @@ pub struct SearchConfig {
     pub n_coord_descents: usize,
 }
 
-pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, ot: &OverlapTracker, search_config: SearchConfig, rng: &mut impl Rng) -> (DTransformation, SampleEval) {
+pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, mut evaluator: impl SampleEvaluator, search_config: SearchConfig, rng: &mut impl Rng) -> (DTransformation, SampleEval) {
     let item_min_dim = fsize::min(
         item.shape.as_ref().bbox().width(),
         item.shape.as_ref().bbox().height(),
     );
 
-    let mut evaluator = SampleEvaluator::new(l, item, ref_pk, ot);
-
-    let mut best_samples = BestSamples::new(search_config.n_coord_descents);
+    let mut best_samples = BestSamples::new(search_config.n_coord_descents, item_min_dim * 0.1);
 
     let current = match ref_pk {
         Some(ref_pk) => {
@@ -44,9 +43,10 @@ pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, ot: &
         None => None,
     };
 
-    let bin_uni_sampler = UniformAARectSampler::new(l.bin.bbox(), item);
+    let bin_sampler = HPGBiasedSampler::new(item, l);
     for _ in 0..search_config.n_bin_samples {
-        let d_transf = bin_uni_sampler.sample(rng);
+        let transf = bin_sampler.sample(rng);
+        let d_transf = transf.into();
         let eval = evaluator.eval(d_transf);
         best_samples.report(d_transf, eval);
     }
@@ -65,8 +65,11 @@ pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, ot: &
         }
     }
 
+    let mut best = best_samples.best().unwrap().clone();
     for start in best_samples.samples.clone() {
+        let n_evals_before = evaluator.n_evals();
         let descended = coordinate_descent(start.clone(), &mut evaluator, item_min_dim, rng);
+        let n_evals_after = evaluator.n_evals();
         debug!("CD: {:?} -> {:?}, transl: ({:.3},{:.3}) -> ({:.3},{:.3}) #{}",
             start.1,
             descended.1,
@@ -74,10 +77,42 @@ pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, ot: &
             start.0.translation().1,
             descended.0.translation().0,
             descended.0.translation().1,
-            descended.2,
+            n_evals_after - n_evals_before,
         );
-        best_samples.report(descended.0, descended.1);
+        if descended.1 < best.1 {
+            best = descended;
+        }
     }
 
-    best_samples.take_best().unwrap()
+    debug!("[S] {} samples evaluated", evaluator.n_evals());
+
+    best
+}
+
+pub fn p_opts_are_unique(p_opt_1: &PlacingOption, p_opt_2: &PlacingOption, threshold: fsize) -> bool {
+    let PlacingOption{item_id: id_1, d_transf: dt_1, layout_idx: _} = p_opt_1;
+    let PlacingOption{item_id: id_2, d_transf: dt_2, layout_idx: _} = p_opt_2;
+
+    if id_1 != id_2 {
+        true
+    }
+    else {
+        d_transfs_are_unique(*dt_1, *dt_2, threshold)
+    }
+}
+
+pub fn d_transfs_are_unique(dt_1: DTransformation, dt_2: DTransformation, threshold: fsize) -> bool {
+    let DTransformation{rotation: r_1, translation: (x_1, y_1)} = dt_1;
+    let DTransformation{rotation: r_2, translation: (x_2, y_2)} = dt_2;
+
+    if r_1 != r_2 {
+        true
+    }
+    else {
+        //check if the x and y translations are different enough
+        let x_diff = (x_1 - x_2).abs();
+        let y_diff = (y_1 - y_2).abs();
+
+        x_diff > threshold || y_diff > threshold
+    }
 }
