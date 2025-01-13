@@ -9,7 +9,7 @@ use rand::distributions::uniform::UniformSampler;
 use rand::distributions::{Distribution, WeightedIndex};
 use rand::prelude::SliceRandom;
 use rand::Rng;
-use crate::sampl::uniform_sampler::UniformAARectSampler;
+use crate::sample::uniform_sampler::UniformAARectSampler;
 
 /// Creates `Transformation` samples for a given item.
 /// Samples from the Hazard Proximity Grid uniformly, but only cells which could accommodate the item.

@@ -4,7 +4,7 @@ use once_cell::sync::Lazy;
 use crate::io::svg_util::{SvgDrawOptions, SvgLayoutTheme};
 
 pub mod io;
-pub mod sampl;
+pub mod sample;
 mod overlap;
 pub mod opt;
 

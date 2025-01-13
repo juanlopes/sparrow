@@ -12,17 +12,20 @@ use mimalloc::MiMalloc;
 use once_cell::sync::Lazy;
 use rand::prelude::SmallRng;
 use rand::SeedableRng;
-use gls_strip_packing::io;
+use gls_strip_packing::{io, DRAW_OPTIONS, SVG_OUTPUT_DIR};
+use gls_strip_packing::io::layout_to_svg::s_layout_to_svg;
 use gls_strip_packing::io::svg_util::{SvgDrawOptions, SvgLayoutTheme};
+use gls_strip_packing::opt::constr_builder::ConstructiveBuilder;
 use gls_strip_packing::opt::gls_optimizer::GLSOptimizer;
+use gls_strip_packing::sample::search::SearchConfig;
 
-const INPUT_FILE: &str = "../jagua-rs/assets/shirts.json";
+const INPUT_FILE: &str = "../jagua-rs/assets/swim.json";
 
 
 
 //const RNG_SEED: Option<usize> = Some(12079827122912017592);
 
-const RNG_SEED: Option<usize> = None;
+const RNG_SEED: Option<usize> = Some(0);
 
 fn main() {
 
@@ -30,7 +33,7 @@ fn main() {
         io::init_logger(log::LevelFilter::Debug);
     }
     else {
-        io::init_logger(log::LevelFilter::Info);
+        io::init_logger(log::LevelFilter::Debug);
     }
 
     let json_instance = io::read_json_instance(Path::new(&INPUT_FILE));
@@ -63,11 +66,27 @@ fn main() {
         }
     };
 
-    let problem= SPProblem::new(sp_instance.clone(), 70.0, cde_config);
+    let constr_search_config = SearchConfig{
+        n_bin_samples: 1000,
+        n_valid_cutoff: Some(200),
+        n_focussed_samples: 0,
+        n_coord_descents: 3,
+    };
 
-    let mut gls_opt = GLSOptimizer::new(problem, sp_instance, rng);
+    let mut constr_builder = ConstructiveBuilder::new(sp_instance.clone(), cde_config, rng, constr_search_config);
+    constr_builder.build();
+
+    let problem = constr_builder.prob;
+    let rng = constr_builder.rng;
+
+    let mut gls_opt = GLSOptimizer::new(problem, sp_instance, rng, SVG_OUTPUT_DIR.to_string());
 
     let solution = gls_opt.solve();
+
+    io::write_svg(
+        &s_layout_to_svg(&solution.layout_snapshots[0], &instance, DRAW_OPTIONS),
+        Path::new(format!("{}/{}.svg", SVG_OUTPUT_DIR, "solution").as_str()),
+    );
     
     println!("Hello, world!");
 }

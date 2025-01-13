@@ -12,7 +12,7 @@ use jagua_rs::geometry::transformation::Transformation;
 use jagua_rs::util::fpa::FPA;
 use crate::overlap::overlap::{calculate_unweighted_overlap_shape, calculate_weighted_overlap};
 use crate::overlap::overlap_tracker::OverlapTracker;
-use crate::sampl::eval::{SampleEval, SampleEvaluator};
+use crate::sample::eval::{SampleEval, SampleEvaluator};
 
 pub struct OverlappingSampleEvaluator<'a> {
     layout: &'a Layout,

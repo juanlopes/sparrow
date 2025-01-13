@@ -7,18 +7,10 @@ use jagua_rs::entities::placed_item::PItemKey;
 use jagua_rs::fsize;
 use jagua_rs::util::fpa::FPA;
 use log::{info, warn};
+use ordered_float::OrderedFloat;
 use rand::Rng;
 use slotmap::SecondaryMap;
 use crate::overlap::{overlap, overlap_proxy};
-
-#[derive(Clone, Copy, Debug)]
-pub struct Counter(usize);
-impl Counter {
-    pub fn next(&mut self) -> usize {
-        self.0 += 1;
-        self.0
-    }
-}
 
 #[derive(Clone, Copy, Debug)]
 pub struct OTEntry {
@@ -41,17 +33,15 @@ const INCREMENT: fsize = 1.2;
 pub struct OverlapTracker {
     pub pair_overlap: SecondaryMap<PItemKey, SecondaryMap<PItemKey, OTEntry>>,
     pub bin_overlap: SecondaryMap<PItemKey, OTEntry>,
-    pub move_history: SecondaryMap<PItemKey, usize>,
-    pub move_counter: Counter,
+    pub weight_rescale_target: fsize,
 }
 
 impl OverlapTracker {
-    pub fn new(capacity: usize) -> Self {
+    pub fn new(capacity: usize, weight_rescale_target: fsize) -> Self {
         Self {
             pair_overlap: SecondaryMap::with_capacity(capacity),
             bin_overlap: SecondaryMap::with_capacity(capacity),
-            move_history: SecondaryMap::with_capacity(capacity),
-            move_counter: Counter(0),
+            weight_rescale_target,
         }
     }
 
@@ -71,7 +61,6 @@ impl OverlapTracker {
                 m.remove(pk);
             }
             self.bin_overlap.remove(pk);
-            self.move_history.remove(pk);
         }
 
         //add all the keys that are in the layout but not in the tracker
@@ -90,7 +79,6 @@ impl OverlapTracker {
                     m.insert(pk, OTEntry::default());
                 }
                 self.bin_overlap.insert(pk, OTEntry::default());
-                self.move_history.insert(pk, self.move_counter.next());
             }
         }
 
@@ -128,11 +116,6 @@ impl OverlapTracker {
                 overlap: 0.0
             };
             self.bin_overlap.insert(new_key, new_bin_ot_entry);
-        }
-
-        {
-            self.move_history.remove(old_key);
-            self.move_history.insert(new_key, self.move_counter.next());
         }
 
         self.compute_and_set_overlap_for_key(l, new_key);
@@ -197,6 +180,27 @@ impl OverlapTracker {
         debug_assert!(tracker_symmetrical(self));
     }
 
+    pub fn rescale_weights(&mut self){
+        let target = self.weight_rescale_target;
+        let bin_weights = self.bin_overlap.values().map(|e| e.weight);
+        let pair_weights = self.pair_overlap.values().map(|m| m.values().map(|e| e.weight)).flatten();
+        let all_weights = bin_weights.chain(pair_weights);
+
+        let max_weight = all_weights.max_by_key(|w| OrderedFloat(*w)).unwrap();
+
+        let rescale_factor = target / max_weight;
+
+        for e in self.bin_overlap.values_mut(){
+            e.weight *= rescale_factor;
+        }
+
+        for m in self.pair_overlap.values_mut(){
+            for e in m.values_mut(){
+                e.weight *= rescale_factor;
+            }
+        }
+    }
+
     pub fn get_pair_weight(&self, pk1: PItemKey, pk2: PItemKey) -> fsize {
         self.pair_overlap[pk1][pk2].weight
     }
@@ -242,7 +246,7 @@ impl OverlapTracker {
     }
 }
 
-fn tracker_symmetrical(ot: &OverlapTracker) -> bool {
+pub fn tracker_symmetrical(ot: &OverlapTracker) -> bool {
     for pk1 in ot.pair_overlap.keys() {
         for pk2 in ot.pair_overlap.keys() {
             let ot1 = ot.pair_overlap[pk1][pk2];
@@ -255,7 +259,7 @@ fn tracker_symmetrical(ot: &OverlapTracker) -> bool {
     true
 }
 
-fn tracker_matches_layout(ot: &OverlapTracker, l: &Layout) -> bool {
+pub fn tracker_matches_layout(ot: &OverlapTracker, l: &Layout) -> bool {
     assert!(ot
         .pair_overlap
         .keys()

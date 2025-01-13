@@ -28,5 +28,7 @@ slotmap = "1.0"
 float-cmp = "0.10.0"
 ordered-float = "4.5.0"
 rayon = "1.10.0"
+num_cpus = "1.16.0"
+delaunator = "1.0.2"
 
 [profile.release]

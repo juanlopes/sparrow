@@ -1,8 +1,8 @@
+use std::cmp::Reverse;
 use crate::io::layout_to_svg::layout_to_svg;
-use crate::sampl::eval::ch_corner_evaluator::ChCornerEvaluator;
-use crate::sampl::eval::SampleEval;
-use crate::sampl::search::{search_placement, SearchConfig};
-use crate::{io, DRAW_OPTIONS, SVG_OUTPUT_DIR};
+use crate::sample::eval::SampleEval;
+use crate::sample::search::{search_placement, SearchConfig};
+use crate::{io, DRAW_OPTIONS};
 use itertools::Itertools;
 use jagua_rs::entities::instances::instance_generic::InstanceGeneric;
 use jagua_rs::entities::instances::strip_packing::SPInstance;
@@ -20,49 +20,95 @@ use rand::prelude::{Distribution, SmallRng};
 use rand::Rng;
 use std::iter;
 use std::path::Path;
-use crate::sampl::eval::ch_edge_evaluator::ChEdgeEvaluator;
+use std::time::Instant;
+use jagua_rs::util::config::CDEConfig;
+use ordered_float::OrderedFloat;
+use crate::sample::eval::constructive_evaluator::ConstructiveEvaluator;
 
 pub struct ConstructiveBuilder {
     pub instance: SPInstance,
     pub prob: SPProblem,
     pub rng: SmallRng,
-    pub svg_counter: usize,
+    pub search_config: SearchConfig
 }
 
 impl ConstructiveBuilder {
-    pub fn new(prob: SPProblem, instance: SPInstance, rng: SmallRng) -> Self {
+    pub fn new(instance: SPInstance, cde_config: CDEConfig, rng: SmallRng, search_config: SearchConfig) -> Self {
+        let strip_width_init = instance.item_area / instance.strip_height; //100% utilization
+        let prob = SPProblem::new(instance.clone(), strip_width_init, cde_config);
+
         Self {
             instance,
             prob,
             rng,
-            svg_counter: 0,
+            search_config,
         }
     }
 
-    pub fn restore(&mut self, solution: &Solution) {
-        self.prob.restore_to_solution(solution);
+    pub fn build(&mut self) -> Solution {
+        let start = Instant::now();
+        let n_items = self.instance.items().len();
+        let sorted_item_indices = (0..n_items)
+            .sorted_by_cached_key(|id| {
+                let item_shape = self.instance.items()[*id].0.shape.as_ref();
+                let convex_hull_area = item_shape.surrogate().convex_hull_area;
+                let diameter = item_shape.diameter;
+                Reverse(OrderedFloat(convex_hull_area * diameter))
+            })
+            .map(|id| {
+                let missing_qty = self.prob.missing_item_qtys()[id].max(0) as usize;
+                iter::repeat(id).take(missing_qty)
+            })
+            .flatten()
+            .collect_vec();
+
+        for item_id in sorted_item_indices {
+            self.place_item(item_id);
+        }
+
+        self.prob.fit_strip();
+        debug!("[CONSTR] built solution in {:?}, width: {:?}", start.elapsed(), self.prob.strip_width());
+
+        self.prob.create_solution(None)
     }
 
-    pub fn place(&mut self, item_id: usize, search_config: SearchConfig) -> Option<PlacingOption> {
+    fn place_item(&mut self, item_id: usize) {
+        match self.find_placement(item_id) {
+            Some(p_opt) => {
+                self.prob.place_item(p_opt);
+                debug!(
+                            "[CONSTR] placing item {}/{} with id {} at [{}]",
+                            self.prob.placed_item_qtys().sum::<usize>(),
+                            self.instance.total_item_qty(),
+                            p_opt.item_id,
+                            p_opt.d_transf
+                        );
+            }
+            None => {
+                debug!("[CONSTR] failed to place item with id {}, increasing strip width", item_id);
+                self.prob.modify_strip_in_back(self.prob.strip_width() * 1.2);
+                self.place_item(item_id);
+            }
+        }
+    }
+
+    fn find_placement(&mut self, item_id: usize) -> Option<PlacingOption> {
         let layout = &self.prob.layout;
         //search for a place
         let item = self.instance.item(item_id);
-        let evaluator = ChEdgeEvaluator ::new(layout, item);
+        let mut evaluator = ConstructiveEvaluator::new(layout, item);
 
         let (d_transf, eval) =
-            search_placement(layout, item, None, evaluator, search_config, &mut self.rng);
+            search_placement(layout, item, None, evaluator, self.search_config, &mut self.rng);
 
         //if found add it and go to next iteration, if not, remove item type from the list
         match eval {
             SampleEval::Valid(_) => {
-                let p_opt =  PlacingOption {
+                let p_opt = PlacingOption {
                     layout_idx: STRIP_LAYOUT_IDX,
                     item_id,
                     d_transf,
                 };
-                debug!("Placing item #{}, id: {} at {:?}",layout.placed_items().len(),item_id,d_transf);
-                self.prob.place_item(p_opt.clone());
-                self.write_svg(log::LevelFilter::Debug);
                 Some(p_opt)
             },
             _ => {
@@ -71,83 +117,4 @@ impl ConstructiveBuilder {
             },
         }
     }
-
-    pub fn fill(&mut self) -> Vec<PlacingOption> {
-        let mut p_opts = vec![];
-        let mut item_qtys = self.prob
-            .missing_item_qtys()
-            .iter()
-            .map(|&qty| qty.max(0) as usize)
-            .collect_vec();
-
-        while !item_qtys.iter().all(|&qty| qty == 0) {
-            let weights = item_qtys
-                .iter()
-                .enumerate()
-                .map(|(item_id, &qty)| {
-                    let value = value_item(&self.instance.item(item_id).shape);
-                    let qty = qty;
-
-                    value * usize::min(1, qty) as fsize
-                })
-                .collect_vec();
-
-            let dist = WeightedIndex::new(weights).unwrap();
-            let item_id = dist.sample(&mut self.rng);
-
-            let search_config = SearchConfig {
-                n_bin_samples: 100,
-                n_focussed_samples: 0,
-                n_coord_descents: 2,
-            };
-
-            //update weights
-            match self.place(item_id, search_config) {
-                Some(p_opt) => {
-                    p_opts.push(p_opt);
-                    item_qtys[item_id] -= 1
-                },
-                None => item_qtys[item_id] = 0,
-            }
-        }
-
-        p_opts
-    }
-
-    pub fn write_svg(&mut self, log_level: log::LevelFilter) {
-        //skip if this log level is ignored by the logger
-        if log_level > log::max_level() {
-            return;
-        }
-
-        if self.svg_counter == 0 {
-            //remove all .svg files from the output folder
-            let _ = std::fs::remove_dir_all(SVG_OUTPUT_DIR);
-            std::fs::create_dir_all(SVG_OUTPUT_DIR).unwrap();
-        }
-
-        let layout = &self.prob.layout;
-        let filename = format!(
-            "{}/{}_{:.2}.svg",
-            SVG_OUTPUT_DIR,
-            self.svg_counter,
-            layout.bin.bbox().x_max
-        );
-        io::write_svg(
-            &layout_to_svg(layout, &self.instance, DRAW_OPTIONS),
-            Path::new(&filename),
-        );
-        self.svg_counter += 1;
-        log!(log_level.to_level().unwrap(), "wrote layout to disk: file:///{}", filename);
-    }
-}
-
-pub fn value_item(shape: &SimplePolygon) -> fsize {
-    shape.area * shape.diameter()
-}
-
-pub fn value_solution(sol: &Solution) -> fsize {
-    sol.layout_snapshots.iter().map(|sl|{
-        sl.placed_items.iter().map(|(_, pi)| value_item(&pi.shape)).sum::<fsize>()
-    }).sum()
 }

@@ -3,8 +3,8 @@ use jagua_rs::geometry::d_transformation::DTransformation;
 use jagua_rs::geometry::transformation::Transformation;
 use log::debug;
 use std::fmt::Debug;
-use crate::sampl::eval::SampleEval;
-use crate::sampl::search;
+use crate::sample::eval::SampleEval;
+use crate::sample::search;
 
 //datastructure that stores the N best samples, automatically keeps them sorted and evicts the worst
 #[derive(Debug, Clone)]
@@ -12,14 +12,18 @@ pub struct BestSamples {
     pub samples: Vec<(DTransformation, SampleEval)>,
     pub capacity: usize,
     pub unique_threshold: fsize,
+    pub valid_cutoff: Option<usize>,
+    pub n_valid_reported: usize,
 }
 
 impl BestSamples {
-    pub fn new(capacity: usize, unique_threshold: fsize) -> Self {
+    pub fn new(capacity: usize, unique_threshold: fsize, valid_cutoff: Option<usize>) -> Self {
         Self {
             samples: Vec::with_capacity(capacity),
             capacity,
             unique_threshold,
+            valid_cutoff,
+            n_valid_reported: 0,
         }
     }
 
@@ -27,13 +31,13 @@ impl BestSamples {
         let mut modified = false;
         if self.samples.iter().all(|(d, _)| search::d_transfs_are_unique(*d, dt, self.unique_threshold)){
             if self.samples.len() < self.capacity {
-                debug!("sample added to bests: {:?}", &eval);
+                debug!("sample added to bests: {:?} ({})", &eval, dt);
                 self.samples.push((dt, eval));
                 modified = true;
             } else {
                 let worst = self.samples.last().unwrap();
                 if eval < worst.1 {
-                    debug!("sample added to bests: {:?}", &eval);
+                    debug!("sample added to bests: {:?} ({})", &eval, dt);
                     self.samples.pop();
                     self.samples.push((dt, eval));
                     modified = true;
@@ -46,6 +50,10 @@ impl BestSamples {
                 //debug!("sample not added to bests");
             }
         }
+        if let SampleEval::Valid(_) = eval {
+            self.n_valid_reported += 1;
+        }
+
         modified
     }
 
@@ -67,5 +75,9 @@ impl BestSamples {
         } else {
             None
         }
+    }
+
+    pub fn enough_valid_reported(&self) -> bool {
+        self.n_valid_reported >= self.valid_cutoff.unwrap_or(usize::MAX)
     }
 }
