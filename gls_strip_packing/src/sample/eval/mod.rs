@@ -16,8 +16,8 @@ pub enum SampleEval {
 impl SampleEval {
     fn variant_index(&self) -> u8 {
         match self {
-            SampleEval::Colliding(_, _) => 0,
-            SampleEval::Valid(_) => 1,
+            SampleEval::Valid(_) => 0,
+            SampleEval::Colliding(_, _) => 1,
             SampleEval::Invalid => 2,
         }
     }

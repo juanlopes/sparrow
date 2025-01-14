@@ -25,7 +25,7 @@ const INPUT_FILE: &str = "../jagua-rs/assets/swim.json";
 
 //const RNG_SEED: Option<usize> = Some(12079827122912017592);
 
-const RNG_SEED: Option<usize> = Some(0);
+const RNG_SEED: Option<usize> = Some(1);
 
 fn main() {
 
@@ -33,7 +33,7 @@ fn main() {
         io::init_logger(log::LevelFilter::Debug);
     }
     else {
-        io::init_logger(log::LevelFilter::Debug);
+        io::init_logger(log::LevelFilter::Info);
     }
 
     let json_instance = io::read_json_instance(Path::new(&INPUT_FILE));

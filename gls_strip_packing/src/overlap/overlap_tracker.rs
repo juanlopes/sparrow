@@ -192,13 +192,17 @@ impl OverlapTracker {
 
         for e in self.bin_overlap.values_mut(){
             e.weight *= rescale_factor;
+            e.weight = fsize::max(e.weight, 1.0);
         }
 
         for m in self.pair_overlap.values_mut(){
             for e in m.values_mut(){
                 e.weight *= rescale_factor;
+                e.weight = fsize::max(e.weight, 1.0);
             }
         }
+
+        info!("rescaled weights to from [1.0, {:.3}] to [1.0, {:.3}] (x{:.3})", max_weight, target, rescale_factor);
     }
 
     pub fn get_pair_weight(&self, pk1: PItemKey, pk2: PItemKey) -> fsize {

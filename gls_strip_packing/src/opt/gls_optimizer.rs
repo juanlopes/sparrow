@@ -53,13 +53,14 @@ pub struct GLSOptimizer {
     pub overlap_tracker: OverlapTracker,
     pub output_folder: String,
     pub svg_counter: usize,
-    pub weight_multiplier: fsize,
 }
 
 
 impl GLSOptimizer {
     pub fn new(problem: SPProblem, instance: SPInstance, rng: SmallRng, output_folder: String) -> Self {
-        let overlap_tracker = OverlapTracker::new(problem.instance.total_item_qty(), RESCALE_WEIGHT_TARGET);
+        let mut overlap_tracker = OverlapTracker::new(problem.instance.total_item_qty(), RESCALE_WEIGHT_TARGET);
+        overlap_tracker.sync(&problem.layout);
+
         Self {
             problem,
             instance,
@@ -67,7 +68,6 @@ impl GLSOptimizer {
             overlap_tracker,
             svg_counter: 0,
             output_folder,
-            weight_multiplier: 1.0,
         }
     }
 
@@ -98,16 +98,11 @@ impl GLSOptimizer {
                     if expanded_width < best_width {
                         expanded_width
                     } else {
-                        //current_width * (1.0 - R_SHRINK)
-                        //expanded_width
-                        //current_width * (1.0 - R_EXPAND)
-                        //(current_width + best_width) / 2.0 //average between current and best
                         current_width
                     }
                 }
             };
             self.overlap_tracker.rescale_weights();
-            //self.overlap_tracker.halve_weights();
             self.write_to_disk(Some(local_best), true);
             warn!("width: {:.3} -> {:.3} (best: {:.3})", current_width, next_width, best_width);
             self.change_strip_width(next_width);
@@ -138,7 +133,7 @@ impl GLSOptimizer {
                 let n_movements = self.modify();
                 let overlap = self.overlap_tracker.get_total_overlap();
                 let weighted_overlap = self.overlap_tracker.get_total_weighted_overlap();
-                debug_assert!(weighted_overlap <= weighted_overlap_before, "weighted overlap increased: {} -> {}", weighted_overlap_before, weighted_overlap);
+                debug_assert!(FPA(weighted_overlap) <= FPA(weighted_overlap_before), "weighted overlap increased: {} -> {}", weighted_overlap_before, weighted_overlap);
                 info!("[i:{}]  w_o-1: {:.3} -> {:.3}, n_mov: {:.3}, abs_o: {:.3} (min: {:.3})", n_iter_no_improvement, weighted_overlap_before, weighted_overlap, n_movements,overlap, min_overlap);
                 if overlap == 0.0 {
                     warn!("separation successful, returning");
@@ -150,8 +145,8 @@ impl GLSOptimizer {
                     min_overlap = overlap;
                     min_overlap_solution = (self.problem.create_solution(None), self.overlap_tracker.clone());
                     improved = true;
-                    warn!("[i:{}]  w_o-1: {:.3} -> {:.3}, n_mov: {:.3}, abs_o: {:.3} (min: {:.3})", n_iter_no_improvement, weighted_overlap_before, weighted_overlap, n_movements,overlap, min_overlap);
                     n_iter_no_improvement = 0;
+                    warn!("[i:{}]  w_o-1: {:.3} -> {:.3}, n_mov: {:.3}, abs_o: {:.3} (min: {:.3})", n_iter_no_improvement, weighted_overlap_before, weighted_overlap, n_movements,overlap, min_overlap);
                     //self.overlap_tracker.rescale_weights();
                     //self.write_to_disk(None, true);
                 } else {
@@ -162,28 +157,16 @@ impl GLSOptimizer {
                 self.write_to_disk(None, false);
                 total_movement += n_movements;
             }
-            warn!("{:.1} moves/s", total_movement as f64 / start.elapsed().as_secs_f64());
-            if !improved {
-                n_strikes += 1;
-            } else {
-                n_strikes = 0;
-            }
-            warn!("strike: #{}", n_strikes);
+            n_strikes = if improved { 0 } else { n_strikes + 1 };
+            warn!("{:.1} moves/s, strike: #{}", total_movement as f64 / start.elapsed().as_secs_f64(), n_strikes);
         }
 
-        if min_overlap > initial_overlap * 0.9 {
+        if min_overlap > initial_overlap * 0.95 {
             warn!("not enough improvement, not restoring");
-            // for _ in 0..100 {
-            //     self.modify_solution();
-            //     self.overlap_tracker.increment_weights();
-            // }
         } else {
             warn!("improved from {:.3} to {:.3}, rolling back to min overlap", initial_overlap, min_overlap);
             self.rollback(&min_overlap_solution.0, &min_overlap_solution.1);
             self.overlap_tracker.rescale_weights();
-            for i in 0..100 {
-                self.overlap_tracker.increment_weights();
-            }
         }
 
         min_overlap_solution
@@ -207,8 +190,8 @@ impl GLSOptimizer {
                 if current_overlap > 0.0 {
                     let item = self.instance.item(self.problem.layout.placed_items()[pk].item_id);
                     let search_config = SearchConfig {
-                        n_bin_samples: N_UNIFORM_SAMPLES / 2,
-                        n_focussed_samples: N_UNIFORM_SAMPLES / 2,
+                        n_bin_samples: N_UNIFORM_SAMPLES,
+                        n_focussed_samples: 0,
                         n_coord_descents: N_COORD_DESCENTS,
                         n_valid_cutoff: None,
                     };
@@ -263,6 +246,8 @@ impl GLSOptimizer {
             self.problem.layout.bin.base_cde.config().clone(),
         );
         self.problem.layout.change_bin(new_bin);
+        self.overlap_tracker = OverlapTracker::new(self.problem.instance.total_item_qty(), RESCALE_WEIGHT_TARGET);
+        self.overlap_tracker.sync(&self.problem.layout);
         info!("changed strip width to {}", new_width);
     }
 
@@ -283,14 +268,7 @@ impl GLSOptimizer {
             colliding_entities
         };
 
-        assert!({
-            //make sure that if eval says it's valid, no colliding entities are detected
-            if let Some(SampleEval::Valid(_)) = eval {
-                colliding_entities.is_empty()
-            } else {
-                true
-            }
-        });
+        assert!(colliding_entities.is_empty() ||  !matches!(eval, Some(SampleEval::Valid(_))), "colliding entities detected for valid placement");
 
         let new_pik = {
             let new_p_opt = PlacingOption {

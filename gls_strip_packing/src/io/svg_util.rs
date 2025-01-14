@@ -32,7 +32,7 @@ impl Default for SvgDrawOptions {
             quadtree: false,
             haz_prox_grid: false,
             surrogate: false,
-            overlap_lines: false,
+            overlap_lines: true,
         }
     }
 }
