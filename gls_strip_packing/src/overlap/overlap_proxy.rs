@@ -4,6 +4,7 @@ use jagua_rs::geometry::geo_traits::{DistanceFrom, Shape};
 use jagua_rs::geometry::primitives::aa_rectangle::AARectangle;
 use jagua_rs::geometry::primitives::circle::Circle;
 use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
+use ordered_float::Float;
 
 pub const DIAM_FRAC_NORMALIZER: fsize = 1.0 / 1000.0;
 

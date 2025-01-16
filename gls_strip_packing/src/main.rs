@@ -19,13 +19,13 @@ use gls_strip_packing::opt::constr_builder::ConstructiveBuilder;
 use gls_strip_packing::opt::gls_optimizer::GLSOptimizer;
 use gls_strip_packing::sample::search::SearchConfig;
 
-const INPUT_FILE: &str = "../jagua-rs/assets/swim.json";
+const INPUT_FILE: &str = "../jagua-rs/assets/mao.json";
 
 
 
 //const RNG_SEED: Option<usize> = Some(12079827122912017592);
 
-const RNG_SEED: Option<usize> = Some(1);
+const RNG_SEED: Option<usize> = None;
 
 fn main() {
 

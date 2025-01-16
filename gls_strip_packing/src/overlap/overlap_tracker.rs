@@ -163,23 +163,6 @@ impl OverlapTracker {
         debug_assert!(tracker_symmetrical(self));
     }
 
-    pub fn randomize_weights(&mut self, range: Range<fsize>, rng: &mut impl Rng) {
-        info!("randomizing weights in range {:.3} to {:.3}", range.start, range.end);
-        for e in self.bin_overlap.values_mut() {
-            e.weight = rng.gen_range(range.clone());
-        }
-        for pk1 in self.bin_overlap.keys() {
-            for pk2 in self.bin_overlap.keys() {
-                if pk1 <= pk2 {
-                    let random_weight = rng.gen_range(range.clone());
-                    self.pair_overlap[pk1][pk2].weight = random_weight;
-                    self.pair_overlap[pk2][pk1].weight = random_weight;
-                }
-            }
-        }
-        debug_assert!(tracker_symmetrical(self));
-    }
-
     pub fn rescale_weights(&mut self){
         let target = self.weight_rescale_target;
         let bin_weights = self.bin_overlap.values().map(|e| e.weight);

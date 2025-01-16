@@ -2,6 +2,7 @@
 name = "gls_strip_packing"
 version = "0.1.0"
 edition = "2021"
+default-run = "main"
 
 [[bin]]
 name = "main"
@@ -29,6 +30,9 @@ float-cmp = "0.10.0"
 ordered-float = "4.6.0"
 rayon = "1.10.0"
 num_cpus = "1.16.0"
-delaunator = "1.0.2"
 
 [profile.release]
+
+[profile.test]
+inherits = "release"
+debug-assertions = true

@@ -1,5 +1,12 @@
 use crate::io;
 use crate::io::layout_to_svg::{layout_to_svg, s_layout_to_svg};
+use crate::io::svg_util::SvgDrawOptions;
+use crate::overlap::overlap_tracker;
+use crate::overlap::overlap_tracker::OverlapTracker;
+use crate::sample::eval::overlapping_evaluator::OverlappingSampleEvaluator;
+use crate::sample::eval::SampleEval;
+use crate::sample::search;
+use crate::sample::search::SearchConfig;
 use float_cmp::approx_eq;
 use itertools::Itertools;
 use jagua_rs::entities::bin::Bin;
@@ -16,23 +23,18 @@ use jagua_rs::geometry::d_transformation::DTransformation;
 use jagua_rs::geometry::geo_traits::{Shape, Transformable};
 use jagua_rs::geometry::primitives::aa_rectangle::AARectangle;
 use jagua_rs::util::fpa::FPA;
-use log::{info, warn};
+use log::{debug, info, warn};
 use ordered_float::OrderedFloat;
-use rand::prelude::{SliceRandom, SmallRng};
+use rand::distributions::{WeightedError, WeightedIndex};
+use rand::prelude::{Distribution, SliceRandom, SmallRng};
 use std::char::decode_utf16;
 use std::cmp::Reverse;
 use std::collections::VecDeque;
+use std::iter;
 use std::ops::Range;
 use std::path::Path;
 use std::time::Instant;
 use tap::Tap;
-use crate::io::svg_util::SvgDrawOptions;
-use crate::overlap::overlap_tracker;
-use crate::overlap::overlap_tracker::OverlapTracker;
-use crate::sample::eval::overlapping_evaluator::OverlappingSampleEvaluator;
-use crate::sample::eval::SampleEval;
-use crate::sample::search;
-use crate::sample::search::SearchConfig;
 
 const N_ITER_NO_IMPROVEMENT: usize = 100;
 
@@ -40,7 +42,7 @@ const N_STRIKES: usize = 5;
 const R_SHRINK: fsize = 0.005;
 const R_EXPAND: fsize = 0.002;
 
-const TIME_LIMIT_S: u64 = 5 * 60 * 60;
+const TIME_LIMIT_S: u64 = 20 * 60;
 
 const N_UNIFORM_SAMPLES: usize = 100;
 const N_COORD_DESCENTS: usize = 2;
@@ -55,10 +57,15 @@ pub struct GLSOptimizer {
     pub svg_counter: usize,
 }
 
-
 impl GLSOptimizer {
-    pub fn new(problem: SPProblem, instance: SPInstance, rng: SmallRng, output_folder: String) -> Self {
-        let mut overlap_tracker = OverlapTracker::new(problem.instance.total_item_qty(), RESCALE_WEIGHT_TARGET);
+    pub fn new(
+        problem: SPProblem,
+        instance: SPInstance,
+        rng: SmallRng,
+        output_folder: String,
+    ) -> Self {
+        let mut overlap_tracker =
+            OverlapTracker::new(problem.instance.total_item_qty(), RESCALE_WEIGHT_TARGET);
         overlap_tracker.sync(&problem.layout);
 
         Self {
