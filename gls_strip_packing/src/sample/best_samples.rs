@@ -1,83 +1,66 @@
+use crate::sample::eval::SampleEval;
+use crate::sample::search;
+use itertools::Itertools;
 use jagua_rs::fsize;
 use jagua_rs::geometry::d_transformation::DTransformation;
 use jagua_rs::geometry::transformation::Transformation;
 use log::debug;
 use std::fmt::Debug;
-use crate::sample::eval::SampleEval;
-use crate::sample::search;
 
 //datastructure that stores the N best samples, automatically keeps them sorted and evicts the worst
 #[derive(Debug, Clone)]
 pub struct BestSamples {
     pub samples: Vec<(DTransformation, SampleEval)>,
-    pub capacity: usize,
     pub unique_threshold: fsize,
-    pub valid_cutoff: Option<usize>,
-    pub n_valid_reported: usize,
 }
 
 impl BestSamples {
-    pub fn new(capacity: usize, unique_threshold: fsize, valid_cutoff: Option<usize>) -> Self {
+    pub fn new(capacity: usize, unique_threshold: fsize) -> Self {
         Self {
-            samples: Vec::with_capacity(capacity),
-            capacity,
+            samples: vec![(DTransformation::new(0.0, (0.0, 0.0)), SampleEval::Invalid); capacity],
             unique_threshold,
-            valid_cutoff,
-            n_valid_reported: 0,
         }
     }
 
     pub fn report(&mut self, dt: DTransformation, eval: SampleEval) -> bool {
+        if eval >= self.worst().1 {
+            debug!("[BS] sample rejected, worse than upper bound: {:?} ({})", &eval, dt);
+            return false;
+        }
+
         let mut modified = false;
-        if self.samples.iter().all(|(d, _)| search::d_transfs_are_unique(*d, dt, self.unique_threshold)){
-            if self.samples.len() < self.capacity {
-                debug!("sample added to bests: {:?} ({})", &eval, dt);
+        let similar_sample_idx = self.samples.iter()
+            .find_position(|(d, _)| !search::d_transfs_are_unique(*d, dt, self.unique_threshold));
+        match similar_sample_idx {
+            None => {
+                // no similar sample exists
+                debug!("[BS] sample accepted, unique: {:?} ({})", &eval, dt);
+                self.samples.pop();
                 self.samples.push((dt, eval));
-                modified = true;
-            } else {
-                let worst = self.samples.last().unwrap();
-                if eval < worst.1 {
-                    debug!("sample added to bests: {:?} ({})", &eval, dt);
-                    self.samples.pop();
-                    self.samples.push((dt, eval));
-                    modified = true;
+                self.samples.sort_by(|a, b| a.1.cmp(&b.1));
+                true
+            }
+            Some((idx, sim)) => {
+                //similar sample found
+                if eval < sim.1 {
+                    debug!("[BS] sample accepted, better than similar: {:?} ({})", &eval, dt);
+                    self.samples[idx] = (dt, eval);
+                    self.samples.sort_by(|a, b| a.1.cmp(&b.1));
+                    true
+                }
+                else {
+                    debug!("sample rejected, worse than similar: {:?} ({})", &eval, dt);
+                    false
                 }
             }
-            if modified {
-                self.samples
-                    .sort_by(|a, b| a.1.cmp(&b.1));
-            } else {
-                //debug!("sample not added to bests");
-            }
-        }
-        if let SampleEval::Valid(_) = eval {
-            self.n_valid_reported += 1;
-        }
-
-        modified
-    }
-
-    pub fn best(&self) -> Option<&(DTransformation, SampleEval)> {
-        self.samples.first()
-    }
-
-    pub fn take_best(self) -> Option<(DTransformation, SampleEval)> {
-        self.samples.into_iter().next()
-    }
-
-    pub fn worst(&self) -> Option<&(DTransformation, SampleEval)> {
-        self.samples.last()
-    }
-
-    pub fn upper_bound(&self) -> Option<SampleEval> {
-        if self.samples.len() == self.capacity {
-            self.samples.last().map(|x| x.1.clone())
-        } else {
-            None
         }
     }
 
-    pub fn enough_valid_reported(&self) -> bool {
-        self.n_valid_reported >= self.valid_cutoff.unwrap_or(usize::MAX)
+    pub fn best(&self) -> (DTransformation, SampleEval) {
+        self.samples.first().unwrap().clone()
+    }
+
+    pub fn worst(&self) -> (DTransformation, SampleEval) {
+        self.samples.last().unwrap().clone()
     }
 }

@@ -45,7 +45,8 @@ pub fn poles_overlap_proxy<'a, C>(poles_1: C, poles_2: C, bin_bbox: AARectangle)
 where
     C: Iterator<Item = &'a Circle> + Clone,
 {
-    let normalizer = bin_bbox.diameter() * DIAM_FRAC_NORMALIZER;
+    //let normalizer = bin_bbox.diameter() * DIAM_FRAC_NORMALIZER;
+    let normalizer = 10.0;
     let mut deficit = 0.0;
     for p1 in poles_1 {
         for p2 in poles_2.clone() {

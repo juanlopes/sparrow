@@ -31,7 +31,7 @@ impl Default for SvgDrawOptions {
             theme: SvgLayoutTheme::default(),
             quadtree: false,
             haz_prox_grid: false,
-            surrogate: false,
+            surrogate: true,
             overlap_lines: true,
         }
     }

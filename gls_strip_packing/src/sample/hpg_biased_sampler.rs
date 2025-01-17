@@ -71,7 +71,6 @@ impl<'a> HPGBiasedSampler<'a> {
 
     fn cell_weight(cell: &HPGCell, item: &Item) -> fsize {
         let haz_prox = cell.hazard_proximity(item.base_quality);
-        let value = fsize::min(haz_prox + cell.radius, item.shape.diameter());
-        value.powi(2)
+        (haz_prox + cell.radius).powi(2)
     }
 }

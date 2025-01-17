@@ -68,7 +68,6 @@ fn main() {
 
     let constr_search_config = SearchConfig{
         n_bin_samples: 1000,
-        n_valid_cutoff: Some(200),
         n_focussed_samples: 0,
         n_coord_descents: 3,
     };

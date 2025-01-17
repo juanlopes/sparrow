@@ -4,7 +4,7 @@ use jagua_rs::entities::placed_item::PItemKey;
 use jagua_rs::fsize;
 use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
 use crate::overlap::overlap_proxy::{poly_overlap_proxy, bin_overlap_proxy};
-use crate::overlap::overlap_tracker::OverlapTracker;
+use crate::overlap::overlap_tracker_original::OverlapTracker;
 
 pub fn calculate_weighted_overlap<I>(l: &Layout, s: &SimplePolygon, ref_pk: PItemKey, overlapping: I, ot: &OverlapTracker) -> fsize
 where I : Iterator<Item=HazardEntity> {

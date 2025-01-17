@@ -11,7 +11,7 @@ use jagua_rs::geometry::primitives::aa_rectangle::AARectangle;
 use jagua_rs::geometry::primitives::circle::Circle;
 use log::{debug, info};
 use rand::Rng;
-use crate::overlap::overlap_tracker::OverlapTracker;
+use crate::overlap::overlap_tracker_original::OverlapTracker;
 use crate::sample::best_samples::BestSamples;
 use crate::sample::coord_descent::coordinate_descent;
 use crate::sample::eval::{SampleEval, SampleEvaluator};
@@ -21,7 +21,6 @@ use crate::sample::uniform_sampler::{UniformAARectSampler};
 #[derive(Debug, Clone, Copy)]
 pub struct SearchConfig {
     pub n_bin_samples: usize,
-    pub n_valid_cutoff: Option<usize>,
     pub n_focussed_samples: usize,
     pub n_coord_descents: usize,
 }
@@ -32,7 +31,7 @@ pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, mut e
         item.shape.as_ref().bbox().height(),
     );
 
-    let mut best_samples = BestSamples::new(search_config.n_coord_descents, item_min_dim * 0.01, search_config.n_valid_cutoff);
+    let mut best_samples = BestSamples::new(search_config.n_coord_descents, item_min_dim * 0.05);
 
     let current = match ref_pk {
         Some(ref_pk) => {
@@ -51,9 +50,6 @@ pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, mut e
         let d_transf = transf.into();
         let eval = evaluator.eval(d_transf);
         best_samples.report(d_transf, eval);
-        if best_samples.enough_valid_reported() {
-            break;
-        }
     }
 
     if let Some((current_transf, _)) = current {
@@ -67,13 +63,9 @@ pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, mut e
             let d_transf = focussed_uni_sampler.sample(rng);
             let eval = evaluator.eval(d_transf);
             best_samples.report(d_transf, eval);
-            if best_samples.enough_valid_reported() {
-                break;
-            }
         }
     }
 
-    let mut best = best_samples.best().unwrap().clone();
     for start in best_samples.samples.clone() {
         let n_evals_before = evaluator.n_evals();
         let descended = coordinate_descent(start.clone(), &mut evaluator, item_min_dim, rng);
@@ -85,14 +77,12 @@ pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, mut e
             descended.0,
             n_evals_after - n_evals_before,
         );
-        if descended.1 < best.1 {
-            best = descended;
-        }
+        best_samples.report(descended.0, descended.1);
     }
 
     debug!("[S] {} samples evaluated", evaluator.n_evals());
 
-    best
+    best_samples.best()
 }
 
 pub fn p_opts_are_unique(p_opt_1: &PlacingOption, p_opt_2: &PlacingOption, threshold: fsize) -> bool {

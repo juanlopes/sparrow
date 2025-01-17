@@ -11,7 +11,7 @@ use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
 use jagua_rs::geometry::transformation::Transformation;
 use jagua_rs::util::fpa::FPA;
 use crate::overlap::overlap::{calculate_unweighted_overlap_shape, calculate_weighted_overlap};
-use crate::overlap::overlap_tracker::OverlapTracker;
+use crate::overlap::overlap_tracker_original::OverlapTracker;
 use crate::sample::eval::{SampleEval, SampleEvaluator};
 
 pub struct OverlappingSampleEvaluator<'a> {
@@ -57,19 +57,24 @@ impl<'a> SampleEvaluator for OverlappingSampleEvaluator<'a> {
         }
 
         if self.coll_buff.is_empty() {
-            let v = self.shape_buff.bbox.x_max + 0.1 * self.shape_buff.bbox.y_max;
-            SampleEval::Valid(v)
+            //let v = self.shape_buff.bbox.x_max + 0.1 * self.shape_buff.bbox.y_max;
+            SampleEval::Valid(0.0)
         }
         else {
-            let w_overlap = match self.current_pk {
-                Some(current_pk) => {
-                    calculate_weighted_overlap(self.layout, &self.shape_buff, current_pk, self.coll_buff.iter().cloned(), self.ot)
-                }
-                None => {
-                    calculate_unweighted_overlap_shape(self.layout, &self.shape_buff, self.coll_buff.iter().cloned())
-                }
-            };
-            SampleEval::Colliding(self.coll_buff.len(), w_overlap)
+            if self.coll_buff.iter().any(|haz| matches!(haz, HazardEntity::BinExterior)) {
+                SampleEval::Invalid
+            }
+            else {
+                let w_overlap = match self.current_pk {
+                    Some(current_pk) => {
+                        calculate_weighted_overlap(self.layout, &self.shape_buff, current_pk, self.coll_buff.iter().cloned(), self.ot)
+                    }
+                    None => {
+                        calculate_unweighted_overlap_shape(self.layout, &self.shape_buff, self.coll_buff.iter().cloned())
+                    }
+                };
+                SampleEval::Colliding(self.coll_buff.len(), w_overlap)
+            }
         }
     }
 

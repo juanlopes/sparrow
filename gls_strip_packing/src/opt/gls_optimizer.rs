@@ -1,8 +1,7 @@
 use crate::io;
 use crate::io::layout_to_svg::{layout_to_svg, s_layout_to_svg};
 use crate::io::svg_util::SvgDrawOptions;
-use crate::overlap::overlap_tracker;
-use crate::overlap::overlap_tracker::OverlapTracker;
+use crate::overlap::overlap_tracker_original::{OTSnapshot, OverlapTracker};
 use crate::sample::eval::overlapping_evaluator::OverlappingSampleEvaluator;
 use crate::sample::eval::SampleEval;
 use crate::sample::search;
@@ -35,6 +34,7 @@ use std::ops::Range;
 use std::path::Path;
 use std::time::Instant;
 use tap::Tap;
+use crate::overlap::overlap_tracker_original;
 
 const N_ITER_NO_IMPROVEMENT: usize = 100;
 
@@ -47,6 +47,8 @@ const TIME_LIMIT_S: u64 = 20 * 60;
 const N_UNIFORM_SAMPLES: usize = 100;
 const N_COORD_DESCENTS: usize = 2;
 const RESCALE_WEIGHT_TARGET: fsize = 10.0;
+
+const WEIGHT_INCREMENT: fsize = 1.2;
 
 pub struct GLSOptimizer {
     pub problem: SPProblem,
@@ -64,10 +66,7 @@ impl GLSOptimizer {
         rng: SmallRng,
         output_folder: String,
     ) -> Self {
-        let mut overlap_tracker =
-            OverlapTracker::new(problem.instance.total_item_qty(), RESCALE_WEIGHT_TARGET);
-        overlap_tracker.sync(&problem.layout);
-
+        let overlap_tracker = OverlapTracker::new(&problem.layout, RESCALE_WEIGHT_TARGET, WEIGHT_INCREMENT);
         Self {
             problem,
             instance,
@@ -88,7 +87,7 @@ impl GLSOptimizer {
         let mut i = 0;
 
         while start.elapsed().as_secs() < TIME_LIMIT_S {
-            let (local_best, sol_tracker) = self.separate_layout();
+            let local_best = self.separate_layout();
             let total_overlap = self.overlap_tracker.get_total_overlap();
             let next_width = {
                 if total_overlap == 0.0 {
@@ -119,9 +118,9 @@ impl GLSOptimizer {
         best_feasible_solution
     }
 
-    pub fn separate_layout(&mut self) -> (Solution, OverlapTracker) {
+    pub fn separate_layout(&mut self) -> Solution {
         let mut min_overlap = self.overlap_tracker.get_total_overlap();
-        let mut min_overlap_solution = (self.problem.create_solution(None), self.overlap_tracker.clone());
+        let mut min_overlap_solution = (self.problem.create_solution(None), self.overlap_tracker.create_snapshot());
         let initial_overlap = min_overlap;
         warn!("initial overlap: {:.3}", initial_overlap);
 
@@ -141,19 +140,20 @@ impl GLSOptimizer {
                 let overlap = self.overlap_tracker.get_total_overlap();
                 let weighted_overlap = self.overlap_tracker.get_total_weighted_overlap();
                 debug_assert!(FPA(weighted_overlap) <= FPA(weighted_overlap_before), "weighted overlap increased: {} -> {}", weighted_overlap_before, weighted_overlap);
-                info!("[i:{}]  w_o-1: {:.3} -> {:.3}, n_mov: {:.3}, abs_o: {:.3} (min: {:.3})", n_iter_no_improvement, weighted_overlap_before, weighted_overlap, n_movements,overlap, min_overlap);
+                debug!("[i:{}]  w_o-1: {:.3} -> {:.3}, n_mov: {:.3}, abs_o: {:.3} (min: {:.3})", n_iter_no_improvement, weighted_overlap_before, weighted_overlap, n_movements,overlap, min_overlap);
                 if overlap == 0.0 {
+                    warn!("[i:{}]  w_o-1: {:.3} -> {:.3}, n_mov: {:.3}, abs_o: {:.3} (min: {:.3})", n_iter_no_improvement, weighted_overlap_before, weighted_overlap, n_movements,overlap, min_overlap);
                     warn!("separation successful, returning");
-                    min_overlap_solution = (self.problem.create_solution(None), self.overlap_tracker.clone());
+                    min_overlap_solution = (self.problem.create_solution(None), self.overlap_tracker.create_snapshot());
                     self.write_to_disk(None, false);
-                    return min_overlap_solution;
+                    return min_overlap_solution.0;
                 }
-                if overlap < min_overlap {
+                else if overlap < min_overlap {
+                    warn!("[i:{}]  w_o-1: {:.3} -> {:.3}, n_mov: {:.3}, abs_o: {:.3} (min: {:.3})", n_iter_no_improvement, weighted_overlap_before, weighted_overlap, n_movements,overlap, min_overlap);
                     min_overlap = overlap;
-                    min_overlap_solution = (self.problem.create_solution(None), self.overlap_tracker.clone());
+                    min_overlap_solution = (self.problem.create_solution(None), self.overlap_tracker.create_snapshot());
                     improved = true;
                     n_iter_no_improvement = 0;
-                    warn!("[i:{}]  w_o-1: {:.3} -> {:.3}, n_mov: {:.3}, abs_o: {:.3} (min: {:.3})", n_iter_no_improvement, weighted_overlap_before, weighted_overlap, n_movements,overlap, min_overlap);
                     //self.overlap_tracker.rescale_weights();
                     //self.write_to_disk(None, true);
                 } else {
@@ -174,9 +174,12 @@ impl GLSOptimizer {
             warn!("improved from {:.3} to {:.3}, rolling back to min overlap", initial_overlap, min_overlap);
             self.rollback(&min_overlap_solution.0, &min_overlap_solution.1);
             self.overlap_tracker.rescale_weights();
+            for i in 0..100 {
+                self.overlap_tracker.increment_weights();
+            }
         }
 
-        min_overlap_solution
+        min_overlap_solution.0
     }
 
     pub fn modify(&mut self) -> usize {
@@ -197,10 +200,9 @@ impl GLSOptimizer {
                 if current_overlap > 0.0 {
                     let item = self.instance.item(self.problem.layout.placed_items()[pk].item_id);
                     let search_config = SearchConfig {
-                        n_bin_samples: N_UNIFORM_SAMPLES,
-                        n_focussed_samples: 0,
-                        n_coord_descents: N_COORD_DESCENTS,
-                        n_valid_cutoff: None,
+                        n_bin_samples: N_UNIFORM_SAMPLES/2,
+                        n_focussed_samples: N_UNIFORM_SAMPLES/2,
+                        n_coord_descents: N_COORD_DESCENTS
                     };
 
                     let evaluator = OverlappingSampleEvaluator::new(
@@ -253,13 +255,12 @@ impl GLSOptimizer {
             self.problem.layout.bin.base_cde.config().clone(),
         );
         self.problem.layout.change_bin(new_bin);
-        self.overlap_tracker = OverlapTracker::new(self.problem.instance.total_item_qty(), RESCALE_WEIGHT_TARGET);
-        self.overlap_tracker.sync(&self.problem.layout);
+        self.overlap_tracker = OverlapTracker::new(&self.problem.layout, RESCALE_WEIGHT_TARGET, WEIGHT_INCREMENT);
         info!("changed strip width to {}", new_width);
     }
 
     fn move_item(&mut self, pik: PItemKey, d_transf: DTransformation, eval: Option<SampleEval>) {
-        debug_assert!(overlap_tracker::tracker_matches_layout(&self.overlap_tracker, &self.problem.layout));
+        debug_assert!(overlap_tracker_original::tracker_matches_layout(&self.overlap_tracker, &self.problem.layout));
 
         //Remove the item from the problem
         let old_p_opt = self.problem.remove_item(STRIP_LAYOUT_IDX, pik, true);
@@ -291,7 +292,7 @@ impl GLSOptimizer {
 
         self.overlap_tracker.move_item(&self.problem.layout, pik, new_pik);
 
-        debug_assert!(overlap_tracker::tracker_matches_layout(&self.overlap_tracker, &self.problem.layout));
+        debug_assert!(overlap_tracker_original::tracker_matches_layout(&self.overlap_tracker, &self.problem.layout));
     }
 
     pub fn write_to_disk(&mut self, solution: Option<Solution>, force: bool) {
@@ -329,8 +330,8 @@ impl GLSOptimizer {
         self.svg_counter += 1;
     }
 
-    pub fn rollback(&mut self, solution: &Solution, ot: &OverlapTracker){
+    pub fn rollback(&mut self, solution: &Solution, ots: &OTSnapshot){
         self.problem.restore_to_solution(solution);
-        self.overlap_tracker = ot.clone();
+        self.overlap_tracker.restore(ots);
     }
 }
