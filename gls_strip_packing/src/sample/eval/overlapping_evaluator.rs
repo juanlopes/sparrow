@@ -6,7 +6,8 @@ use jagua_rs::entities::placed_item::PItemKey;
 use jagua_rs::entities::placing_option::PlacingOption;
 use jagua_rs::fsize;
 use jagua_rs::geometry::d_transformation::DTransformation;
-use jagua_rs::geometry::geo_traits::{Transformable, TransformableFrom};
+use jagua_rs::geometry::geo_enums::GeoRelation;
+use jagua_rs::geometry::geo_traits::{Shape, Transformable, TransformableFrom};
 use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
 use jagua_rs::geometry::transformation::Transformation;
 use jagua_rs::util::fpa::FPA;
@@ -46,12 +47,17 @@ impl<'a> SampleEvaluator for OverlappingSampleEvaluator<'a> {
         self.coll_buff.clear();
         self.shape_buff.transform_from(&self.item.shape, &dt.into());
 
+        if self.shape_buff.bbox().relation_to(&self.layout.bin.bbox()) != GeoRelation::Enclosed {
+            return SampleEval::Invalid;
+        }
+
         match self.current_pk {
             Some(current_pk) => {
                 let current_pi = &self.layout.placed_items[current_pk];
                 cde.collect_poly_collisions(&self.shape_buff, &[current_pi.into()], &mut self.coll_buff);
             }
             None => {
+                panic!();
                 cde.collect_poly_collisions(&self.shape_buff, &[], &mut self.coll_buff);
             }
         }
@@ -62,6 +68,7 @@ impl<'a> SampleEvaluator for OverlappingSampleEvaluator<'a> {
         }
         else {
             if self.coll_buff.iter().any(|haz| matches!(haz, HazardEntity::BinExterior)) {
+                panic!();
                 SampleEval::Invalid
             }
             else {
@@ -70,6 +77,7 @@ impl<'a> SampleEvaluator for OverlappingSampleEvaluator<'a> {
                         calculate_weighted_overlap(self.layout, &self.shape_buff, current_pk, self.coll_buff.iter().cloned(), self.ot)
                     }
                     None => {
+                        panic!();
                         calculate_unweighted_overlap_shape(self.layout, &self.shape_buff, self.coll_buff.iter().cloned())
                     }
                 };

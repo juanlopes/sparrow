@@ -2,31 +2,31 @@ extern crate core;
 
 use std::path::Path;
 use std::time::{Duration, Instant};
+use itertools::Itertools;
 use jagua_rs::entities::instances::instance::Instance;
 use jagua_rs::entities::problems::strip_packing::SPProblem;
+use jagua_rs::fsize;
 use jagua_rs::io::parser::Parser;
 use jagua_rs::util::config::{CDEConfig, SPSurrogateConfig};
 use jagua_rs::util::polygon_simplification::PolySimplConfig;
-use log::warn;
+use log::{info, warn};
 use mimalloc::MiMalloc;
 use once_cell::sync::Lazy;
+use ordered_float::OrderedFloat;
 use rand::prelude::SmallRng;
-use rand::SeedableRng;
-use gls_strip_packing::{io, DRAW_OPTIONS, SVG_OUTPUT_DIR};
-use gls_strip_packing::io::layout_to_svg::s_layout_to_svg;
-use gls_strip_packing::io::svg_util::{SvgDrawOptions, SvgLayoutTheme};
+use rand::{Rng, SeedableRng};
+use gls_strip_packing::{io, SVG_OUTPUT_DIR};
 use gls_strip_packing::opt::constr_builder::ConstructiveBuilder;
 use gls_strip_packing::opt::gls_optimizer::GLSOptimizer;
 use gls_strip_packing::sample::search::SearchConfig;
 
 const INPUT_FILE: &str = "../jagua-rs/assets/mao.json";
 
-const TIME_LIMIT_S: u64 = 10 * 60;
+const RNG_SEED: Option<usize> = Some(0);
 
+const N_THREADS: usize = 8;
 
-//const RNG_SEED: Option<usize> = Some(12079827122912017592);
-
-const RNG_SEED: Option<usize> = None;
+const TIME_LIMIT_S: u64 = 2 * 60;
 
 fn main() {
 
@@ -38,7 +38,7 @@ fn main() {
     }
 
     let json_instance = io::read_json_instance(Path::new(&INPUT_FILE));
-    
+
     let cde_config = CDEConfig{
         quadtree_depth: 4,
         hpg_n_cells: 2000,
@@ -58,7 +58,7 @@ fn main() {
         _ => panic!("Expected SPInstance"),
     };
 
-    let rng = match RNG_SEED {
+    let mut rng = match RNG_SEED {
         Some(seed) => SmallRng::seed_from_u64(seed as u64),
         None => {
             let seed = rand::random();
@@ -73,20 +73,41 @@ fn main() {
         n_coord_descents: 3,
     };
 
-    let mut constr_builder = ConstructiveBuilder::new(sp_instance.clone(), cde_config, rng, constr_search_config);
-    constr_builder.build();
+    let mut best_solutions = vec![None; N_THREADS];
 
-    let problem = constr_builder.prob;
-    let rng = constr_builder.rng;
+    rayon::scope(|s| {
+        for (i, solution_slice) in best_solutions.iter_mut().enumerate(){
+            let thread_rng = SmallRng::seed_from_u64(rng.gen());
+            let svg_output_dir = format!("{}_{}", SVG_OUTPUT_DIR, i);
+            let instance = sp_instance.clone();
 
-    let mut gls_opt = GLSOptimizer::new(problem, sp_instance, rng, SVG_OUTPUT_DIR.to_string());
+            s.spawn(|_| {
+                let mut constr_builder = ConstructiveBuilder::new(instance, cde_config, thread_rng, constr_search_config);
+                constr_builder.build();
 
-    let solution = gls_opt.solve(Duration::from_secs(TIME_LIMIT_S));
+                let instance = constr_builder.instance;
+                let problem = constr_builder.prob;
+                let rng = constr_builder.rng;
 
-    io::write_svg(
-        &s_layout_to_svg(&solution.layout_snapshots[0], &instance, DRAW_OPTIONS),
-        Path::new(format!("{}/{}.svg", SVG_OUTPUT_DIR, "solution").as_str()),
-    );
-    
+                let mut gls_opt = GLSOptimizer::new(problem, instance, rng, svg_output_dir);
+
+                let solution = gls_opt.solve(Duration::from_secs(TIME_LIMIT_S));
+
+                *solution_slice = Some(solution);
+            })
+        }
+    });
+
+    //print statistics about the solutions, print best, worst, median and average
+    let mut best_widths = best_solutions.into_iter()
+        .map(|s| s.unwrap().layout_snapshots[0].bin.bbox().width())
+        .sorted_by_key(|w| OrderedFloat(*w))
+        .collect_vec();
+
+    info!("Best width: {}", best_widths.first().unwrap());
+    info!("Worst width: {}", best_widths.last().unwrap());
+    info!("Median width: {}", best_widths[best_widths.len() / 2]);
+    info!("Average width: {}", best_widths.iter().sum::<fsize>() / best_widths.len() as fsize);
+
     println!("Hello, world!");
 }

@@ -1,4 +1,4 @@
-use crate::io;
+use crate::{io, SVG_OUTPUT_DIR};
 use crate::io::layout_to_svg::{layout_to_svg, s_layout_to_svg};
 use crate::io::svg_util::SvgDrawOptions;
 use crate::overlap::overlap_tracker_original::{OTSnapshot, OverlapTracker};
@@ -32,7 +32,7 @@ use std::collections::VecDeque;
 use std::iter;
 use std::ops::Range;
 use std::path::Path;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 use tap::Tap;
 use crate::overlap::overlap_tracker_original;
 
@@ -41,8 +41,6 @@ const N_ITER_NO_IMPROVEMENT: usize = 100;
 const N_STRIKES: usize = 5;
 const R_SHRINK: fsize = 0.005;
 const R_EXPAND: fsize = 0.002;
-
-const TIME_LIMIT_S: u64 = 20 * 60;
 
 const N_UNIFORM_SAMPLES: usize = 100;
 const N_COORD_DESCENTS: usize = 2;
@@ -77,7 +75,7 @@ impl GLSOptimizer {
         }
     }
 
-    pub fn solve(&mut self) -> Solution {
+    pub fn solve(&mut self, time_out: Duration) -> Solution {
         let mut current_width = self.problem.occupied_width();
         let (mut best_feasible_solution, mut best_width) = (self.problem.create_solution(None), current_width);
 
@@ -86,7 +84,7 @@ impl GLSOptimizer {
         let start = Instant::now();
         let mut i = 0;
 
-        while start.elapsed().as_secs() < TIME_LIMIT_S {
+        while start.elapsed() < time_out {
             let local_best = self.separate_layout();
             let total_overlap = self.overlap_tracker.get_total_overlap();
             let next_width = {
@@ -115,6 +113,9 @@ impl GLSOptimizer {
             current_width = next_width;
             i += 1;
         }
+
+        self.write_to_disk(Some(best_feasible_solution.clone()), true);
+
         best_feasible_solution
     }
 
@@ -132,6 +133,7 @@ impl GLSOptimizer {
             let mut n_iter_no_improvement = 0;
             let mut improved = false;
             let mut total_movement = 0;
+            let mut total_iter = 0;
 
             let start = Instant::now();
             while n_iter_no_improvement < N_ITER_NO_IMPROVEMENT {
@@ -140,7 +142,7 @@ impl GLSOptimizer {
                 let overlap = self.overlap_tracker.get_total_overlap();
                 let weighted_overlap = self.overlap_tracker.get_total_weighted_overlap();
                 debug_assert!(FPA(weighted_overlap) <= FPA(weighted_overlap_before), "weighted overlap increased: {} -> {}", weighted_overlap_before, weighted_overlap);
-                debug!("[i:{}]  w_o-1: {:.3} -> {:.3}, n_mov: {:.3}, abs_o: {:.3} (min: {:.3})", n_iter_no_improvement, weighted_overlap_before, weighted_overlap, n_movements,overlap, min_overlap);
+                info!("[i:{}]  w_o-1: {:.3} -> {:.3}, n_mov: {:.3}, abs_o: {:.3} (min: {:.3})", n_iter_no_improvement, weighted_overlap_before, weighted_overlap, n_movements,overlap, min_overlap);
                 if overlap == 0.0 {
                     warn!("[i:{}]  w_o-1: {:.3} -> {:.3}, n_mov: {:.3}, abs_o: {:.3} (min: {:.3})", n_iter_no_improvement, weighted_overlap_before, weighted_overlap, n_movements,overlap, min_overlap);
                     warn!("separation successful, returning");
@@ -163,9 +165,11 @@ impl GLSOptimizer {
                 self.overlap_tracker.increment_weights();
                 self.write_to_disk(None, false);
                 total_movement += n_movements;
+                total_iter += 1;
             }
+            self.write_to_disk(None, true);
             n_strikes = if improved { 0 } else { n_strikes + 1 };
-            warn!("{:.1} moves/s, strike: #{}", total_movement as f64 / start.elapsed().as_secs_f64(), n_strikes);
+            warn!("{:.1} moves/s, {:.1} iter/s, strike: #{}", total_movement as f64 / start.elapsed().as_secs_f64(), total_iter as f64 / start.elapsed().as_secs_f64(), n_strikes);
         }
 
         if min_overlap > initial_overlap * 0.95 {
@@ -173,10 +177,7 @@ impl GLSOptimizer {
         } else {
             warn!("improved from {:.3} to {:.3}, rolling back to min overlap", initial_overlap, min_overlap);
             self.rollback(&min_overlap_solution.0, &min_overlap_solution.1);
-            self.overlap_tracker.rescale_weights();
-            for i in 0..100 {
-                self.overlap_tracker.increment_weights();
-            }
+            //self.overlap_tracker.rescale_weights();
         }
 
         min_overlap_solution.0

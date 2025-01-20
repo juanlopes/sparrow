@@ -7,7 +7,7 @@ use jagua_rs::entities::placed_item::PItemKey;
 use jagua_rs::fsize;
 use jagua_rs::util::fpa::FPA;
 use log::{info, warn};
-use ordered_float::OrderedFloat;
+use ordered_float::{Float, OrderedFloat};
 use rand::Rng;
 use slotmap::SecondaryMap;
 use std::iter;
@@ -21,6 +21,7 @@ pub struct OTSnapshot {
 
 #[derive(Debug)]
 pub struct OverlapTracker {
+    pub capacity: usize,
     pub pk_idx_map: SecondaryMap<PItemKey, usize>,
     pub pair_overlap: Matrix<fsize>,
     pub pair_weights: Matrix<fsize>,
@@ -34,6 +35,7 @@ impl OverlapTracker {
     pub fn new(l: &Layout, weight_rescale_target: fsize, weight_multiplier: fsize) -> Self {
         let capacity = l.placed_items.len();
         Self {
+            capacity,
             pk_idx_map: SecondaryMap::with_capacity(capacity),
             pair_overlap: Matrix::new(capacity, 0.0),
             pair_weights: Matrix::new(capacity, 1.0),
@@ -173,6 +175,7 @@ impl OverlapTracker {
     }
 
     pub fn get_pair_weight(&self, pk1: PItemKey, pk2: PItemKey) -> fsize {
+        assert_ne!(pk1, pk2);
         let idx1 = self.pk_idx_map[pk1];
         let idx2 = self.pk_idx_map[pk2];
 

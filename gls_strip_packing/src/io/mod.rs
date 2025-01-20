@@ -12,6 +12,7 @@ use crate::{EPOCH, OUTPUT_DIR};
 pub mod layout_to_svg;
 pub mod svg_export;
 pub mod svg_util;
+
 pub fn read_json_instance(path: &Path) -> JsonInstance {
     let file = File::open(path)
         .unwrap_or_else(|err| panic!("could not open instance file: {}, {}", path.display(), err));

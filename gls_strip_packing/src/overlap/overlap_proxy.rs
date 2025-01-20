@@ -12,7 +12,7 @@ pub fn poly_overlap_proxy(s1: &SimplePolygon, s2: &SimplePolygon, bin_bbox: AARe
     let overlap_proxy = poles_overlap_proxy(
         s1.surrogate().poles.iter(),
         s2.surrogate().poles.iter(),
-        bin_bbox,
+        &bin_bbox,
     );
 
     let penalty = fsize::min(
@@ -41,7 +41,7 @@ pub fn bin_overlap_proxy(s: &SimplePolygon, bin_bbox: AARectangle) -> fsize {
     2.0 * overlap_proxy.sqrt() * penalty
 }
 
-pub fn poles_overlap_proxy<'a, C>(poles_1: C, poles_2: C, bin_bbox: AARectangle) -> fsize
+pub fn poles_overlap_proxy<'a, C>(poles_1: C, poles_2: C, bin_bbox: &AARectangle) -> fsize
 where
     C: Iterator<Item = &'a Circle> + Clone,
 {
@@ -54,6 +54,7 @@ where
                 (GeoPosition::Interior, d) => d + normalizer,
                 (GeoPosition::Exterior, d) => normalizer / (d / normalizer + 1.0),
             };
+
             deficit += value * fsize::min(p1.radius, p2.radius);
         }
     }

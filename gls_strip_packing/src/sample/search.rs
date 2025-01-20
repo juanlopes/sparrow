@@ -66,6 +66,7 @@ pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, mut e
         }
     }
 
+
     for start in best_samples.samples.clone() {
         let n_evals_before = evaluator.n_evals();
         let descended = coordinate_descent(start.clone(), &mut evaluator, item_min_dim, rng);

@@ -12,6 +12,10 @@ path = "src/main.rs"
 name = "test_playground"
 path = "src/test_playground.rs"
 
+[[bin]]
+name = "benchmark"
+path = "src/benchmark.rs"
+
 [dependencies]
 jagua-rs = { path = "../jagua-rs/jagua-rs" , version = "0.2.0", features = ["double-precision"]}
 rand = { version = "0.8", features = [ "small_rng" ] }

@@ -4,7 +4,7 @@ use std::thread::current;
 use jagua_rs::fsize;
 use jagua_rs::geometry::d_transformation::DTransformation;
 use jagua_rs::geometry::primitives::point::Point;
-use log::debug;
+use log::{debug, trace};
 use rand::Rng;
 use crate::sample::eval::{SampleEval, SampleEvaluator};
 
@@ -48,7 +48,7 @@ pub fn coordinate_descent(
         let c0_cmp = c0_eval.partial_cmp(&cd_state.eval);
         let c1_cmp = c1_eval.partial_cmp(&cd_state.eval);
 
-        debug!("CD: {:?}", cd_state);
+        trace!("CD: {:?}", cd_state);
 
         cd_state = match (c0_cmp, c1_cmp) {
             (Some(Ordering::Less), Some(Ordering::Less)) => {
@@ -82,7 +82,7 @@ pub fn coordinate_descent(
         counter += 2;
         assert!(counter < 100_000, "[CD] too many iterations, CD: {:?}, init: ({:.3}, {:.3})", cd_state, init.0, init.1);
     }
-    debug!("CD: {} evals, t: ({:.3}, {:.3}) -> ({:.3}, {:.3}), eval: {:?}", counter, init.0, init.1, cd_state.pos.0, cd_state.pos.1, cd_state.eval);
+    trace!("CD: {} evals, t: ({:.3}, {:.3}) -> ({:.3}, {:.3}), eval: {:?}", counter, init.0, init.1, cd_state.pos.0, cd_state.pos.1, cd_state.eval);
     let cd_d_transf = DTransformation::new(rot, cd_state.pos.into());
     (cd_d_transf, cd_state.eval)
 }

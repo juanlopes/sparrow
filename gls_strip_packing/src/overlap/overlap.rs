@@ -18,6 +18,7 @@ where I : Iterator<Item=HazardEntity> {
                 overlap * weight
             }
             HazardEntity::BinExterior => {
+                panic!();
                 let overlap = bin_overlap_proxy(s, l.bin.bbox());
                 let weight = ot.get_bin_weight(ref_pk);
                 overlap * weight
