@@ -6,3 +6,4 @@ mod best_samples;
 pub mod eval;
 mod hpg_sampler;
 mod hpg_biased_sampler;
+mod multi_search;

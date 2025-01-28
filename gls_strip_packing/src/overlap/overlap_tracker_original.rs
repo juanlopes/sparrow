@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use crate::overlap::matrix::{assert_matrix_symmetrical, Matrix};
 use crate::overlap::{overlap, overlap_proxy};
 use float_cmp::{approx_eq, assert_approx_eq};
@@ -6,17 +7,18 @@ use jagua_rs::entities::layout::Layout;
 use jagua_rs::entities::placed_item::PItemKey;
 use jagua_rs::fsize;
 use jagua_rs::util::fpa::FPA;
-use log::{info, warn};
+use log::{debug, info, warn};
 use ordered_float::{Float, OrderedFloat};
 use rand::Rng;
 use slotmap::SecondaryMap;
 use std::iter;
 use std::ops::Range;
+use itertools::{Itertools, MinMaxResult};
 
 pub struct OTSnapshot {
     pub pk_idx_map: SecondaryMap<PItemKey, usize>,
     pub pair_overlap: Matrix<fsize>,
-    pub bin_overlap: Vec<fsize>
+    pub bin_overlap: Vec<fsize>,
 }
 
 #[derive(Debug)]
@@ -27,12 +29,16 @@ pub struct OverlapTracker {
     pub pair_weights: Matrix<fsize>,
     pub bin_overlap: Vec<fsize>,
     pub bin_weights: Vec<fsize>,
+    pub item_mass: Vec<fsize>,
+    pub last_jump: Vec<usize>,
     pub weight_rescale_target: fsize,
+    pub weight_iter: usize,
+    pub jump_cooldown: usize,
     pub weight_multiplier: fsize,
 }
 
 impl OverlapTracker {
-    pub fn new(l: &Layout, weight_rescale_target: fsize, weight_multiplier: fsize) -> Self {
+    pub fn new(l: &Layout, weight_rescale_target: fsize, weight_multiplier: fsize, jump_cooldown: usize) -> Self {
         let capacity = l.placed_items.len();
         Self {
             capacity,
@@ -41,16 +47,23 @@ impl OverlapTracker {
             pair_weights: Matrix::new(capacity, 1.0),
             bin_overlap: vec![0.0; capacity],
             bin_weights: vec![1.0; capacity],
+            item_mass: vec![fsize::NAN; capacity],
+            last_jump: vec![0; capacity],
+            weight_iter: jump_cooldown,
+            jump_cooldown,
             weight_rescale_target,
             weight_multiplier,
         }
-        .init(l)
+            .init(l)
     }
 
     fn init(mut self, l: &Layout) -> Self {
-        for (i, pk) in l.placed_items.keys().enumerate() {
+        for (i, (pk, pi)) in l.placed_items.iter().enumerate() {
             self.pk_idx_map.insert(pk, i);
+            self.item_mass[i] = pi.shape.surrogate().convex_hull_area;
         }
+
+        dbg!(&self.item_mass);
 
         for pk in l.placed_items.keys() {
             self.recompute_overlap_for_item(pk, l);
@@ -89,10 +102,11 @@ impl OverlapTracker {
 
                     let other_idx = self.pk_idx_map[other_pk];
 
-                    self.pair_overlap[(idx,other_idx)] = overlap;
-                    self.pair_overlap[(other_idx,idx)] = overlap;
+                    self.pair_overlap[(idx, other_idx)] = overlap;
+                    self.pair_overlap[(other_idx, idx)] = overlap;
                 }
                 HazardEntity::BinExterior => {
+                    warn!("bin exterior overlap");
                     let overlap = overlap_proxy::bin_overlap_proxy(shape, l.bin.bbox());
                     self.bin_overlap[idx] = overlap;
                 }
@@ -101,18 +115,20 @@ impl OverlapTracker {
         }
     }
 
-    pub fn restore(&mut self, ots: &OTSnapshot) {
+    pub fn restore(&mut self, ots: &OTSnapshot, layout: &Layout) {
         //copy the overlaps and keys, but keep the weights
         self.pk_idx_map = ots.pk_idx_map.clone();
         self.pair_overlap = ots.pair_overlap.clone();
         self.bin_overlap = ots.bin_overlap.clone();
+        self.weight_iter += self.jump_cooldown; //fast-forward the weight iteration to the current iteration
+        assert!(tracker_matches_layout(self, layout));
     }
 
     pub fn create_snapshot(&self) -> OTSnapshot {
         OTSnapshot {
             pk_idx_map: self.pk_idx_map.clone(),
             pair_overlap: self.pair_overlap.clone(),
-            bin_overlap: self.bin_overlap.clone()
+            bin_overlap: self.bin_overlap.clone(),
         }
     }
 
@@ -127,23 +143,19 @@ impl OverlapTracker {
     }
 
     pub fn increment_weights(&mut self) {
-        let pair_overlap_iter = self.pair_overlap.data.iter();
-        let pair_weight_iter = self.pair_weights.data.iter_mut();
-
-        for (&o, w) in pair_overlap_iter.zip(pair_weight_iter) {
-            if o > 0.0 {
-                *w *= self.weight_multiplier;
+        for idx1 in 0..self.capacity {
+            for idx2 in 0..self.capacity {
+                let o = self.pair_overlap[(idx1, idx2)];
+                if o > 0.0 {
+                    self.pair_weights[(idx1, idx2)] *= self.weight_multiplier;
+                }
+            }
+            if self.bin_overlap[idx1] > 0.0 {
+                self.bin_weights[idx1] *= self.weight_multiplier.powi(2);
             }
         }
 
-        let bin_overlap_iter = self.bin_overlap.iter();
-        let bin_weight_iter = self.bin_weights.iter_mut();
-
-        for (&o, w) in bin_overlap_iter.zip(bin_weight_iter) {
-            if o > 0.0 {
-                *w *= self.weight_multiplier;
-            }
-        }
+        self.weight_iter += 1;
 
         debug_assert!(assert_matrix_symmetrical(&self.pair_overlap));
         debug_assert!(assert_matrix_symmetrical(&self.pair_weights));
@@ -168,9 +180,15 @@ impl OverlapTracker {
             *w = fsize::max(*w * rescale_factor, 1.0);
         }
 
+        let new_max = self.pair_weights.data.iter()
+            .chain(self.bin_weights.iter())
+            .max_by_key(|&w| OrderedFloat(*w))
+            .copied()
+            .unwrap();
+
         info!(
             "rescaled weights to from [1.0, {:.3}] to [1.0, {:.3}] (x{:.3})",
-            max_weight, target, rescale_factor
+            max_weight, new_max, rescale_factor
         );
     }
 
@@ -179,7 +197,7 @@ impl OverlapTracker {
         let idx1 = self.pk_idx_map[pk1];
         let idx2 = self.pk_idx_map[pk2];
 
-        self.pair_weights[(idx1,idx2)]
+        self.pair_weights[(idx1, idx2)]
     }
 
     pub fn get_bin_weight(&self, pk: PItemKey) -> fsize {
@@ -191,7 +209,7 @@ impl OverlapTracker {
         let idx1 = self.pk_idx_map[pk1];
         let idx2 = self.pk_idx_map[pk2];
 
-        self.pair_overlap[(idx1,idx2)]
+        self.pair_overlap[(idx1, idx2)]
     }
 
     pub fn get_bin_overlap(&self, pk: PItemKey) -> fsize {
@@ -232,6 +250,35 @@ impl OverlapTracker {
                 .zip(self.pair_weights.data.iter())
                 .map(|(&o, &w)| o * w)
                 .sum::<fsize>()
+    }
+
+    pub fn n_overlapping_items(&self) -> usize {
+        (0..self.capacity).filter(|&idx| {
+            self.pair_overlap.row(idx).iter().any(|&o| o > 0.0) || self.bin_overlap[idx] > 0.0
+        }).count()
+    }
+
+    pub fn set_pair_weight(&mut self, pk1: PItemKey, pk2: PItemKey, weight: fsize) {
+        assert_ne!(pk1, pk2);
+        let idx1 = self.pk_idx_map[pk1];
+        let idx2 = self.pk_idx_map[pk2];
+
+        self.pair_weights[(idx1, idx2)] = weight;
+        self.pair_weights[(idx2, idx1)] = weight;
+    }
+
+    pub fn set_jumped(&mut self, pk: PItemKey){
+        let idx = self.pk_idx_map[pk];
+        self.last_jump[idx] = self.weight_iter;
+        debug!("jump registered at iter: {}", self.weight_iter);
+    }
+
+    pub fn is_on_jump_cooldown(&self, pk: PItemKey) -> bool {
+        let idx = self.pk_idx_map[pk];
+        let current_iter = self.weight_iter;
+        let last_jump = self.last_jump[idx];
+
+        current_iter - last_jump < self.jump_cooldown
     }
 }
 

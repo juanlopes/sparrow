@@ -3,6 +3,7 @@ use jagua_rs::entities::layout::Layout;
 use jagua_rs::entities::placed_item::PItemKey;
 use jagua_rs::fsize;
 use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
+use ordered_float::OrderedFloat;
 use crate::overlap::overlap_proxy::{poly_overlap_proxy, bin_overlap_proxy};
 use crate::overlap::overlap_tracker_original::OverlapTracker;
 
@@ -18,10 +19,9 @@ where I : Iterator<Item=HazardEntity> {
                 overlap * weight
             }
             HazardEntity::BinExterior => {
-                panic!();
                 let overlap = bin_overlap_proxy(s, l.bin.bbox());
                 let weight = ot.get_bin_weight(ref_pk);
-                overlap * weight
+                2.0 * overlap * weight
             }
             _ => unimplemented!("unsupported hazard entity")
         }
@@ -38,7 +38,7 @@ where I : Iterator<Item=HazardEntity> {
                 poly_overlap_proxy(s, other_shape, l.bin.bbox())
             }
             HazardEntity::BinExterior => {
-                bin_overlap_proxy(s, l.bin.bbox())
+                2.0 * bin_overlap_proxy(s, l.bin.bbox())
             }
             _ => unimplemented!("unsupported hazard entity")
         }

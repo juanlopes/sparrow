@@ -14,6 +14,7 @@ use jagua_rs::util::fpa::FPA;
 use crate::overlap::overlap::{calculate_unweighted_overlap_shape, calculate_weighted_overlap};
 use crate::overlap::overlap_tracker_original::OverlapTracker;
 use crate::sample::eval::{SampleEval, SampleEvaluator};
+use crate::sample::eval::hpg_eval::hpg_value;
 
 pub struct OverlappingSampleEvaluator<'a> {
     layout: &'a Layout,
@@ -47,9 +48,9 @@ impl<'a> SampleEvaluator for OverlappingSampleEvaluator<'a> {
         self.coll_buff.clear();
         self.shape_buff.transform_from(&self.item.shape, &dt.into());
 
-        if self.shape_buff.bbox().relation_to(&self.layout.bin.bbox()) != GeoRelation::Enclosed {
-            return SampleEval::Invalid;
-        }
+        // if self.shape_buff.bbox().relation_to(&self.layout.bin.bbox()) != GeoRelation::Enclosed {
+        //     return SampleEval::Invalid;
+        // }
 
         match self.current_pk {
             Some(current_pk) => {
@@ -67,22 +68,18 @@ impl<'a> SampleEvaluator for OverlappingSampleEvaluator<'a> {
             SampleEval::Valid(0.0)
         }
         else {
-            if self.coll_buff.iter().any(|haz| matches!(haz, HazardEntity::BinExterior)) {
-                panic!();
-                SampleEval::Invalid
-            }
-            else {
-                let w_overlap = match self.current_pk {
-                    Some(current_pk) => {
-                        calculate_weighted_overlap(self.layout, &self.shape_buff, current_pk, self.coll_buff.iter().cloned(), self.ot)
-                    }
-                    None => {
-                        panic!();
-                        calculate_unweighted_overlap_shape(self.layout, &self.shape_buff, self.coll_buff.iter().cloned())
-                    }
-                };
-                SampleEval::Colliding(self.coll_buff.len(), w_overlap)
-            }
+            let w_overlap = match self.current_pk {
+                Some(current_pk) => {
+                    calculate_weighted_overlap(self.layout, &self.shape_buff, current_pk, self.coll_buff.iter().cloned(), self.ot)
+                }
+                None => {
+                    panic!();
+                    calculate_unweighted_overlap_shape(self.layout, &self.shape_buff, self.coll_buff.iter().cloned())
+                }
+            };
+            
+            let hpg_value = hpg_value(self.layout.cde().haz_prox_grid().unwrap(), &self.shape_buff);
+            SampleEval::Colliding { w_overlap, hpg_value }
         }
     }
 

@@ -20,13 +20,13 @@ use gls_strip_packing::opt::constr_builder::ConstructiveBuilder;
 use gls_strip_packing::opt::gls_optimizer::GLSOptimizer;
 use gls_strip_packing::sample::search::SearchConfig;
 
-const INPUT_FILE: &str = "../jagua-rs/assets/mao.json";
+const INPUT_FILE: &str = "../jagua-rs/assets/swim.json";
 
 const RNG_SEED: Option<usize> = Some(0);
 
-const N_THREADS: usize = 8;
+const N_THREADS: usize = 16;
 
-const TIME_LIMIT_S: u64 = 2 * 60;
+const TIME_LIMIT_S: u64 = 20 * 60;
 
 fn main() {
 
@@ -104,6 +104,7 @@ fn main() {
         .sorted_by_key(|w| OrderedFloat(*w))
         .collect_vec();
 
+    info!("Benchmarked {} with {} threads", INPUT_FILE, N_THREADS);
     info!("Best width: {}", best_widths.first().unwrap());
     info!("Worst width: {}", best_widths.last().unwrap());
     info!("Median width: {}", best_widths[best_widths.len() / 2]);

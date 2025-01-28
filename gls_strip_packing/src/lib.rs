@@ -1,5 +1,6 @@
 use std::time::Instant;
 use mimalloc::MiMalloc;
+use numfmt::{Formatter, Precision, Scales};
 use once_cell::sync::Lazy;
 use crate::io::svg_util::{SvgDrawOptions, SvgLayoutTheme};
 
@@ -24,3 +25,7 @@ pub const DRAW_OPTIONS: SvgDrawOptions = SvgDrawOptions{
     surrogate: false,
     overlap_lines: true,
 };
+
+const FMT: Lazy<Formatter> = Lazy::new(
+    || Formatter::new().scales(Scales::short()).precision(Precision::Significance(3))
+);
