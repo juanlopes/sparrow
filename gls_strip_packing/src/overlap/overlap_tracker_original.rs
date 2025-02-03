@@ -63,8 +63,6 @@ impl OverlapTracker {
             self.item_mass[i] = pi.shape.surrogate().convex_hull_area;
         }
 
-        dbg!(&self.item_mass);
-
         for pk in l.placed_items.keys() {
             self.recompute_overlap_for_item(pk, l);
         }

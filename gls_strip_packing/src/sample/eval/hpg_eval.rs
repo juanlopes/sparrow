@@ -6,9 +6,9 @@ use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
 use ordered_float::OrderedFloat;
 
 pub fn hpg_value(hpg: &HazardProximityGrid, shape: &SimplePolygon) -> fsize {
-    //
-    // compute the total value of HPG grid within the expanded bbox of the shape.
-    // the higher the hpg grid value for an (overlapping) placement the better.
+
+    //compute the total value of HPG grid within the expanded bbox of the shape.
+    //the higher the hpg grid value for an (overlapping) placement the better.
 
     // let bbox = shape.bbox().scale(1.5);
     //
@@ -24,8 +24,8 @@ pub fn hpg_value(hpg: &HazardProximityGrid, shape: &SimplePolygon) -> fsize {
     //         let end_idx = row * hpg.grid.n_cols + cols.end();
     //         &hpg.grid.cells[start_idx..=end_idx]
     //     };
-    //     let row_max = slice.iter().flatten().map(|c| cell_value(c)).max_by_key(|v| OrderedFloat(*v)).unwrap();
-    //     value += row_max;
+    //     let row_val: fsize = slice.iter().flatten().map(|c| cell_value(c)).sum();
+    //     value += row_val;
     // }
     //
     // value

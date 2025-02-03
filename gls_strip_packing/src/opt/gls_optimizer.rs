@@ -40,20 +40,16 @@ use tap::Tap;
 
 const N_ITER_NO_IMPROVEMENT: usize = 100;
 
-const N_STRIKES: usize = 5;
+const N_STRIKES: usize = 3;
 const R_SHRINK: fsize = 0.005;
 //const R_EXPAND: fsize = 0.003;
 
 const N_UNIFORM_SAMPLES: usize = 100;
 const N_COORD_DESCENTS: usize = 2;
-const RESCALE_WEIGHT_TARGET: fsize = 2.0;
+const RESCALE_WEIGHT_TARGET: fsize = 10.0;
 
 const WEIGHT_INCREMENT: fsize = 1.2;
-
 const TABU_SIZE: usize = 100;
-
-const MOVE_N_BIGGEST_OVERLAPS: usize = 10;
-
 const JUMP_COOLDOWN: usize = 2;
 
 pub struct GLSOptimizer {
@@ -211,22 +207,11 @@ impl GLSOptimizer {
         let mut n_total_movements = 0;
 
         for i in 0..1 {
-            let largest_overlapping_pks = self.problem.layout.placed_items()
-                .keys()
-                .map(|pk| (pk, self.overlap_tracker.get_weighted_overlap(pk)))
-                .k_largest_by_key(MOVE_N_BIGGEST_OVERLAPS, |(_, w)| OrderedFloat(*w))
-                .map(|(pk, _)| pk)
-                .collect_vec();
-
             let candidates = self.problem.layout.placed_items()
                 .keys()
                 .filter(|pk| self.overlap_tracker.get_overlap(*pk) > 0.0)
-                .filter(|pk| largest_overlapping_pks.iter().any(|l_pk| {
-                    l_pk == pk || self.overlap_tracker.get_pair_overlap(*pk, *l_pk) > 0.0
-                }))
-                //.sorted_by_key(|pk| OrderedFloat(self.overlap_tracker.get_weighted_overlap(*pk)))
                 .collect_vec()
-                .tap_mut(|c| c.shuffle(&mut self.rng));
+                .tap_mut(|v| v.shuffle(&mut self.rng));
 
             let mut n_movements = 0;
 
@@ -384,7 +369,7 @@ impl GLSOptimizer {
 
         let jumped = old_bbox.relation_to(&new_bbox) == GeoRelation::Disjoint;
         let item_big_enough = item.shape.surrogate().convex_hull_area > self.tabu_list.ch_area_cutoff;
-        if jumped {
+        if jumped && item_big_enough {
             self.overlap_tracker.set_jumped(new_pk);
         }
 

@@ -35,6 +35,7 @@ ordered-float = "4.6.0"
 rayon = "1.10.0"
 num_cpus = "1.16.0"
 numfmt = "1.1.1"
+num-traits = "0.2.19"
 
 [profile.release]
 

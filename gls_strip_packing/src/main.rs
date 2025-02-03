@@ -19,7 +19,7 @@ use gls_strip_packing::opt::constr_builder::ConstructiveBuilder;
 use gls_strip_packing::opt::gls_optimizer::GLSOptimizer;
 use gls_strip_packing::sample::search::SearchConfig;
 
-const INPUT_FILE: &str = "../jagua-rs/assets/trousers.json";
+const INPUT_FILE: &str = "../jagua-rs/assets/mao.json";
 
 const TIME_LIMIT_S: u64 = 20 * 60;
 
@@ -28,7 +28,7 @@ const N_THREADS: usize = 8;
 
 //const RNG_SEED: Option<usize> = Some(12079827122912017592);
 
-const RNG_SEED: Option<usize> = Some(11228681083063888015);
+const RNG_SEED: Option<usize> = None;
 fn main() {
 
     rayon::ThreadPoolBuilder::new().num_threads(N_THREADS).build_global().unwrap();

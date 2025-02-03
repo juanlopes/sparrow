@@ -20,7 +20,7 @@ use gls_strip_packing::opt::constr_builder::ConstructiveBuilder;
 use gls_strip_packing::opt::gls_optimizer::GLSOptimizer;
 use gls_strip_packing::sample::search::SearchConfig;
 
-const INPUT_FILE: &str = "../jagua-rs/assets/swim.json";
+const INPUT_FILE: &str = "../jagua-rs/assets/albano.json";
 
 const RNG_SEED: Option<usize> = Some(0);
 
@@ -104,11 +104,18 @@ fn main() {
         .sorted_by_key(|w| OrderedFloat(*w))
         .collect_vec();
 
+    let best_width = best_widths.first().unwrap();
+    let worst_width = best_widths.last().unwrap();
+    let median_width = best_widths[best_widths.len() / 2];
+    let avg_width = best_widths.iter().sum::<fsize>() / best_widths.len() as fsize;
+    let stdev_width = best_widths.iter().map(|w| (w - avg_width).powi(2)).sum::<fsize>().sqrt();
+
     info!("Benchmarked {} with {} threads", INPUT_FILE, N_THREADS);
     info!("Best width: {}", best_widths.first().unwrap());
     info!("Worst width: {}", best_widths.last().unwrap());
     info!("Median width: {}", best_widths[best_widths.len() / 2]);
     info!("Average width: {}", best_widths.iter().sum::<fsize>() / best_widths.len() as fsize);
+    info!("Standard deviation: {}", stdev_width);
 
     println!("Hello, world!");
 }
