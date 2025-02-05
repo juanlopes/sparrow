@@ -17,9 +17,10 @@ use gls_strip_packing::io::layout_to_svg::s_layout_to_svg;
 use gls_strip_packing::io::svg_util::{SvgDrawOptions, SvgLayoutTheme};
 use gls_strip_packing::opt::constr_builder::ConstructiveBuilder;
 use gls_strip_packing::opt::gls_optimizer::GLSOptimizer;
+use gls_strip_packing::opt::gls_orchestrator::GLSOrchestrator;
 use gls_strip_packing::sample::search::SearchConfig;
 
-const INPUT_FILE: &str = "../jagua-rs/assets/mao.json";
+const INPUT_FILE: &str = "../jagua-rs/assets/trousers.json";
 
 const TIME_LIMIT_S: u64 = 20 * 60;
 
@@ -82,7 +83,7 @@ fn main() {
     let problem = constr_builder.prob;
     let rng = constr_builder.rng;
 
-    let mut gls_opt = GLSOptimizer::new(problem, sp_instance, rng, SVG_OUTPUT_DIR.to_string());
+    let mut gls_opt = GLSOrchestrator::new(problem, sp_instance, rng, SVG_OUTPUT_DIR.to_string());
 
     let solution = gls_opt.solve(Duration::from_secs(TIME_LIMIT_S));
 

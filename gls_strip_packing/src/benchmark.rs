@@ -18,13 +18,14 @@ use rand::{Rng, SeedableRng};
 use gls_strip_packing::{io, SVG_OUTPUT_DIR};
 use gls_strip_packing::opt::constr_builder::ConstructiveBuilder;
 use gls_strip_packing::opt::gls_optimizer::GLSOptimizer;
+use gls_strip_packing::opt::gls_orchestrator::GLSOrchestrator;
 use gls_strip_packing::sample::search::SearchConfig;
 
 const INPUT_FILE: &str = "../jagua-rs/assets/albano.json";
 
 const RNG_SEED: Option<usize> = Some(0);
 
-const N_THREADS: usize = 16;
+const N_PARALLEL_RUNS: usize = 4;
 
 const TIME_LIMIT_S: u64 = 20 * 60;
 
@@ -73,7 +74,7 @@ fn main() {
         n_coord_descents: 3,
     };
 
-    let mut best_solutions = vec![None; N_THREADS];
+    let mut best_solutions = vec![None; N_PARALLEL_RUNS];
 
     rayon::scope(|s| {
         for (i, solution_slice) in best_solutions.iter_mut().enumerate(){
@@ -89,7 +90,7 @@ fn main() {
                 let problem = constr_builder.prob;
                 let rng = constr_builder.rng;
 
-                let mut gls_opt = GLSOptimizer::new(problem, instance, rng, svg_output_dir);
+                let mut gls_opt = GLSOrchestrator::new(problem, instance, rng, svg_output_dir);
 
                 let solution = gls_opt.solve(Duration::from_secs(TIME_LIMIT_S));
 
@@ -110,7 +111,7 @@ fn main() {
     let avg_width = best_widths.iter().sum::<fsize>() / best_widths.len() as fsize;
     let stdev_width = best_widths.iter().map(|w| (w - avg_width).powi(2)).sum::<fsize>().sqrt();
 
-    info!("Benchmarked {} with {} threads", INPUT_FILE, N_THREADS);
+    info!("Benchmarked {} with {} runs", INPUT_FILE, N_PARALLEL_RUNS);
     info!("Best width: {}", best_widths.first().unwrap());
     info!("Worst width: {}", best_widths.last().unwrap());
     info!("Median width: {}", best_widths[best_widths.len() / 2]);

@@ -14,6 +14,8 @@ use slotmap::SecondaryMap;
 use std::iter;
 use std::ops::Range;
 use itertools::{Itertools, MinMaxResult};
+use jagua_rs::geometry::geo_traits::Shape;
+use num_traits::real::Real;
 
 pub struct OTSnapshot {
     pub pk_idx_map: SecondaryMap<PItemKey, usize>,
@@ -21,7 +23,7 @@ pub struct OTSnapshot {
     pub bin_overlap: Vec<fsize>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct OverlapTracker {
     pub capacity: usize,
     pub pk_idx_map: SecondaryMap<PItemKey, usize>,
@@ -145,7 +147,11 @@ impl OverlapTracker {
             for idx2 in 0..self.capacity {
                 let o = self.pair_overlap[(idx1, idx2)];
                 if o > 0.0 {
+                    //compute increment mapping o between [min_overlap, max_overlap] to [MIN_INCREMENT, MAX_INCREMENT]
                     self.pair_weights[(idx1, idx2)] *= self.weight_multiplier;
+                }
+                else {
+                    //self.pair_weights[(idx1, idx2)] *= 1.1;
                 }
             }
             if self.bin_overlap[idx1] > 0.0 {

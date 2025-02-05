@@ -6,7 +6,7 @@ use jagua_rs::geometry::primitives::circle::Circle;
 use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
 use ordered_float::{Float, OrderedFloat};
 
-pub const DIAM_FRAC_NORMALIZER: fsize = 1.0 / 1000.0;
+pub const DIAM_FRAC_NORMALIZER: fsize = 1.0 / 500.0;
 
 pub fn poly_overlap_proxy(s1: &SimplePolygon, s2: &SimplePolygon, bin_bbox: AARectangle) -> fsize {
     let deficit = poles_overlap_proxy(
@@ -15,18 +15,12 @@ pub fn poly_overlap_proxy(s1: &SimplePolygon, s2: &SimplePolygon, bin_bbox: AARe
         &bin_bbox,
     );
 
-    let s1_convexity_ratio = s1.surrogate().convex_hull_area / s1.area();
-    let s2_convexity_ratio = s2.surrogate().convex_hull_area / s2.area();
+    let s1_penalty = (s1.surrogate().convex_hull_area * s1.diameter.powi(2)).sqrt();
+    let s2_penalty = (s2.surrogate().convex_hull_area * s2.diameter.powi(2)).sqrt();
 
-    let overlap_proxy = deficit * fsize::max(s1_convexity_ratio,s2_convexity_ratio).sqrt();
-    let forfait = 0.01 * (s1.surrogate().convex_hull_area * s2.surrogate().convex_hull_area).sqrt();
-    //dbg!(forfait);
+    let geomean_penalty = (s1_penalty * s2_penalty).sqrt();
 
-
-    //dbg!(overlap_proxy / forfait);
-
-    //deficit * (s1.surrogate().convex_hull_area * s2.surrogate().convex_hull_area).sqrt() //+ 0.05 * fsize::min(s1.surrogate().convex_hull_area, s2.surrogate().convex_hull_area)
-    deficit.sqrt() * (s1.surrogate().convex_hull_area * s2.surrogate().convex_hull_area).sqrt().sqrt().sqrt()
+    deficit.sqrt() * geomean_penalty.sqrt()
 }
 
 pub fn bin_overlap_proxy(s: &SimplePolygon, bin_bbox: AARectangle) -> fsize {
@@ -43,8 +37,7 @@ pub fn bin_overlap_proxy(s: &SimplePolygon, bin_bbox: AARectangle) -> fsize {
     };
     let penalty = s.surrogate().convex_hull_area;
 
-    //2.0 * (deficit * s.surrogate().convex_hull_area.sqrt().sqrt())
-    fsize::INFINITY
+    1_000_000_000.0 * (deficit.sqrt() * s.surrogate().convex_hull_area.sqrt())
 }
 
 pub fn poles_overlap_proxy<'a, C>(poles_1: C, poles_2: C, bin_bbox: &AARectangle) -> fsize
@@ -60,7 +53,7 @@ where
                 (GeoPosition::Exterior, d) => normalizer / (d / normalizer + 1.0),
             };
 
-            deficit += value * (p1.radius * p2.radius)
+            deficit += value * fsize::min(p1.radius,p2.radius);
         }
     }
     deficit

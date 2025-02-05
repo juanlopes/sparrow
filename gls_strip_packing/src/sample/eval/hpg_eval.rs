@@ -10,7 +10,7 @@ pub fn hpg_value(hpg: &HazardProximityGrid, shape: &SimplePolygon) -> fsize {
     //compute the total value of HPG grid within the expanded bbox of the shape.
     //the higher the hpg grid value for an (overlapping) placement the better.
 
-    // let bbox = shape.bbox().scale(1.5);
+    // let bbox = shape.bbox().scale(2.0);
     //
     // let rows = hpg.grid.rows_in_range(bbox.y_min..=bbox.y_max);
     // let cols = hpg.grid.cols_in_range(bbox.x_min..=bbox.x_max);
@@ -25,7 +25,7 @@ pub fn hpg_value(hpg: &HazardProximityGrid, shape: &SimplePolygon) -> fsize {
     //         &hpg.grid.cells[start_idx..=end_idx]
     //     };
     //     let row_val: fsize = slice.iter().flatten().map(|c| cell_value(c)).sum();
-    //     value += row_val;
+    //     value = fsize::max(value, row_val);
     // }
     //
     // value

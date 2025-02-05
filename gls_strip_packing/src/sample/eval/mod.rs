@@ -31,8 +31,8 @@ impl PartialOrd for SampleEval {
             Ordering::Greater => Some(Ordering::Greater),
             Ordering::Equal => match (self, other) {
                 (SampleEval::Colliding{w_overlap: wo1, hpg_value: hv1}, SampleEval::Colliding { w_overlap: wo2, hpg_value: hv2 }) => {
-                    let d1 = wo1 / hv1.sqrt();
-                    let d2 = wo2 / hv2.sqrt();
+                    let d1 = wo1 / hv1;
+                    let d2 = wo2 / hv2;
                     FPA(d1).partial_cmp(&FPA(d2))
                 }
                 (SampleEval::Valid(d1), SampleEval::Valid(d2)) => FPA(*d1).partial_cmp(&FPA(*d2)),

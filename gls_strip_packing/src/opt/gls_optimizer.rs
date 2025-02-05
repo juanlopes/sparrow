@@ -38,9 +38,9 @@ use std::time::{Duration, Instant};
 use jagua_rs::geometry::geo_enums::GeoRelation;
 use tap::Tap;
 
-const N_ITER_NO_IMPROVEMENT: usize = 100;
+const N_ITER_NO_IMPROVEMENT: usize = 50;
 
-const N_STRIKES: usize = 3;
+const N_STRIKES: usize = 5;
 const R_SHRINK: fsize = 0.005;
 //const R_EXPAND: fsize = 0.003;
 
@@ -49,6 +49,7 @@ const N_COORD_DESCENTS: usize = 2;
 const RESCALE_WEIGHT_TARGET: fsize = 10.0;
 
 const WEIGHT_INCREMENT: fsize = 1.2;
+
 const TABU_SIZE: usize = 100;
 const JUMP_COOLDOWN: usize = 2;
 
@@ -418,6 +419,11 @@ impl GLSOptimizer {
     pub fn rollback(&mut self, solution: &Solution, ots: &OTSnapshot) {
         self.problem.restore_to_solution(solution);
         self.overlap_tracker.restore(ots, &self.problem.layout);
+    }
+
+    pub fn load(&mut self, solution: &Solution, ot: &OverlapTracker) {
+        self.problem.restore_to_solution(solution);
+        self.overlap_tracker = ot.clone();
     }
 
     pub fn swap_tabu_item(&mut self) {
