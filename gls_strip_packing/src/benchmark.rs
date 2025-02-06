@@ -20,14 +20,16 @@ use gls_strip_packing::opt::constr_builder::ConstructiveBuilder;
 use gls_strip_packing::opt::gls_optimizer::GLSOptimizer;
 use gls_strip_packing::opt::gls_orchestrator::GLSOrchestrator;
 use gls_strip_packing::sample::search::SearchConfig;
+use numfmt::{Formatter, Precision, Scales};
 
-const INPUT_FILE: &str = "../jagua-rs/assets/albano.json";
+const INPUT_FILE: &str = "../jagua-rs/assets/swim.json";
 
-const RNG_SEED: Option<usize> = Some(0);
+const RNG_SEED: Option<usize> = None;
 
+const N_RUNS_TOTAL: usize = 16;
 const N_PARALLEL_RUNS: usize = 4;
 
-const TIME_LIMIT_S: u64 = 20 * 60;
+const TIME_LIMIT_S: u64 = 10 * 60;
 
 fn main() {
 
@@ -35,7 +37,7 @@ fn main() {
         io::init_logger(log::LevelFilter::Debug);
     }
     else {
-        io::init_logger(log::LevelFilter::Info);
+        io::init_logger(log::LevelFilter::Warn);
     }
 
     let json_instance = io::read_json_instance(Path::new(&INPUT_FILE));
@@ -74,49 +76,70 @@ fn main() {
         n_coord_descents: 3,
     };
 
-    let mut best_solutions = vec![None; N_PARALLEL_RUNS];
 
-    rayon::scope(|s| {
-        for (i, solution_slice) in best_solutions.iter_mut().enumerate(){
-            let thread_rng = SmallRng::seed_from_u64(rng.gen());
-            let svg_output_dir = format!("{}_{}", SVG_OUTPUT_DIR, i);
-            let instance = sp_instance.clone();
+    let mut final_solutions = vec![];
+    let mut n_iterations = (N_RUNS_TOTAL as fsize / N_PARALLEL_RUNS as fsize).ceil() as usize;
 
-            s.spawn(|_| {
-                let mut constr_builder = ConstructiveBuilder::new(instance, cde_config, thread_rng, constr_search_config);
-                constr_builder.build();
+    for i in 0..n_iterations {
+        warn!("[BENCH] Iteration {}/{}", i + 1, n_iterations);
+        let mut iter_solutions = vec![None; N_PARALLEL_RUNS];
+        rayon::scope(|s| {
+            for (j, solution_slice) in iter_solutions.iter_mut().enumerate(){
+                let thread_rng = SmallRng::seed_from_u64(rng.gen());
+                let svg_output_dir = format!("{}_{}", SVG_OUTPUT_DIR, i * N_PARALLEL_RUNS + j);
+                let instance = sp_instance.clone();
 
-                let instance = constr_builder.instance;
-                let problem = constr_builder.prob;
-                let rng = constr_builder.rng;
+                s.spawn(|_| {
+                    let mut constr_builder = ConstructiveBuilder::new(instance, cde_config, thread_rng, constr_search_config);
+                    constr_builder.build();
 
-                let mut gls_opt = GLSOrchestrator::new(problem, instance, rng, svg_output_dir);
+                    let instance = constr_builder.instance;
+                    let problem = constr_builder.prob;
+                    let rng = constr_builder.rng;
 
-                let solution = gls_opt.solve(Duration::from_secs(TIME_LIMIT_S));
+                    let mut gls_opt = GLSOrchestrator::new(problem, instance, rng, svg_output_dir);
 
-                *solution_slice = Some(solution);
-            })
-        }
-    });
+                    let solution = gls_opt.solve(Duration::from_secs(TIME_LIMIT_S));
+
+                    *solution_slice = Some(solution);
+                })
+            }
+        });
+        final_solutions.extend(iter_solutions.into_iter().flatten());
+    }
 
     //print statistics about the solutions, print best, worst, median and average
-    let mut best_widths = best_solutions.into_iter()
-        .map(|s| s.unwrap().layout_snapshots[0].bin.bbox().width())
-        .sorted_by_key(|w| OrderedFloat(*w))
-        .collect_vec();
+    let (mut final_widths, mut final_usages): (Vec<fsize>, Vec<fsize>) = final_solutions.into_iter()
+        .map(|s| {
+            let width = s.layout_snapshots[0].bin.bbox().width();
+            let usage = s.layout_snapshots[0].usage;
+            (width, usage)
+        })
+        .sorted_by_key(|(w,u)| OrderedFloat(*w))
+        .unzip();
 
-    let best_width = best_widths.first().unwrap();
-    let worst_width = best_widths.last().unwrap();
-    let median_width = best_widths[best_widths.len() / 2];
-    let avg_width = best_widths.iter().sum::<fsize>() / best_widths.len() as fsize;
-    let stdev_width = best_widths.iter().map(|w| (w - avg_width).powi(2)).sum::<fsize>().sqrt();
+    let n_results = final_widths.len();
 
-    info!("Benchmarked {} with {} runs", INPUT_FILE, N_PARALLEL_RUNS);
-    info!("Best width: {}", best_widths.first().unwrap());
-    info!("Worst width: {}", best_widths.last().unwrap());
-    info!("Median width: {}", best_widths[best_widths.len() / 2]);
-    info!("Average width: {}", best_widths.iter().sum::<fsize>() / best_widths.len() as fsize);
-    info!("Standard deviation: {}", stdev_width);
+    let avg_width = final_widths.iter().sum::<fsize>() / n_results as fsize;
+    let stddev_width = (final_widths.iter().map(|w| (w - avg_width).powi(2)).sum::<fsize>() / n_results as fsize).sqrt();
 
-    println!("Hello, world!");
+    warn!("Benchmarked {} with {} runs ({}s)", INPUT_FILE, n_results, TIME_LIMIT_S);
+    warn!("Results: {:?}", final_widths.iter().map(|w| format!("{:.2}", w).to_string()).collect::<Vec<String>>());
+
+    warn!("----------------- WIDTH -----------------");
+    warn!("Best: {}", final_widths.first().unwrap());
+    warn!("Worst: {}", final_widths.last().unwrap());
+    warn!("Med: {}", final_widths[final_widths.len() / 2]);
+    warn!("Avg: {}", avg_width);
+    warn!("Stddev: {}", stddev_width);
+
+    let avg_yield = final_usages.iter().sum::<fsize>() / n_results as fsize;
+    let stddev_yield = (final_usages.iter().map(|u| (u - avg_yield).powi(2)).sum::<fsize>() / n_results as fsize).sqrt();
+
+    warn!("----------------- USAGE -----------------");
+    warn!("Best: {}", final_usages.first().unwrap());
+    warn!("Worst: {}", final_usages.last().unwrap());
+    warn!("Med: {}", final_usages[final_usages.len() / 2]);
+    warn!("Avg: {}", avg_yield);
+    warn!("Stddev: {}", stddev_yield);
 }

@@ -64,8 +64,8 @@ impl<'a> SampleEvaluator for OverlappingSampleEvaluator<'a> {
         }
 
         if self.coll_buff.is_empty() {
-            let v = self.shape_buff.bbox.x_max + 0.1 * self.shape_buff.bbox.y_max;
-            SampleEval::Valid(v)
+            //let v = self.shape_buff.bbox.x_max + 0.1 * self.shape_buff.bbox.y_max;
+            SampleEval::Valid(0.0)
         }
         else {
             let w_overlap = match self.current_pk {

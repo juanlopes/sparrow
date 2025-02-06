@@ -109,7 +109,7 @@ impl GLSOptimizer {
                 } else {
                     //not successful
                     self.rollback(&local_best.0, &local_best.1);
-                    self.tabu_list.push(local_best.0.clone());
+                    self.tabu_list.push(local_best.0.clone(), total_overlap);
                     warn!("rolling back to local best and adding it to tabu list");
                     // let expanded_width = current_width * (1.0 + R_EXPAND);
                     // if expanded_width < best_width {
@@ -156,7 +156,7 @@ impl GLSOptimizer {
             while n_iter_no_improvement < N_ITER_NO_IMPROVEMENT {
                 let weighted_overlap_before = self.overlap_tracker.get_total_weighted_overlap();
                 let overlap_before = self.overlap_tracker.get_total_overlap();
-                let n_movements = self.modify_greedy();
+                let n_movements = self.modify_greedy(None);
                 let overlap = self.overlap_tracker.get_total_overlap();
                 let weighted_overlap = self.overlap_tracker.get_total_weighted_overlap();
                 info!("[i:{}]     w_o-1: {} -> {}, n_mov: {}, abs_o: {} (min: {})", n_iter_no_improvement, FMT.fmt2(weighted_overlap_before), FMT.fmt2(weighted_overlap), n_movements, FMT.fmt2(overlap), FMT.fmt2(min_overlap));
@@ -204,7 +204,7 @@ impl GLSOptimizer {
         min_overlap_solution.unwrap()
     }
 
-    pub fn modify_greedy(&mut self) -> usize {
+    pub fn modify_greedy(&mut self, max_movements: Option<usize>) -> usize {
         let mut n_total_movements = 0;
 
         for i in 0..1 {
@@ -239,6 +239,9 @@ impl GLSOptimizer {
 
                     self.move_item(pk, new_placement.0, Some(new_placement.1));
                     n_movements += 1;
+                    if n_movements == max_movements.unwrap_or(usize::MAX) {
+                        break;
+                    }
                 }
             }
             n_total_movements += n_movements;

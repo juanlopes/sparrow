@@ -36,15 +36,16 @@ use std::ops::Range;
 use std::path::Path;
 use std::time::{Duration, Instant};
 use jagua_rs::geometry::geo_enums::GeoRelation;
+use num_traits::real::Real;
 use rand::{Rng, SeedableRng};
 use rayon::iter::{split, ParallelIterator};
 use rayon::iter::IntoParallelRefMutIterator;
 use tap::Tap;
 use crate::opt::gls_optimizer::GLSOptimizer;
 
-const N_ITER_NO_IMPROVEMENT: usize = 100;
+const N_ITER_NO_IMPROVEMENT: usize = 50;
 
-const N_STRIKES: usize = 3;
+const N_STRIKES: usize = 5;
 const R_SHRINK: fsize = 0.005;
 //const R_EXPAND: fsize = 0.003;
 
@@ -53,10 +54,12 @@ const N_COORD_DESCENTS: usize = 2;
 const RESCALE_WEIGHT_TARGET: fsize = 2.0;
 
 const WEIGHT_INCREMENT: fsize = 1.2;
-const TABU_SIZE: usize = 100;
-const JUMP_COOLDOWN: usize = 5;
+const TABU_SIZE: usize = 10000;
+const JUMP_COOLDOWN: usize = 2;
 
 const N_THREADS: usize = 4;
+
+const N_MOVEMENTS: usize = usize::MAX;
 
 pub struct GLSOrchestrator {
     pub instance: SPInstance,
@@ -122,14 +125,24 @@ impl GLSOrchestrator {
                 } else {
                     //not successful
                     //self.rollback(&local_best.0, &local_best.1);
-                    self.tabu_list.push(local_best.0.clone());
+                    self.tabu_list.push(local_best.0.clone(), total_overlap);
                     warn!("adding local best to tabu list");
                     {
-                        let random_tabu_sol = self.tabu_list.list.iter()
-                            .filter(|sol| sol.layout_snapshots[0].bin.bbox().width() == current_width)
-                            .choose(&mut self.rng).unwrap().clone();
+                        const WEIGHTED_INDEX: [fsize; 5] = [256.0, 128.0, 64.0, 32.0, 16.0];
 
-                        self.rollback(&random_tabu_sol, None);
+                        let n_th_best_solution = WeightedIndex::new(WEIGHTED_INDEX).unwrap().sample(&mut self.rng);
+
+                        let sorted_tabu_sols = self.tabu_list.list.iter()
+                            .filter(|(sol, eval)| sol.layout_snapshots[0].bin.bbox().width() == current_width)
+                            .sorted_by_key(|(sol, eval)| OrderedFloat(*eval))
+                            .collect_vec();
+
+                        let n_th_best_solution = n_th_best_solution.min(sorted_tabu_sols.len() - 1);
+                        let selected = sorted_tabu_sols[n_th_best_solution].clone();
+
+                        warn!("Rolling back to {}/{} best solution from the tabu list (o: {:.3})", n_th_best_solution, sorted_tabu_sols.len(), selected.1);
+
+                        self.rollback(&selected.0, None);
                     }
                     current_width
                 }
@@ -229,14 +242,17 @@ impl GLSOrchestrator {
                 // Sync the workers
                 opt.load(&master_sol, &self.master_ot);
                 // Let them modify
-                opt.modify_greedy();
+                opt.modify_greedy(Some(N_MOVEMENTS));
             });
 
         info!("{:?}", self.optimizers.iter().map(|opt| opt.overlap_tracker.get_total_weighted_overlap()).collect_vec());
 
         // Save the best one
         let best_opt = self.optimizers.iter_mut()
-            .min_by_key(|opt| OrderedFloat(opt.overlap_tracker.get_total_weighted_overlap()))
+            .min_by_key(|opt|{
+                let w_o = opt.overlap_tracker.get_total_weighted_overlap();
+                OrderedFloat(w_o)
+            })
             .map(|opt| (opt.problem.create_solution(None), &opt.overlap_tracker))
             .unwrap();
 

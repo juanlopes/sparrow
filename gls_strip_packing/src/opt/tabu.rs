@@ -19,7 +19,7 @@ const N_SIMILAR_PI_RATIO: fsize = 0.99;
 const RELEVANT_CH_FRACTION_CUTOFF: fsize = 0.5;
 pub struct TabuList {
     pub capacity: usize,
-    pub list: Vec<Solution>,
+    pub list: Vec<(Solution, fsize)>,
     pub ch_area_cutoff: fsize,
     pub n_similar_limit: usize,
 }
@@ -48,17 +48,17 @@ impl TabuList {
         }
     }
 
-    pub fn push(&mut self, sol: Solution) {
-        assert!(self.list.iter().all(|s| n_similar_placements(&sol, s, self.ch_area_cutoff) <= self.n_similar_limit));
-        self.list.insert(0, sol);
+    pub fn push(&mut self, sol: Solution, eval: fsize) {
+        assert!(self.list.iter().all(|(s, _)| n_similar_placements(&sol, s, self.ch_area_cutoff) <= self.n_similar_limit));
+        self.list.insert(0, (sol, eval));
         if self.list.len() > self.capacity {
             self.list.pop();
         }
     }
 
     pub fn sol_is_tabu(&self, sol: &Solution) -> bool {
-        info!("similarities: {:?} (max: {})", self.list.iter().map(|s| n_similar_placements(sol, s, self.ch_area_cutoff)).collect_vec(), self.n_similar_limit);
-        self.list.iter().any(|s| n_similar_placements(sol, s, self.ch_area_cutoff) > self.n_similar_limit)
+        info!("similarities: {:?} (max: {})", self.list.iter().map(|(s,_)| n_similar_placements(sol, s, self.ch_area_cutoff)).collect_vec(), self.n_similar_limit);
+        self.list.iter().any(|(s,_)| n_similar_placements(sol, s, self.ch_area_cutoff) > self.n_similar_limit)
     }
 
     pub fn clear(&mut self) {

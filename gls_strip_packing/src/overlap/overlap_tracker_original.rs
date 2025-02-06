@@ -143,19 +143,33 @@ impl OverlapTracker {
     }
 
     pub fn increment_weights(&mut self) {
+        let max_o = self.pair_overlap.data.iter().zip(self.pair_weights.data.iter())
+            .map(|(&o, &w)| o )
+            .max_by_key(|&o| OrderedFloat(o))
+            .unwrap();
+
+        const MAX_INCREASE : fsize = 2.0;
+        const MIN_INCREASE: fsize = 1.1;
+
         for idx1 in 0..self.capacity {
             for idx2 in 0..self.capacity {
                 let o = self.pair_overlap[(idx1, idx2)];
+                let w = &mut self.pair_weights[(idx1, idx2)];
                 if o > 0.0 {
+                    let multiplier = MIN_INCREASE + (MAX_INCREASE - MIN_INCREASE) * (o / max_o);
+
                     //compute increment mapping o between [min_overlap, max_overlap] to [MIN_INCREMENT, MAX_INCREMENT]
-                    self.pair_weights[(idx1, idx2)] *= self.weight_multiplier;
+                    *w *= multiplier;
                 }
                 else {
-                    //self.pair_weights[(idx1, idx2)] *= 1.1;
+                    *w = fsize::max(1.0, *w * 0.95)
                 }
             }
             if self.bin_overlap[idx1] > 0.0 {
-                self.bin_weights[idx1] *= self.weight_multiplier.powi(2);
+                self.bin_weights[idx1] *= MAX_INCREASE;
+            }
+            else {
+                self.bin_weights[idx1] = fsize::max(1.0, self.bin_weights[idx1] * 0.95);
             }
         }
 
