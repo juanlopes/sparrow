@@ -36,7 +36,6 @@ use std::ops::Range;
 use std::path::Path;
 use std::time::{Duration, Instant};
 use jagua_rs::geometry::geo_enums::GeoRelation;
-use num_traits::real::Real;
 use rand::{Rng, SeedableRng};
 use rayon::iter::{split, ParallelIterator};
 use rayon::iter::IntoParallelRefMutIterator;
@@ -55,9 +54,9 @@ const RESCALE_WEIGHT_TARGET: fsize = 2.0;
 
 const WEIGHT_INCREMENT: fsize = 1.2;
 const TABU_SIZE: usize = 10000;
-const JUMP_COOLDOWN: usize = 2;
+const JUMP_COOLDOWN: usize = 5;
 
-const N_THREADS: usize = 4;
+const N_THREADS: usize = 2;
 
 const N_MOVEMENTS: usize = usize::MAX;
 
@@ -128,19 +127,11 @@ impl GLSOrchestrator {
                     self.tabu_list.push(local_best.0.clone(), total_overlap);
                     warn!("adding local best to tabu list");
                     {
-                        const WEIGHTED_INDEX: [fsize; 5] = [256.0, 128.0, 64.0, 32.0, 16.0];
-
-                        let n_th_best_solution = WeightedIndex::new(WEIGHTED_INDEX).unwrap().sample(&mut self.rng);
-
-                        let sorted_tabu_sols = self.tabu_list.list.iter()
+                        let selected = self.tabu_list.list.iter()
                             .filter(|(sol, eval)| sol.layout_snapshots[0].bin.bbox().width() == current_width)
-                            .sorted_by_key(|(sol, eval)| OrderedFloat(*eval))
-                            .collect_vec();
-
-                        let n_th_best_solution = n_th_best_solution.min(sorted_tabu_sols.len() - 1);
-                        let selected = sorted_tabu_sols[n_th_best_solution].clone();
-
-                        warn!("Rolling back to {}/{} best solution from the tabu list (o: {:.3})", n_th_best_solution, sorted_tabu_sols.len(), selected.1);
+                            .choose(&mut self.rng)
+                            .cloned()
+                            .unwrap();
 
                         self.rollback(&selected.0, None);
                     }
@@ -175,7 +166,7 @@ impl GLSOrchestrator {
                 warn!("rolling back to min overlap");
                 self.rollback(&min_overlap_solution.0, Some(&min_overlap_solution.1));
             }
-            self.master_ot.rescale_weights();
+            //self.master_ot.rescale_weights();
             let mut n_iter_no_improvement = 0;
             let mut total_movement = 0;
             let mut total_iter = 0;

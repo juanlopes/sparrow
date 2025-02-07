@@ -4,10 +4,9 @@ use jagua_rs::geometry::geo_traits::{DistanceFrom, Shape};
 use jagua_rs::geometry::primitives::aa_rectangle::AARectangle;
 use jagua_rs::geometry::primitives::circle::Circle;
 use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
-use num_traits::real::Real;
 use ordered_float::{Float, OrderedFloat};
 
-pub const DIAM_FRAC_NORMALIZER: fsize = 1.0 / 500.0;
+pub const DIAM_FRAC_NORMALIZER: fsize = 1.0 / 1000.0;
 
 pub fn poly_overlap_proxy(s1: &SimplePolygon, s2: &SimplePolygon, bin_bbox: AARectangle) -> fsize {
     let deficit = poles_overlap_proxy(
@@ -16,10 +15,10 @@ pub fn poly_overlap_proxy(s1: &SimplePolygon, s2: &SimplePolygon, bin_bbox: AARe
         &bin_bbox,
     );
 
-    let s1_penalty = (0.9 * s1.surrogate().convex_hull_area + 0.1 * s1.diameter.powi(2));
-    let s2_penalty = (0.9 * s2.surrogate().convex_hull_area + 0.1 * s2.diameter.powi(2));
+    let s1_penalty = (s1.surrogate().convex_hull_area); //+ //0.1 * (s1.diameter / 4.0).powi(2));
+    let s2_penalty = (s2.surrogate().convex_hull_area); // + 0.1 * (s2.diameter / 4.0).powi(2));
 
-    let penalty = fsize::min(s1_penalty,s2_penalty);
+    let penalty = fsize::min(s1_penalty, s2_penalty);
 
     (deficit + 0.001 * penalty).sqrt() * penalty.sqrt()
 }
@@ -54,7 +53,7 @@ where
                 (GeoPosition::Exterior, d) => normalizer / (d / normalizer + 1.0),
             };
 
-            deficit += value * fsize::min(p1.radius,p2.radius);
+            deficit += value * (p1.radius * p2.radius).sqrt();
         }
     }
     deficit

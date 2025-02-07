@@ -20,7 +20,7 @@ use gls_strip_packing::opt::gls_optimizer::GLSOptimizer;
 use gls_strip_packing::opt::gls_orchestrator::GLSOrchestrator;
 use gls_strip_packing::sample::search::SearchConfig;
 
-const INPUT_FILE: &str = "../jagua-rs/assets/mao.json";
+const INPUT_FILE: &str = "../jagua-rs/assets/swim.json";
 
 const TIME_LIMIT_S: u64 = 20 * 60;
 

@@ -1,4 +1,5 @@
 use std::cmp::Ordering;
+use std::i8::MIN;
 use crate::overlap::matrix::{assert_matrix_symmetrical, Matrix};
 use crate::overlap::{overlap, overlap_proxy};
 use float_cmp::{approx_eq, assert_approx_eq};
@@ -15,7 +16,6 @@ use std::iter;
 use std::ops::Range;
 use itertools::{Itertools, MinMaxResult};
 use jagua_rs::geometry::geo_traits::Shape;
-use num_traits::real::Real;
 
 pub struct OTSnapshot {
     pub pk_idx_map: SecondaryMap<PItemKey, usize>,
@@ -148,8 +148,11 @@ impl OverlapTracker {
             .max_by_key(|&o| OrderedFloat(o))
             .unwrap();
 
+
         const MAX_INCREASE : fsize = 2.0;
         const MIN_INCREASE: fsize = 1.1;
+
+        const FLOOR: fsize = 2.0;
 
         for idx1 in 0..self.capacity {
             for idx2 in 0..self.capacity {

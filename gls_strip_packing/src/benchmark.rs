@@ -113,7 +113,7 @@ fn main() {
         .map(|s| {
             let width = s.layout_snapshots[0].bin.bbox().width();
             let usage = s.layout_snapshots[0].usage;
-            (width, usage)
+            (width, usage * 100.0)
         })
         .sorted_by_key(|(w,u)| OrderedFloat(*w))
         .unzip();

@@ -16,6 +16,8 @@ path = "src/test_playground.rs"
 name = "benchmark"
 path = "src/benchmark.rs"
 
+
+[profile.release]
 [dependencies]
 jagua-rs = { path = "../jagua-rs/jagua-rs" , version = "0.2.0", features = ["double-precision"]}
 rand = { version = "0.8", features = [ "small_rng" ] }
@@ -35,9 +37,6 @@ ordered-float = "4.6.0"
 rayon = "1.10.0"
 num_cpus = "1.16.0"
 numfmt = "1.1.1"
-num-traits = "0.2.19"
-
-[profile.release]
 
 [profile.test]
 inherits = "release"
