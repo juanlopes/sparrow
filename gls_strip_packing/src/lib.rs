@@ -6,7 +6,7 @@ use crate::io::svg_util::{SvgDrawOptions, SvgLayoutTheme};
 
 pub mod io;
 pub mod sample;
-mod overlap;
+pub mod overlap;
 pub mod opt;
 
 #[global_allocator]

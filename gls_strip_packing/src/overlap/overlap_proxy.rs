@@ -18,7 +18,7 @@ pub fn poly_overlap_proxy(s1: &SimplePolygon, s2: &SimplePolygon, bin_bbox: AARe
     let s1_penalty = (s1.surrogate().convex_hull_area); //+ //0.1 * (s1.diameter / 4.0).powi(2));
     let s2_penalty = (s2.surrogate().convex_hull_area); // + 0.1 * (s2.diameter / 4.0).powi(2));
 
-    let penalty = fsize::min(s1_penalty, s2_penalty);
+    let penalty = 0.99 * fsize::min(s1_penalty,s2_penalty) + 0.01 * fsize::max(s1_penalty,s2_penalty);
 
     (deficit + 0.001 * penalty).sqrt() * penalty.sqrt()
 }
@@ -35,9 +35,9 @@ pub fn bin_overlap_proxy(s: &SimplePolygon, bin_bbox: AARectangle) -> fsize {
             s_bbox.area() + s_bbox.centroid().distance(bin_bbox.centroid())
         }
     };
-    let penalty = 0.9 * s.surrogate().convex_hull_area + 0.1 * s.diameter.powi(2);
+    let penalty = s.surrogate().convex_hull_area;
 
-    100000.0 * (deficit.sqrt() * penalty.sqrt())
+    10.0 * (deficit + 0.001 * penalty).sqrt() * penalty.sqrt()
 }
 
 pub fn poles_overlap_proxy<'a, C>(poles_1: C, poles_2: C, bin_bbox: &AARectangle) -> fsize
@@ -49,17 +49,17 @@ where
     for p1 in poles_1 {
         for p2 in poles_2.clone() {
             let value = match p1.distance_from_border(p2) {
-                (GeoPosition::Interior, d) => d + normalizer,
+                (GeoPosition::Interior, d) => {
+                    d + normalizer
+                },
                 (GeoPosition::Exterior, d) => normalizer / (d / normalizer + 1.0),
             };
 
-            deficit += value * (p1.radius * p2.radius).sqrt();
+            deficit += value * fsize::min(p1.radius, p2.radius);
         }
     }
     deficit
 }
-
-
 fn distance_between_bboxes(big_bbox: &AARectangle, small_bbox: &AARectangle) -> fsize {
     let min_d = [big_bbox.x_max - small_bbox.x_max,
         small_bbox.x_min - big_bbox.x_min,

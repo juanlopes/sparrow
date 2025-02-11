@@ -16,6 +16,9 @@ path = "src/test_playground.rs"
 name = "benchmark"
 path = "src/benchmark.rs"
 
+[[bin]]
+name = "overlap_visualizer"
+path = "src/playgrounds/playground_overlap_visualizer.rs"
 
 [profile.release]
 [dependencies]

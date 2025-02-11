@@ -152,7 +152,6 @@ impl OverlapTracker {
         const MAX_INCREASE : fsize = 2.0;
         const MIN_INCREASE: fsize = 1.1;
 
-        const FLOOR: fsize = 2.0;
 
         for idx1 in 0..self.capacity {
             for idx2 in 0..self.capacity {

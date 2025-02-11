@@ -77,8 +77,9 @@ impl<'a> SampleEvaluator for OverlappingSampleEvaluator<'a> {
                     calculate_unweighted_overlap_shape(self.layout, &self.shape_buff, self.coll_buff.iter().cloned())
                 }
             };
-            
-            let hpg_value = hpg_value(self.layout.cde().haz_prox_grid().unwrap(), &self.shape_buff);
+
+            let hazard = self.current_pk.map(|pk| (&self.layout.placed_items[pk]).into());
+            let hpg_value = hpg_value(self.layout.cde().haz_prox_grid().unwrap(), &self.shape_buff, hazard);
             SampleEval::Colliding { w_overlap, hpg_value }
         }
     }
