@@ -1,0 +1,32 @@
+name: Nightly Benchmarks
+
+on:
+  # Run once a day at 02:00 UTC (adjust as needed)
+  schedule:
+    - cron: '0 2 * * *'
+  # Allows you to manually trigger the workflow if needed
+  workflow_dispatch:
+
+jobs:
+  benchmarks:
+    runs-on: self-hosted
+    # Use a matrix to define the 8 benchmark instances.
+    # Replace the instance names below with your actual identifiers if different.
+    strategy:
+      matrix:
+        instance: ["swim", "trousers"]
+
+    steps:
+      - name: Checkout latest main commit
+        uses: actions/checkout@v3
+        with:
+          ref: main
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Run benchmark for ${{ matrix.instance }}
+        run: cd gls_strip_packing && cargo run --release --bin benchmark -- ../jagua-rs/assets/${{ matrix.instance }}.json
