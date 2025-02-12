@@ -27,5 +27,8 @@ jobs:
           toolchain: stable
           override: true
 
-      - name: Run benchmark for ${{ matrix.instance }}
+      - name: Compile nightly_benchmark
+        run: cd gls_strip_packing && cargo build --release --bin nightly_benchmark
+        
+      - name: Run nightly_benchmark for ${{ matrix.instance }}
         run: cd gls_strip_packing && cargo run --release --bin nightly_benchmark -- ../jagua-rs/assets/${{ matrix.instance }}.json
