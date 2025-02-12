@@ -1,10 +1,10 @@
 name: Nightly Benchmarks
 
 on:
-  # Run once a day at 01:00 UTC (adjust as needed)
+  # Run once a day at 23:00 UTC (0:00 CEST)
   schedule:
-    - cron: '0 1 * * *'
-  # Allows you to manually trigger the workflow if needed
+    - cron: '2 3 * * *'
+  # Allows manually trigger the workflow if needed
   workflow_dispatch:
 
 jobs:
