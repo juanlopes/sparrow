@@ -17,10 +17,13 @@ name = "benchmark"
 path = "src/benchmark.rs"
 
 [[bin]]
+name = "nightly_benchmark"
+path = "src/nightly_benchmark.rs"
+
+[[bin]]
 name = "overlap_visualizer"
 path = "src/playgrounds/playground_overlap_visualizer.rs"
 
-[profile.release]
 [dependencies]
 jagua-rs = { path = "../jagua-rs/jagua-rs" , version = "0.2.0", features = ["double-precision"]}
 rand = { version = "0.8", features = [ "small_rng" ] }
