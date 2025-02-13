@@ -28,7 +28,7 @@ const RNG_SEED: Option<usize> = None;
 const N_RUNS_TOTAL: usize = 16;
 const N_PARALLEL_RUNS: usize = 8;
 
-const TIME_LIMIT_S: u64 = 1 * 60;
+const TIME_LIMIT_S: u64 = 20 * 60;
 
 fn main() {
 
@@ -36,7 +36,7 @@ fn main() {
     let args: Vec<String> = std::env::args().collect();
     let json_instance = io::read_json_instance(Path::new(&args[1]));
 
-    println!("[BENCH] Starting benchmark for {} ({} runs, {} parallel, {}s timelimit)", &args[1], N_RUNS_TOTAL, N_PARALLEL_RUNS, TIME_LIMIT_S);
+    println!("Starting benchmark for {} ({} runs, {} parallel, {}s timelimit)", &args[1], N_RUNS_TOTAL, N_PARALLEL_RUNS, TIME_LIMIT_S);
 
     let cde_config = CDEConfig{
         quadtree_depth: 4,
@@ -76,7 +76,7 @@ fn main() {
     let mut n_iterations = (N_RUNS_TOTAL as fsize / N_PARALLEL_RUNS as fsize).ceil() as usize;
 
     for i in 0..n_iterations {
-        println!("[BENCH] Starting iter {}/{}", i + 1, n_iterations);
+        println!("Starting iter {}/{}", i + 1, n_iterations);
         let mut iter_solutions = vec![None; N_PARALLEL_RUNS];
         rayon::scope(|s| {
             for (j, solution_slice) in iter_solutions.iter_mut().enumerate(){
@@ -118,7 +118,6 @@ fn main() {
     let avg_width = final_widths.iter().sum::<fsize>() / n_results as fsize;
     let stddev_width = (final_widths.iter().map(|w| (w - avg_width).powi(2)).sum::<fsize>() / n_results as fsize).sqrt();
 
-    println!("Benchmarked {} with {} runs ({}s)", args[1], n_results, TIME_LIMIT_S);
     println!("Results: {:?}", final_widths);
 
     println!("----------------- WIDTH -----------------");
