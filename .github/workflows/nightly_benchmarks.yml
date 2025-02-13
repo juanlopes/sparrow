@@ -28,7 +28,7 @@ jobs:
           override: true
 
       - name: Disable compiler warnings
-        run: echo "RUSTFLAGS='-Awarnings'" >> $GITHUB_ENV
+        run: echo "RUSTFLAGS=-Awarnings" >> $GITHUB_ENV
 
       - name: Run nightly_benchmark for ${{ matrix.instance }}
         run: |
