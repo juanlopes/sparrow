@@ -1,4 +1,4 @@
-name: Nightly Benchmarks
+name: nightly benches
 
 on:
   # Run once a day at 23:00 UTC (0:00 CEST)
@@ -30,8 +30,9 @@ jobs:
       - name: Disable compiler warnings
         run: echo "RUSTFLAGS=-Awarnings" >> $GITHUB_ENV
 
-      - name: Run nightly_benchmark for ${{ matrix.instance }}
+      - name: Run nightly bench for ${{ matrix.instance }}
         run: |
-          echo $RUSTFLAGS
           cd gls_strip_packing
+          echo 'var<<EOF' >> $GITHUB_OUTPUT
           cargo run --release --bin nightly_benchmark -- ../jagua-rs/assets/${{ matrix.instance }}.json >> $GITHUB_OUTPUT
+          echo 'EOF' >> $GITHUB_OUTPUT

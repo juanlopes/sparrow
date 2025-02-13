@@ -28,7 +28,7 @@ const RNG_SEED: Option<usize> = None;
 const N_RUNS_TOTAL: usize = 16;
 const N_PARALLEL_RUNS: usize = 8;
 
-const TIME_LIMIT_S: u64 = 20 * 60;
+const TIME_LIMIT_S: u64 = 1 * 60;
 
 fn main() {
 
