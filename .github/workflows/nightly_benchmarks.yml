@@ -27,8 +27,8 @@ jobs:
           toolchain: stable
           override: true
 
-      - name: Compile nightly_benchmark
-        run: cd gls_strip_packing && cargo build --release --bin nightly_benchmark
-        
+      - name: Disable compiler warnings
+        run: export RUSTFLAGS="-Awarnings"
+
       - name: Run nightly_benchmark for ${{ matrix.instance }}
         run: cd gls_strip_packing && cargo run --release --bin nightly_benchmark -- ../jagua-rs/assets/${{ matrix.instance }}.json
