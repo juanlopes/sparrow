@@ -28,7 +28,10 @@ jobs:
           override: true
 
       - name: Disable compiler warnings
-        run: export RUSTFLAGS="-Awarnings"
+        run: echo "RUSTFLAGS='-Awarnings'" >> $GITHUB_ENV
 
       - name: Run nightly_benchmark for ${{ matrix.instance }}
-        run: cd gls_strip_packing && cargo run --release --bin nightly_benchmark -- ../jagua-rs/assets/${{ matrix.instance }}.json
+        run: |
+          echo $RUSTFLAGS
+          cd gls_strip_packing
+          cargo run --release --bin nightly_benchmark -- ../jagua-rs/assets/${{ matrix.instance }}.json
