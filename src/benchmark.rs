@@ -22,7 +22,7 @@ use gls_strip_packing::opt::gls_orchestrator::GLSOrchestrator;
 use gls_strip_packing::sample::search::SearchConfig;
 use numfmt::{Formatter, Precision, Scales};
 
-const INPUT_FILE: &str = "../jagua-rs/assets/swim.json";
+const INPUT_FILE: &str = "libs/jagua-rs/assets/swim.json";
 
 const RNG_SEED: Option<usize> = None;
 

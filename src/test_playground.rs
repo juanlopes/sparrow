@@ -23,7 +23,7 @@ use gls_strip_packing::opt::gls_optimizer::GLSOptimizer;
 use gls_strip_packing::sample::eval::constructive_evaluator::ConstructiveEvaluator;
 use gls_strip_packing::sample::search::SearchConfig;
 
-const INPUT_FILE: &str = "../jagua-rs/assets/swim.json";
+const INPUT_FILE: &str = "libs/jagua-rs/assets/swim.json";
 
 //const RNG_SEED: Option<usize> = Some(12079827122912017592);
 
@@ -69,7 +69,6 @@ fn main(){
 
     let constr_search_config = SearchConfig{
         n_bin_samples: 1000,
-        n_valid_cutoff: Some(200),
         n_focussed_samples: 0,
         n_coord_descents: 3,
     };

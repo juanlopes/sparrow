@@ -11,7 +11,7 @@ use jagua_rs::fsize;
 use jagua_rs::PI;
 use jagua_rs::geometry::d_transformation::DTransformation;
 use jagua_rs::geometry::geo_enums::{GeoPosition, GeoRelation};
-use jagua_rs::geometry::geo_traits::{Distance, Shape, Transformable};
+use jagua_rs::geometry::geo_traits::{Distance, SeparationDistance, Shape, Transformable};
 use jagua_rs::geometry::primitives::aa_rectangle::AARectangle;
 use jagua_rs::geometry::primitives::circle::Circle;
 use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
@@ -24,7 +24,7 @@ use std::path::Path;
 use svg::node::element::Group;
 use svg::Document;
 
-const INSTANCE_PATH: &str = "../jagua-rs/assets/swim.json";
+const INSTANCE_PATH: &str = "libs/jagua-rs/assets/swim.json";
 const ITEM_ID_TO_SAMPLE: usize = 4;
 
 const OUTPUT_FOLDER: &str = "../output/playground/";

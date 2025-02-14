@@ -32,8 +32,7 @@ jobs:
 
       - name: Run nightly bench for ${{ matrix.instance }}
         run: |
-          cd gls_strip_packing
-          output=$(cargo run --release --bin nightly_benchmark -- ../jagua-rs/assets/${{ matrix.instance }}.json)
+          output=$(cargo run --release --bin nightly_benchmark -- libs/jagua-rs/assets/${{ matrix.instance }}.json)
           
           echo "$output"
           
