@@ -8,9 +8,10 @@ use jagua_rs::entities::instances::instance_generic::InstanceGeneric;
 use jagua_rs::entities::item::Item;
 use jagua_rs::entities::layout::Layout;
 use jagua_rs::fsize;
+use jagua_rs::PI;
 use jagua_rs::geometry::d_transformation::DTransformation;
 use jagua_rs::geometry::geo_enums::{GeoPosition, GeoRelation};
-use jagua_rs::geometry::geo_traits::{DistanceFrom, Shape, Transformable};
+use jagua_rs::geometry::geo_traits::{Distance, Shape, Transformable};
 use jagua_rs::geometry::primitives::aa_rectangle::AARectangle;
 use jagua_rs::geometry::primitives::circle::Circle;
 use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
@@ -65,7 +66,7 @@ pub fn main() {
     let mut dummy_layout = Layout::new(0, dummy_bin);
 
     let items_to_place = [
-        (1, DTransformation::new(0.0, (0.0, 1000.0))),
+        (2, DTransformation::new(0.0, (0.0, 1000.0))),
     ];
 
 
@@ -75,7 +76,7 @@ pub fn main() {
 
     println!("item_placed areas: {:?}, item_sample area: {}", dummy_layout.placed_items.values().map(|pi| pi.shape.area).collect_vec(), item_to_sample.shape.area());
 
-    let mut overlaps = [[-1.0; RESOLUTION]; RESOLUTION];
+    let mut overlaps = [[Overlap::None; RESOLUTION]; RESOLUTION];
 
     for sx in 0..RESOLUTION {
         for sy in 0..RESOLUTION {
@@ -87,11 +88,18 @@ pub fn main() {
             overlaps[sx][sy] = overlap;
         }
     }
-    let max_overlap = overlaps.iter().map(|row| row.iter().cloned().fold(0.0, fsize::max)).fold(0.0, fsize::max);
-    let min_overlap = overlaps.iter().map(|row| row.iter().cloned()
-        .filter(|&x| x > 0.0)
-        .fold(fsize::MAX, fsize::min))
-        .fold(fsize::MAX, fsize::min);
+    let max_overlap = overlaps.iter().map(|row| row.iter().cloned())
+        .flatten()
+        .filter_map(|o| match o {
+            Overlap::Items(o) => Some(o),
+            _ => None,
+        }).max_by_key(|&o| OrderedFloat(o)).unwrap();
+    let min_overlap = overlaps.iter().map(|row| row.iter().cloned())
+        .flatten()
+        .filter_map(|o| match o {
+            Overlap::Items(o) => Some(o),
+            _ => None,
+        }).min_by_key(|&o| OrderedFloat(o)).unwrap();
 
     println!("max_overlap: {}, min_overlap: {}", max_overlap, min_overlap);
 
@@ -142,13 +150,13 @@ pub fn main() {
             let x = bbox.x_min + bbox.width() / RESOLUTION as fsize * sx as fsize;
             let y = bbox.y_min + bbox.height() / RESOLUTION as fsize * sy as fsize;
             let overlap = overlaps[sx][sy];
-            let color = match overlap.partial_cmp(&0.0).unwrap() {
-                Ordering::Greater => {
-                    let gradient = 255.0 * (1.0 - overlap / max_overlap);
+            let color = match overlap {
+                Overlap::Items(o) => {
+                    let gradient = 255.0 * (1.0 - o / max_overlap);
                     format!("rgb(255, {}, {})", gradient, gradient)
-                }
-                Ordering::Equal => "rgb(255, 255, 255)".to_string(),
-                Ordering::Less => "rgb(200, 200, 200)".to_string(),
+                },
+                Overlap::None => "rgb(255, 255, 255)".to_string(),
+                Overlap::Bin => "rgb(200, 200, 200)".to_string(),
             };
             let rect = svg::node::element::Rectangle::new()
                 .set("x", x - margin)
@@ -176,33 +184,46 @@ pub fn main() {
     io::write_svg(&doc, &*Path::new(OUTPUT_FOLDER).join("overlap_visualizer.svg"));
 }
 
-fn eval(layout: &Layout, item: &Item, dt: DTransformation) -> fsize {
+#[derive(Copy, Clone)]
+enum Overlap {
+    None,
+    Bin,
+    Items(fsize)
+}
+
+fn eval(layout: &Layout, item: &Item, dt: DTransformation) -> Overlap {
     let t_shape = item.shape.transform_clone(&dt.compose());
 
     if t_shape.bbox().relation_to(&layout.bin.bbox()) != GeoRelation::Enclosed {
-        -1.0
+        Overlap::Bin
     } else {
         let mut colliding_buffer = Vec::new();
         layout.cde().collect_poly_collisions(&t_shape, &[], &mut colliding_buffer);
         if colliding_buffer.is_empty() {
-            0.0
+            Overlap::None
         } else if colliding_buffer.contains(&HazardEntity::BinExterior) {
-            -1.0
+            Overlap::Bin
         } else {
-            colliding_buffer.iter()
+            let o = colliding_buffer.iter()
                 .map(|haz| layout.hazard_to_p_item_key(haz).unwrap())
                 .map(|pik| layout.placed_items()[pik].shape.as_ref())
-                .map(|other_shape| poly_overlap_proxy(&t_shape, other_shape, layout.bin.bbox()))
-                .sum()
+                .map(|other_shape| poly_overlap_proxy(&t_shape, other_shape))
+                .sum();
+            Overlap::Items(o)
         }
     }
 }
 
-pub fn poly_overlap_proxy(s1: &SimplePolygon, s2: &SimplePolygon, bin_bbox: AARectangle) -> fsize {
-    let deficit = gls_strip_packing::overlap::overlap_proxy::poles_overlap_proxy(
+pub fn poly_overlap_proxy(s1: &SimplePolygon, s2: &SimplePolygon) -> fsize {
+    const MARGIN_FRAC: fsize = 0.01;
+    let margin = (s1.diameter + s2.diameter) / 2.0 * MARGIN_FRAC;
+
+    dbg!(margin);
+
+    let deficit = poles_overlap_proxy(
         s1.surrogate().poles.iter(),
         s2.surrogate().poles.iter(),
-        &bin_bbox,
+        margin,
     );
 
     let s1_penalty = (s1.surrogate().convex_hull_area); //+ //0.1 * (s1.diameter / 4.0).powi(2));
@@ -210,25 +231,23 @@ pub fn poly_overlap_proxy(s1: &SimplePolygon, s2: &SimplePolygon, bin_bbox: AARe
 
     let penalty = 0.99 * fsize::min(s1_penalty, s2_penalty) + 0.01 * fsize::max(s1_penalty, s2_penalty);
 
-    (deficit + 0.00 * penalty).sqrt() * penalty.sqrt()
+    (deficit + 0.000 * penalty).sqrt() * penalty.sqrt()
 }
 
-pub fn poles_overlap_proxy<'a, C>(poles_1: C, poles_2: C, bin_bbox: &AARectangle) -> fsize
+pub fn poles_overlap_proxy<'a, C>(poles_1: C, poles_2: C, margin: fsize) -> fsize
 where
     C: Iterator<Item=&'a Circle> + Clone,
 {
-    let normalizer = 8.13;
     let mut deficit = 0.0;
     for p1 in poles_1 {
         for p2 in poles_2.clone() {
-            let value = match p1.distance_from_border(p2) {
+            let d = match p1.separation_distance(p2) {
                 (GeoPosition::Interior, d) => {
-                    d + normalizer
-                }
-                (GeoPosition::Exterior, d) => normalizer / (d / normalizer + 1.0),
+                    d + margin
+                },
+                (GeoPosition::Exterior, d) => margin / (d / margin + 1.0),
             };
-
-            deficit += value * fsize::min(p1.radius, p2.radius);
+            deficit += d * fsize::min(p1.radius, p2.radius);
         }
     }
     deficit

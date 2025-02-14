@@ -1,6 +1,6 @@
 use jagua_rs::fsize;
 use jagua_rs::geometry::geo_enums::GeoPosition;
-use jagua_rs::geometry::geo_traits::{DistanceFrom, Shape};
+use jagua_rs::geometry::geo_traits::{Distance, SeparationDistance, Shape};
 use jagua_rs::geometry::primitives::aa_rectangle::AARectangle;
 use jagua_rs::geometry::primitives::circle::Circle;
 use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
@@ -48,7 +48,7 @@ where
     let mut deficit = 0.0;
     for p1 in poles_1 {
         for p2 in poles_2.clone() {
-            let value = match p1.distance_from_border(p2) {
+            let value = match p1.separation_distance(p2) {
                 (GeoPosition::Interior, d) => {
                     d + normalizer
                 },

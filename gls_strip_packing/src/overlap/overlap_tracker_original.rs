@@ -14,8 +14,14 @@ use rand::Rng;
 use slotmap::SecondaryMap;
 use std::iter;
 use std::ops::Range;
+use std::path::Path;
 use itertools::{Itertools, MinMaxResult};
+use jagua_rs::entities::instances::instance_generic::InstanceGeneric;
 use jagua_rs::geometry::geo_traits::Shape;
+use jagua_rs::util::assertions;
+use crate::io;
+use crate::io::layout_to_svg::{layout_to_svg, layout_to_svg_2};
+use crate::io::svg_util::SvgDrawOptions;
 
 pub struct OTSnapshot {
     pub pk_idx_map: SecondaryMap<PItemKey, usize>,
@@ -306,6 +312,7 @@ pub fn tracker_matches_layout(ot: &OverlapTracker, l: &Layout) -> bool {
     assert!(l.placed_items.keys().all(|k| ot.pk_idx_map.contains_key(k)));
     assert!(assert_matrix_symmetrical(&ot.pair_overlap));
     assert!(assert_matrix_symmetrical(&ot.pair_weights));
+    assert!(assertions::layout_qt_matches_fresh_qt(l));
 
     for (pk1, pi1) in l.placed_items.iter() {
         let mut collisions = vec![];
@@ -346,6 +353,19 @@ pub fn tracker_matches_layout(ot: &OverlapTracker, l: &Layout) -> bool {
                         } else {
                             //detecting collisions is not symmetrical (in edge cases)
                             warn!("inconsistent overlap");
+                            warn!("collisions: pi_1 {:?} -> {:?}", HazardEntity::from(pi1), collisions);
+                            warn!("opposite collisions: pi_2 {:?} -> {:?}", HazardEntity::from(pi2), opposite_collisions);
+
+                            warn!("pi_1: {:?}", pi1.shape.points.iter().map(|p| format!("({},{})", p.0, p.1)).collect_vec());
+                            warn!("pi_2: {:?}", pi2.shape.points.iter().map(|p| format!("({},{})", p.0, p.1)).collect_vec());
+
+                            {
+                                let mut svg_draw_options = SvgDrawOptions::default();
+                                svg_draw_options.quadtree = true;
+                                let svg = layout_to_svg_2(l, svg_draw_options);
+                                io::write_svg(&svg, &*Path::new("debug.svg"));
+                                panic!("overlap tracker error");
+                            }
                         }
                     }
                 }
@@ -372,6 +392,8 @@ pub fn tracker_matches_layout(ot: &OverlapTracker, l: &Layout) -> bool {
                         } else {
                             //detecting collisions is not symmetrical (in edge cases)
                             warn!("inconsistent overlap");
+                            warn!("collisions: {:?} -> {:?}", HazardEntity::from(pi1), collisions);
+                            warn!("opposite collisions: {:?} -> {:?}", HazardEntity::from(pi2), opposite_collisions);
                         }
                     }
                 }

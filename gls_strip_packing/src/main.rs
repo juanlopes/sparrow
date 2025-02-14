@@ -3,6 +3,7 @@ extern crate core;
 use std::path::Path;
 use std::time::{Duration, Instant};
 use jagua_rs::entities::instances::instance::Instance;
+use jagua_rs::entities::instances::instance_generic::InstanceGeneric;
 use jagua_rs::entities::problems::strip_packing::SPProblem;
 use jagua_rs::io::parser::Parser;
 use jagua_rs::util::config::{CDEConfig, SPSurrogateConfig};
@@ -20,16 +21,15 @@ use gls_strip_packing::opt::gls_optimizer::GLSOptimizer;
 use gls_strip_packing::opt::gls_orchestrator::GLSOrchestrator;
 use gls_strip_packing::sample::search::SearchConfig;
 
-const INPUT_FILE: &str = "../jagua-rs/assets/albano.json";
+const INPUT_FILE: &str = "../jagua-rs/assets/mao.json";
 
 const TIME_LIMIT_S: u64 = 20 * 60;
 
-const N_THREADS: usize = 8;
+//const RNG_SEED: Option<usize> = Some(2);
 
 const RNG_SEED: Option<usize> = None;
-fn main() {
 
-    rayon::ThreadPoolBuilder::new().num_threads(N_THREADS).build_global().unwrap();
+fn main() {
 
     if cfg!(debug_assertions) {
         io::init_logger(log::LevelFilter::Debug);
@@ -53,6 +53,8 @@ fn main() {
 
     let parser = Parser::new(PolySimplConfig::Disabled, cde_config, true);
     let instance = parser.parse(&json_instance);
+
+    warn!("#{} items with {} area", instance.total_item_qty(), instance.item_area());
 
     let sp_instance = match instance.clone(){
         Instance::SP(spi) => spi,

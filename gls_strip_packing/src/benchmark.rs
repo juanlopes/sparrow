@@ -27,9 +27,9 @@ const INPUT_FILE: &str = "../jagua-rs/assets/swim.json";
 const RNG_SEED: Option<usize> = None;
 
 const N_RUNS_TOTAL: usize = 16;
-const N_PARALLEL_RUNS: usize = 4;
+const N_PARALLEL_RUNS: usize = 8;
 
-const TIME_LIMIT_S: u64 = 10 * 60;
+const TIME_LIMIT_S: u64 = 20 * 60;
 
 fn main() {
 
@@ -40,7 +40,9 @@ fn main() {
         io::init_logger(log::LevelFilter::Warn);
     }
 
-    let json_instance = io::read_json_instance(Path::new(&INPUT_FILE));
+    //the input file is the first argument
+    let args: Vec<String> = std::env::args().collect();
+    let json_instance = io::read_json_instance(Path::new(&args[1]));
 
     let cde_config = CDEConfig{
         quadtree_depth: 4,
