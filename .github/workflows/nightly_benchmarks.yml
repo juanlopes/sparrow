@@ -3,7 +3,7 @@ name: nightly benches
 on:
   # Run once a day at 23:00 UTC (0:00 CEST)
   schedule:
-    - cron: '2 3 * * *'
+    - cron: '0 23 * * *'
   # Allows manually trigger the workflow if needed
   workflow_dispatch:
 
