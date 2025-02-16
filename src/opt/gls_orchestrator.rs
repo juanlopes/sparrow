@@ -54,7 +54,7 @@ const RESCALE_WEIGHT_TARGET: fsize = 2.0;
 
 const WEIGHT_INCREMENT: fsize = 1.2;
 const TABU_SIZE: usize = 10000;
-const JUMP_COOLDOWN: usize = 5;
+const JUMP_COOLDOWN: usize = 0;
 
 const N_THREADS: usize = 2;
 
