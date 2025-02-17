@@ -6,6 +6,10 @@ on:
     - cron: '0 23 * * *'
   # Allows manually trigger the workflow if needed
   workflow_dispatch:
+  # Allows running the workflow on push to exp/* branches
+  push:
+    branches:
+      - exp/*
 
 jobs:
   benchmark:
@@ -18,7 +22,6 @@ jobs:
       - name: Checkout latest main commit
         uses: actions/checkout@v4
         with:
-          ref: main
           submodules: 'recursive'
 
       - name: Set up Rust
