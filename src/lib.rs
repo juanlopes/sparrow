@@ -14,9 +14,9 @@ static GLOBAL: MiMalloc = MiMalloc;
 
 pub static EPOCH: Lazy<Instant> = Lazy::new(Instant::now);
 
-pub const OUTPUT_DIR: &str = "../output";
+pub const OUTPUT_DIR: &str = "output";
 
-pub const SVG_OUTPUT_DIR: &str = "../output/svg";
+pub const SVG_OUTPUT_DIR: &str = "output/svg";
 
 pub const DRAW_OPTIONS: SvgDrawOptions = SvgDrawOptions{
     theme: SvgLayoutTheme::GRAY_THEME,
