@@ -6,13 +6,15 @@ use jagua_rs::geometry::primitives::circle::Circle;
 use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
 use ordered_float::{Float, OrderedFloat};
 
-pub const DIAM_FRAC_NORMALIZER: fsize = 1.0 / 1000.0;
+pub const NORMALIZER_DIAM_FRAC: fsize = 0.01;
 
 pub fn poly_overlap_proxy(s1: &SimplePolygon, s2: &SimplePolygon, bin_bbox: AARectangle) -> fsize {
+    let normalizer = (s1.diameter() + s2.diameter()) / 2.0 * NORMALIZER_DIAM_FRAC;
+
     let deficit = poles_overlap_proxy(
         s1.surrogate().poles.iter(),
         s2.surrogate().poles.iter(),
-        &bin_bbox,
+        normalizer,
     );
 
     let s1_penalty = (s1.surrogate().convex_hull_area); //+ //0.1 * (s1.diameter / 4.0).powi(2));
@@ -40,11 +42,10 @@ pub fn bin_overlap_proxy(s: &SimplePolygon, bin_bbox: AARectangle) -> fsize {
     10.0 * (deficit + 0.001 * penalty).sqrt() * penalty.sqrt()
 }
 
-pub fn poles_overlap_proxy<'a, C>(poles_1: C, poles_2: C, bin_bbox: &AARectangle) -> fsize
+pub fn poles_overlap_proxy<'a, C>(poles_1: C, poles_2: C, normalizer: fsize) -> fsize
 where
     C: Iterator<Item=&'a Circle> + Clone,
 {
-    let normalizer = bin_bbox.diameter() * DIAM_FRAC_NORMALIZER;
     let mut deficit = 0.0;
     for p1 in poles_1 {
         for p2 in poles_2.clone() {
