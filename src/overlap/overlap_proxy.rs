@@ -6,7 +6,7 @@ use jagua_rs::geometry::primitives::circle::Circle;
 use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
 use ordered_float::{Float, OrderedFloat};
 
-pub const NORMALIZER_DIAM_FRAC: fsize = 0.005;
+pub const NORMALIZER_DIAM_FRAC: fsize = 0.01;
 
 pub fn poly_overlap_proxy(s1: &SimplePolygon, s2: &SimplePolygon, bin_bbox: AARectangle) -> fsize {
     let normalizer = fsize::max(s1.diameter(),s2.diameter()) * NORMALIZER_DIAM_FRAC;
