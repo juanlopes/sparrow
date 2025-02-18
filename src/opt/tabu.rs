@@ -70,6 +70,10 @@ fn n_similar_placements(sol1: &Solution, sol2: &Solution, ch_area_cutoff: fsize)
     let l1 = &sol1.layout_snapshots[0];
     let l2 = &sol2.layout_snapshots[0];
 
+    if l1.bin.bbox().width() != l2.bin.bbox().width() || l1.placed_items.len() != l2.placed_items.len() {
+        return 0;
+    }
+
     let mut n_similar = 0;
 
     for pi1 in l1.placed_items.values().filter(|pi| pi.shape.surrogate().convex_hull_area > ch_area_cutoff) {
