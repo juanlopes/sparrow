@@ -155,8 +155,8 @@ impl OverlapTracker {
             .unwrap();
 
 
-        const MAX_INCREASE : fsize = 1.5;
-        const MIN_INCREASE: fsize = 1.1;
+        const MAX_INCREASE : fsize = 2.0;
+        const MIN_INCREASE: fsize = 1.2;
         const DECAY: fsize = 0.95;
 
 

@@ -9,7 +9,7 @@ use ordered_float::{Float, OrderedFloat};
 pub const NORMALIZER_DIAM_FRAC: fsize = 0.01;
 
 pub fn poly_overlap_proxy(s1: &SimplePolygon, s2: &SimplePolygon, bin_bbox: AARectangle) -> fsize {
-    let normalizer = fsize::max(s1.diameter(),s2.diameter()) * NORMALIZER_DIAM_FRAC;
+    let normalizer = fsize::max(s1.diameter(), s2.diameter()) * NORMALIZER_DIAM_FRAC;
 
     let deficit = poles_overlap_proxy(
         s1.surrogate().poles.iter(),
@@ -22,7 +22,7 @@ pub fn poly_overlap_proxy(s1: &SimplePolygon, s2: &SimplePolygon, bin_bbox: AARe
 
     let penalty = 0.99 * fsize::min(s1_penalty,s2_penalty) + 0.01 * fsize::max(s1_penalty,s2_penalty);
 
-    (deficit + 0.00 * penalty).sqrt() * penalty.sqrt()
+    (deficit + 0.0001 * penalty).sqrt() * penalty.sqrt()
 }
 
 pub fn bin_overlap_proxy(s: &SimplePolygon, bin_bbox: AARectangle) -> fsize {
@@ -39,7 +39,7 @@ pub fn bin_overlap_proxy(s: &SimplePolygon, bin_bbox: AARectangle) -> fsize {
     };
     let penalty = s.surrogate().convex_hull_area;
 
-    10000.0 * (deficit + 0.00 * penalty).sqrt() * penalty.sqrt()
+    100.0 * (deficit + 0.001 * penalty).sqrt() * penalty.sqrt()
 }
 
 pub fn poles_overlap_proxy_old<'a, C>(poles_1: C, poles_2: C, normalizer: fsize) -> fsize
