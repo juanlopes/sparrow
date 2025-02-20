@@ -1,4 +1,4 @@
-name: nightly benches
+name: real benches
 
 on:
   # Allows manually trigger the workflow if needed
