@@ -18,7 +18,10 @@ jobs:
           submodules: 'recursive'
 
       - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
 
       - name: Disable compiler warnings
         run: echo "RUSTFLAGS=-Awarnings" >> $GITHUB_ENV
