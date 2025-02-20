@@ -47,6 +47,8 @@ use tap::Tap;
 const N_ITER_NO_IMPROVEMENT: usize = 50;
 
 const N_STRIKES: usize = 5;
+
+//TODO: Let the shrink rate depend on the time left. example: 0.5% for the first 3/4, 0.05% for the following 3/4, 0.005% for the last 1/16
 const R_SHRINK: fsize = 0.005;
 //const R_EXPAND: fsize = 0.003;
 
@@ -135,11 +137,12 @@ impl GLSOrchestrator {
                             .collect_vec();
 
                         //Map solutions across 3 std devs
-                        let mut distr = Normal::new(0.0_f64, sorted_sols.len() as fsize / 3.0).unwrap();
+                        let mut distr = Normal::new(0.0_f64, sorted_sols.len() as fsize / 5.0).unwrap();
                         let selected_idx = (distr.sample(&mut self.rng).abs().floor() as usize).min(sorted_sols.len() - 1);
-                        let selected = sorted_sols.get(selected_idx).unwrap();
 
                         dbg!(selected_idx, sorted_sols.len());
+
+                        let selected = sorted_sols.get(selected_idx).unwrap();
 
                         self.rollback(&selected.0.clone(), None);
                     }

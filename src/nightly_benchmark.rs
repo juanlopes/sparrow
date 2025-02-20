@@ -117,23 +117,32 @@ fn main() {
 
     let avg_width = final_widths.iter().sum::<fsize>() / n_results as fsize;
     let stddev_width = (final_widths.iter().map(|w| (w - avg_width).powi(2)).sum::<fsize>() / n_results as fsize).sqrt();
+    let median_width = match n_results % 2 {
+        0 => (final_widths[n_results / 2] + final_widths[n_results / 2 - 1]) / 2.0,
+        _ => final_widths[n_results / 2],
+    };
 
-    println!("Results: {:?}", final_widths);
+    println!("Results widths: {:?}", final_widths);
+    println!("Results usages: {:?}", final_usages);
 
     println!("----------------- WIDTH -----------------");
     println!("Best: {}", final_widths.first().unwrap());
     println!("Worst: {}", final_widths.last().unwrap());
-    println!("Med: {}", final_widths[final_widths.len() / 2]);
+    println!("Med: {}", median_width);
     println!("Avg: {}", avg_width);
     println!("Stddev: {}", stddev_width);
 
     let avg_yield = final_usages.iter().sum::<fsize>() / n_results as fsize;
     let stddev_yield = (final_usages.iter().map(|u| (u - avg_yield).powi(2)).sum::<fsize>() / n_results as fsize).sqrt();
+    let median_yield = match n_results % 2 {
+        0 => (final_usages[n_results / 2] + final_usages[n_results / 2 - 1]) / 2.0,
+        _ => final_usages[n_results / 2],
+    };
 
     println!("----------------- USAGE -----------------");
     println!("Best: {}", final_usages.first().unwrap());
     println!("Worst: {}", final_usages.last().unwrap());
-    println!("Med: {}", final_usages[final_usages.len() / 2]);
+    println!("Med: {}", median_yield);
     println!("Avg: {}", avg_yield);
     println!("Stddev: {}", stddev_yield);
 }
