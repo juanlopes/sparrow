@@ -134,13 +134,12 @@ impl GLSOrchestrator {
                             .sorted_by_key(|(_, eval)| OrderedFloat(*eval))
                             .collect_vec();
 
-
-                        let mut distr = Normal::new(0.0_f64, 0.34_f64).unwrap(); //map 0 to 1 between 3 std deviations
-                        let sample = distr.sample(&mut self.rng).min(1.0);
-                        let selected_idx = (sample.abs() * sorted_sols.len() as f64).floor() as usize;
+                        //Map solutions across 3 std devs
+                        let mut distr = Normal::new(0.0_f64, sorted_sols.len() as fsize / 3.0).unwrap();
+                        let selected_idx = (distr.sample(&mut self.rng).abs().floor() as usize).min(sorted_sols.len() - 1);
                         let selected = sorted_sols.get(selected_idx).unwrap();
 
-                        dbg!(selected_idx, selected.1);
+                        dbg!(selected_idx, sorted_sols.len());
 
                         self.rollback(&selected.0.clone(), None);
                     }
