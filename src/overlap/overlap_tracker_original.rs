@@ -156,7 +156,8 @@ impl OverlapTracker {
 
 
         const MAX_INCREASE : fsize = 2.0;
-        const MIN_INCREASE: fsize = 1.1;
+        const MIN_INCREASE: fsize = 1.2;
+        const DECAY: fsize = 0.95;
 
 
         for idx1 in 0..self.capacity {
@@ -170,14 +171,14 @@ impl OverlapTracker {
                     *w *= multiplier;
                 }
                 else {
-                    *w = fsize::max(1.0, *w * 0.95)
+                    *w = fsize::max(1.0, *w * DECAY)
                 }
             }
             if self.bin_overlap[idx1] > 0.0 {
                 self.bin_weights[idx1] *= MAX_INCREASE;
             }
             else {
-                self.bin_weights[idx1] = fsize::max(1.0, self.bin_weights[idx1] * 0.95);
+                self.bin_weights[idx1] = fsize::max(1.0, self.bin_weights[idx1] * DECAY);
             }
         }
 

@@ -6,13 +6,15 @@ use jagua_rs::geometry::primitives::circle::Circle;
 use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
 use ordered_float::{Float, OrderedFloat};
 
-pub const DIAM_FRAC_NORMALIZER: fsize = 1.0 / 1000.0;
+pub const NORMALIZER_DIAM_FRAC: fsize = 0.01;
 
 pub fn poly_overlap_proxy(s1: &SimplePolygon, s2: &SimplePolygon, bin_bbox: AARectangle) -> fsize {
+    let normalizer = fsize::max(s1.diameter(), s2.diameter()) * NORMALIZER_DIAM_FRAC;
+
     let deficit = poles_overlap_proxy(
         s1.surrogate().poles.iter(),
         s2.surrogate().poles.iter(),
-        &bin_bbox,
+        normalizer,
     );
 
     let s1_penalty = (s1.surrogate().convex_hull_area); //+ //0.1 * (s1.diameter / 4.0).powi(2));
@@ -20,7 +22,7 @@ pub fn poly_overlap_proxy(s1: &SimplePolygon, s2: &SimplePolygon, bin_bbox: AARe
 
     let penalty = 0.99 * fsize::min(s1_penalty,s2_penalty) + 0.01 * fsize::max(s1_penalty,s2_penalty);
 
-    (deficit + 0.001 * penalty).sqrt() * penalty.sqrt()
+    (deficit + 0.0001 * penalty).sqrt() * penalty.sqrt()
 }
 
 pub fn bin_overlap_proxy(s: &SimplePolygon, bin_bbox: AARectangle) -> fsize {
@@ -37,14 +39,13 @@ pub fn bin_overlap_proxy(s: &SimplePolygon, bin_bbox: AARectangle) -> fsize {
     };
     let penalty = s.surrogate().convex_hull_area;
 
-    10.0 * (deficit + 0.001 * penalty).sqrt() * penalty.sqrt()
+    100.0 * (deficit + 0.001 * penalty).sqrt() * penalty.sqrt()
 }
 
-pub fn poles_overlap_proxy<'a, C>(poles_1: C, poles_2: C, bin_bbox: &AARectangle) -> fsize
+pub fn poles_overlap_proxy_old<'a, C>(poles_1: C, poles_2: C, normalizer: fsize) -> fsize
 where
     C: Iterator<Item=&'a Circle> + Clone,
 {
-    let normalizer = bin_bbox.diameter() * DIAM_FRAC_NORMALIZER;
     let mut deficit = 0.0;
     for p1 in poles_1 {
         for p2 in poles_2.clone() {
@@ -60,6 +61,28 @@ where
     }
     deficit
 }
+
+pub fn poles_overlap_proxy<'a, C>(poles_1: C, poles_2: C, epsilon: fsize) -> fsize
+where
+    C: Iterator<Item=&'a Circle> + Clone,
+{
+    let mut deficit = 0.0;
+    for p1 in poles_1 {
+        for p2 in poles_2.clone() {
+            let d = (p1.radius + p2.radius) - p1.center.distance(p2.center);
+            let d_m = d - epsilon;
+
+            let d_prime = match d_m >= 0.0 {
+                true => d_m + epsilon,
+                false => epsilon.powi(2) / (-d_m + epsilon),
+            };
+
+            deficit += d_prime * fsize::min(p1.radius, p2.radius);
+        }
+    }
+    deficit
+}
+
 fn distance_between_bboxes(big_bbox: &AARectangle, small_bbox: &AARectangle) -> fsize {
     let min_d = [big_bbox.x_max - small_bbox.x_max,
         small_bbox.x_min - big_bbox.x_min,
