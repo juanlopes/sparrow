@@ -26,7 +26,6 @@ use jagua_rs::geometry::primitives::aa_rectangle::AARectangle;
 use jagua_rs::util::fpa::FPA;
 use log::{debug, info, warn};
 use ordered_float::OrderedFloat;
-use rand::distributions::{WeightedError, WeightedIndex};
 use rand::prelude::{Distribution, IteratorRandom, SliceRandom, SmallRng};
 use std::char::decode_utf16;
 use std::cmp::Reverse;

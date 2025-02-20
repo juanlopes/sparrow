@@ -15,7 +15,6 @@ use jagua_rs::fsize;
 use jagua_rs::geometry::geo_traits::Shape;
 use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
 use log::{debug, info, log, warn};
-use rand::distributions::WeightedIndex;
 use rand::prelude::{Distribution, SmallRng};
 use rand::Rng;
 use std::iter;

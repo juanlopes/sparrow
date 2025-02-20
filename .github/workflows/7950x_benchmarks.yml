@@ -1,0 +1,40 @@
+name: nightly benches
+
+on:
+  # Allows manually trigger the workflow if needed
+  workflow_dispatch:
+
+jobs:
+  benchmark:
+    runs-on: [self-hosted,7950X]
+    strategy:
+      matrix:
+        instance: ["swim", "trousers", "shirts", "albano", "mao", "dagli", "marques"]
+
+    steps:
+      - name: Checkout latest main commit
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Disable compiler warnings
+        run: echo "RUSTFLAGS=-Awarnings" >> $GITHUB_ENV
+
+      - name: Run nightly bench for ${{ matrix.instance }}
+        run: |
+          output=$(cargo run --release --bin nightly_benchmark -- libs/jagua-rs/assets/${{ matrix.instance }}.json)
+          
+          echo "$output"
+          
+          {
+            echo "## Benchmark Output for \`${{ matrix.instance }}\`"
+            echo '```'
+            echo "$output"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

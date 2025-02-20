@@ -1,5 +1,6 @@
 use crate::io::layout_to_svg::{layout_to_svg, s_layout_to_svg};
 use crate::io::svg_util::SvgDrawOptions;
+use crate::opt::gls_optimizer::GLSOptimizer;
 use crate::opt::tabu::TabuList;
 use crate::overlap::overlap_tracker_original;
 use crate::overlap::overlap_tracker_original::{OTSnapshot, OverlapTracker};
@@ -9,7 +10,7 @@ use crate::sample::search;
 use crate::sample::search::SearchConfig;
 use crate::{io, FMT, SVG_OUTPUT_DIR};
 use float_cmp::approx_eq;
-use itertools::Itertools;
+use itertools::{sorted, Itertools};
 use jagua_rs::entities::bin::Bin;
 use jagua_rs::entities::instances::instance_generic::InstanceGeneric;
 use jagua_rs::entities::instances::strip_packing::SPInstance;
@@ -21,13 +22,17 @@ use jagua_rs::entities::problems::strip_packing::SPProblem;
 use jagua_rs::entities::solution::Solution;
 use jagua_rs::fsize;
 use jagua_rs::geometry::d_transformation::DTransformation;
+use jagua_rs::geometry::geo_enums::GeoRelation;
 use jagua_rs::geometry::geo_traits::{Shape, Transformable};
 use jagua_rs::geometry::primitives::aa_rectangle::AARectangle;
 use jagua_rs::util::fpa::FPA;
 use log::{debug, info, warn};
 use ordered_float::OrderedFloat;
-use rand::distributions::{Uniform, WeightedError, WeightedIndex};
-use rand::prelude::{Distribution, IteratorRandom, SliceRandom, SmallRng};
+use rand_distr::Distribution;
+use rand::{Rng, SeedableRng};
+use rand_distr::Normal;
+use rayon::iter::IntoParallelRefMutIterator;
+use rayon::iter::{split, ParallelIterator};
 use std::char::decode_utf16;
 use std::cmp::Reverse;
 use std::collections::VecDeque;
@@ -35,16 +40,15 @@ use std::iter;
 use std::ops::Range;
 use std::path::Path;
 use std::time::{Duration, Instant};
-use jagua_rs::geometry::geo_enums::GeoRelation;
-use rand::{Rng, SeedableRng};
-use rayon::iter::{split, ParallelIterator};
-use rayon::iter::IntoParallelRefMutIterator;
+use rand::prelude::IteratorRandom;
+use rand::rngs::SmallRng;
 use tap::Tap;
-use crate::opt::gls_optimizer::GLSOptimizer;
 
 const N_ITER_NO_IMPROVEMENT: usize = 50;
 
 const N_STRIKES: usize = 5;
+
+//TODO: Let the shrink rate depend on the time left. example: 0.5% for the first 3/4, 0.05% for the following 3/4, 0.005% for the last 1/16
 const R_SHRINK: fsize = 0.005;
 //const R_EXPAND: fsize = 0.003;
 
@@ -127,13 +131,20 @@ impl GLSOrchestrator {
                     self.tabu_list.push(local_best.0.clone(), total_overlap);
                     warn!("adding local best to tabu list");
                     {
-                        let selected = self.tabu_list.list.iter()
+                        let sorted_sols = self.tabu_list.list.iter()
                             .filter(|(sol, eval)| sol.layout_snapshots[0].bin.bbox().width() == current_width)
-                            .choose(&mut self.rng)
-                            .cloned()
-                            .unwrap();
+                            .sorted_by_key(|(_, eval)| OrderedFloat(*eval))
+                            .collect_vec();
 
-                        self.rollback(&selected.0, None);
+                        //Map solutions across 3 std devs
+                        let mut distr = Normal::new(0.0_f64, sorted_sols.len() as fsize / 5.0).unwrap();
+                        let selected_idx = (distr.sample(&mut self.rng).abs().floor() as usize).min(sorted_sols.len() - 1);
+
+                        dbg!(selected_idx, sorted_sols.len());
+
+                        let selected = sorted_sols.get(selected_idx).unwrap();
+
+                        self.rollback(&selected.0.clone(), None);
                     }
                     current_width
                 }
@@ -225,7 +236,6 @@ impl GLSOrchestrator {
     }
 
     pub fn modify(&mut self) -> usize {
-
         let master_sol = self.master_prob.create_solution(None);
 
         self.optimizers.par_iter_mut()
@@ -240,7 +250,7 @@ impl GLSOrchestrator {
 
         // Save the best one
         let best_opt = self.optimizers.iter_mut()
-            .min_by_key(|opt|{
+            .min_by_key(|opt| {
                 let w_o = opt.overlap_tracker.get_total_weighted_overlap();
                 OrderedFloat(w_o)
             })
@@ -258,8 +268,7 @@ impl GLSOrchestrator {
 
         if let Some(ots) = ots {
             self.master_ot.restore(ots, &self.master_prob.layout);
-        }
-        else {
+        } else {
             self.master_ot = OverlapTracker::new(&self.master_prob.layout, RESCALE_WEIGHT_TARGET, WEIGHT_INCREMENT, JUMP_COOLDOWN);
         }
     }
@@ -406,5 +415,4 @@ impl GLSOrchestrator {
 
         self.svg_counter += 1;
     }
-
 }

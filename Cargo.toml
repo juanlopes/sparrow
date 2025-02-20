@@ -26,7 +26,8 @@ path = "src/playgrounds/playground_overlap_visualizer.rs"
 
 [dependencies]
 jagua-rs = { path = "libs/jagua-rs/jagua-rs", features = ["double-precision"]}
-rand = { version = "0.8", features = [ "small_rng" ] }
+rand = { version = "0.9.0", features = [ "small_rng" ] }
+rand_distr = "0.5.1"
 svg = "0.18.0"
 itertools = "0.14.0"
 log = { version = "0.4", features = ["release_max_level_debug"] }
@@ -43,10 +44,11 @@ ordered-float = "4.6.0"
 rayon = "1.10.0"
 num_cpus = "1.16.0"
 numfmt = "1.1.1"
+plotly = "0.12.1"
 
 [profile.test]
 inherits = "release"
 debug-assertions = true
 
 [profile.release]
-#debug = true
+debug = true

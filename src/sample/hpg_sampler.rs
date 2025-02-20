@@ -7,9 +7,9 @@ use jagua_rs::geometry::geo_traits::{CollidesWith, Shape};
 use jagua_rs::geometry::primitives::aa_rectangle::AARectangle;
 use jagua_rs::geometry::transformation::Transformation;
 use log::debug;
-use rand::distributions::uniform::UniformSampler;
-use rand::distributions::{Distribution, Uniform};
-use rand::prelude::{SliceRandom, SmallRng};
+use rand_distr::uniform::UniformSampler;
+use rand_distr::{Distribution, Uniform};
+use rand::prelude::{IndexedRandom, SliceRandom, SmallRng};
 use rand::Rng;
 use crate::sample::uniform_sampler::UniformAARectSampler;
 
