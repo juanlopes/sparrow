@@ -42,54 +42,22 @@ pub fn bin_overlap_proxy(s: &SimplePolygon, bin_bbox: AARectangle) -> fsize {
     100.0 * (deficit + 0.001 * penalty).sqrt() * penalty.sqrt()
 }
 
-pub fn poles_overlap_proxy_old<'a, C>(poles_1: C, poles_2: C, normalizer: fsize) -> fsize
-where
-    C: Iterator<Item=&'a Circle> + Clone,
-{
-    let mut deficit = 0.0;
-    for p1 in poles_1 {
-        for p2 in poles_2.clone() {
-            let value = match p1.separation_distance(p2) {
-                (GeoPosition::Interior, d) => {
-                    d + normalizer
-                },
-                (GeoPosition::Exterior, d) => normalizer / (d / normalizer + 1.0),
-            };
-
-            deficit += value * fsize::min(p1.radius, p2.radius);
-        }
-    }
-    deficit
-}
-
 pub fn poles_overlap_proxy<'a, C>(poles_1: C, poles_2: C, epsilon: fsize) -> fsize
 where
     C: Iterator<Item=&'a Circle> + Clone,
 {
-    let mut deficit = 0.0;
+    let mut total_deficit = 0.0;
     for p1 in poles_1 {
         for p2 in poles_2.clone() {
             let d = (p1.radius + p2.radius) - p1.center.distance(p2.center);
-            let d_m = d - epsilon;
 
-            let d_prime = match d_m >= 0.0 {
-                true => d_m + epsilon,
-                false => epsilon.powi(2) / (-d_m + epsilon),
+            let d_decay = match d >= epsilon {
+                true => d,
+                false => epsilon.powi(2) / (-d + 2.0 * epsilon),
             };
 
-            deficit += d_prime * fsize::min(p1.radius, p2.radius);
+            total_deficit += d_decay * fsize::min(p1.radius, p2.radius);
         }
     }
-    deficit
-}
-
-fn distance_between_bboxes(big_bbox: &AARectangle, small_bbox: &AARectangle) -> fsize {
-    let min_d = [big_bbox.x_max - small_bbox.x_max,
-        small_bbox.x_min - big_bbox.x_min,
-        big_bbox.y_max - small_bbox.y_max,
-        small_bbox.y_min - big_bbox.y_min].iter().min_by_key(|d| OrderedFloat(**d)).copied().unwrap();
-
-    assert!(min_d >= -1.0);
-
-    min_d
+    total_deficit
 }
