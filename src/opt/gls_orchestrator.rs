@@ -140,8 +140,6 @@ impl GLSOrchestrator {
                         let mut distr = Normal::new(0.0_f64, sorted_sols.len() as fsize / 5.0).unwrap();
                         let selected_idx = (distr.sample(&mut self.rng).abs().floor() as usize).min(sorted_sols.len() - 1);
 
-                        dbg!(selected_idx, sorted_sols.len());
-
                         let selected = sorted_sols.get(selected_idx).unwrap();
 
                         self.rollback(&selected.0.clone(), None);
