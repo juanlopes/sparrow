@@ -294,7 +294,7 @@ impl OverlapTracker {
         self.pair_weights[(idx2, idx1)] = weight;
     }
 
-    pub fn set_jumped(&mut self, pk: PItemKey){
+    pub fn register_jump(&mut self, pk: PItemKey){
         let idx = self.pk_idx_map[pk];
         self.last_jump[idx] = self.weight_iter;
         debug!("jump registered at iter: {}", self.weight_iter);

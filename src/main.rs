@@ -17,7 +17,6 @@ use gls_strip_packing::{io, DRAW_OPTIONS, SVG_OUTPUT_DIR};
 use gls_strip_packing::io::layout_to_svg::s_layout_to_svg;
 use gls_strip_packing::io::svg_util::{SvgDrawOptions, SvgLayoutTheme};
 use gls_strip_packing::opt::constr_builder::ConstructiveBuilder;
-use gls_strip_packing::opt::gls_optimizer::GLSOptimizer;
 use gls_strip_packing::opt::gls_orchestrator::GLSOrchestrator;
 use gls_strip_packing::sample::search::SearchConfig;
 
