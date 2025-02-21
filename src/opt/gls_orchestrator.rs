@@ -28,8 +28,10 @@ use jagua_rs::geometry::primitives::aa_rectangle::AARectangle;
 use jagua_rs::util::fpa::FPA;
 use log::{debug, info, warn};
 use ordered_float::OrderedFloat;
-use rand_distr::Distribution;
+use rand::prelude::IteratorRandom;
+use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
+use rand_distr::Distribution;
 use rand_distr::Normal;
 use rayon::iter::IntoParallelRefMutIterator;
 use rayon::iter::{split, ParallelIterator};
@@ -40,8 +42,6 @@ use std::iter;
 use std::ops::Range;
 use std::path::Path;
 use std::time::{Duration, Instant};
-use rand::prelude::IteratorRandom;
-use rand::rngs::SmallRng;
 use tap::Tap;
 
 const N_ITER_NO_IMPROVEMENT: usize = 50;
@@ -85,10 +85,12 @@ impl GLSOrchestrator {
         let overlap_tracker = OverlapTracker::new(&problem.layout, RESCALE_WEIGHT_TARGET, WEIGHT_INCREMENT, JUMP_COOLDOWN);
         let tabu_list = TabuList::new(TABU_SIZE, &instance);
         let optimizers = (0..N_THREADS)
-            .map(|i| {
-                let output_folder = format!("{}/opt_{}", output_folder, i);
-                GLSOptimizer::new(problem.clone(), instance.clone(), SmallRng::seed_from_u64(rng.gen()), output_folder)
-            })
+            .map(|i| GLSOptimizer::new(
+                problem.clone(),
+                instance.clone(),
+                SmallRng::seed_from_u64(rng.random()),
+                format!("{}/opt_{}", output_folder, i),
+            ))
             .collect();
         Self {
             master_prob: problem.clone(),
@@ -103,60 +105,55 @@ impl GLSOrchestrator {
     }
 
     pub fn solve(&mut self, time_out: Duration) -> Solution {
-        //self.change_strip_width(5750.0);
         let mut current_width = self.master_prob.occupied_width();
         let (mut best_feasible_solution, mut best_width) = (self.master_prob.create_solution(None), current_width);
 
-
         self.write_to_disk(None, true);
+        info!("[GLS] starting optimization with initial width: {:.3} ({:.3}%)", current_width, self.master_prob.usage() * 100.0);
 
         let start = Instant::now();
-        let mut i = 0;
 
         while start.elapsed() < time_out {
             let local_best = self.separate_layout();
             let total_overlap = self.master_ot.get_total_overlap();
-            let next_width = {
-                if total_overlap == 0.0 {
-                    //successful
-                    if current_width < best_width {
-                        warn!("new best width at: {:.3}", current_width);
-                        best_width = current_width;
-                        best_feasible_solution = local_best.0.clone();
-                    }
-                    current_width * (1.0 - R_SHRINK)
-                } else {
-                    //not successful
-                    //self.rollback(&local_best.0, &local_best.1);
-                    self.tabu_list.push(local_best.0.clone(), total_overlap);
-                    warn!("adding local best to tabu list");
-                    {
-                        let sorted_sols = self.tabu_list.list.iter()
-                            .filter(|(sol, eval)| sol.layout_snapshots[0].bin.bbox().width() == current_width)
-                            .sorted_by_key(|(_, eval)| OrderedFloat(*eval))
-                            .collect_vec();
 
-                        //Map solutions across 3 std devs
-                        let mut distr = Normal::new(0.0_f64, sorted_sols.len() as fsize / 5.0).unwrap();
-                        let selected_idx = (distr.sample(&mut self.rng).abs().floor() as usize).min(sorted_sols.len() - 1);
-
-                        let selected = sorted_sols.get(selected_idx).unwrap();
-
-                        self.rollback(&selected.0.clone(), None);
-                    }
-                    current_width
+            if total_overlap == 0.0 {
+                info!("[GLS] layout separated successfully");
+                //layout is successfully separated
+                if current_width < best_width {
+                    info!("[GLS] new best width at : {:.3} ({:.3}%)", current_width, self.master_prob.usage() * 100.0);
+                    best_width = current_width;
+                    best_feasible_solution = local_best.0.clone();
                 }
-            };
-            self.master_ot.rescale_weights();
-            self.write_to_disk(Some(local_best.0), true);
-            warn!("width: {:.3} -> {:.3} (best: {:.3})", current_width, next_width, best_width);
-            if next_width != current_width {
+                let next_width = current_width * (1.0 - R_SHRINK);
+                info!("[GLS] shrinking width from {:.3} to {:.3}", current_width, next_width);
                 self.change_strip_width(next_width, None);
+                current_width = next_width;
+                self.write_to_disk(None, true);
             }
-            current_width = next_width;
-            i += 1;
+            else {
+                //layout was not successfully separated
+                self.tabu_list.push(local_best.0.clone(), total_overlap);
+                info!("[GLS] layout separation unsuccessful, adding local best to tabu list");
+
+                //restore to a random solution from the tabu list, better solutions have more chance to be selected
+                let selected_sol = {
+                    let sorted_sols = self.tabu_list.list.iter()
+                        .filter(|(sol, eval)| sol.layout_snapshots[0].bin.bbox().width() == current_width)
+                        .sorted_by_key(|(_, eval)| OrderedFloat(*eval))
+                        .collect_vec();
+
+                    let mut distr = Normal::new(0.0_f64, sorted_sols.len() as fsize / 5.0).unwrap();
+                    let selected_idx = (distr.sample(&mut self.rng).abs().floor() as usize).min(sorted_sols.len() - 1);
+                    let selected = sorted_sols.get(selected_idx).unwrap();
+                    selected.0.clone()
+                };
+
+                self.rollback(&selected_sol, None);
+            }
         }
 
+        info!("[GLS] time limit reached, returning best solution: {:.3} ({:.3}%)", best_width, best_feasible_solution.layout_snapshots[0].usage * 100.0);
         self.write_to_disk(Some(best_feasible_solution.clone()), true);
 
         best_feasible_solution
