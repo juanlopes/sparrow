@@ -1,7 +1,6 @@
 name: real benches
 
 on:
-  # Allows manually trigger the workflow if needed
   workflow_dispatch:
 
 jobs:

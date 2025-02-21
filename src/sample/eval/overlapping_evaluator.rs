@@ -12,7 +12,7 @@ use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
 use jagua_rs::geometry::transformation::Transformation;
 use jagua_rs::util::fpa::FPA;
 use crate::overlap::overlap::{calculate_unweighted_overlap_shape, calculate_weighted_overlap};
-use crate::overlap::overlap_tracker_original::OverlapTracker;
+use crate::overlap::overlap_tracker::OverlapTracker;
 use crate::sample::eval::{SampleEval, SampleEvaluator};
 use crate::sample::eval::hpg_eval::hpg_value;
 

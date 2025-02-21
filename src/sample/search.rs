@@ -11,7 +11,7 @@ use jagua_rs::geometry::primitives::aa_rectangle::AARectangle;
 use jagua_rs::geometry::primitives::circle::Circle;
 use log::{debug, info, trace};
 use rand::Rng;
-use crate::overlap::overlap_tracker_original::OverlapTracker;
+use crate::overlap::overlap_tracker::OverlapTracker;
 use crate::sample::best_samples::BestSamples;
 use crate::sample::coord_descent::coordinate_descent;
 use crate::sample::eval::{SampleEval, SampleEvaluator};
