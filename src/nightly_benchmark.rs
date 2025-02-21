@@ -17,7 +17,6 @@ use rand::prelude::SmallRng;
 use rand::{Rng, SeedableRng};
 use gls_strip_packing::{io, SVG_OUTPUT_DIR};
 use gls_strip_packing::opt::constr_builder::ConstructiveBuilder;
-use gls_strip_packing::opt::gls_optimizer::GLSOptimizer;
 use gls_strip_packing::opt::gls_orchestrator::GLSOrchestrator;
 use gls_strip_packing::sample::search::SearchConfig;
 use numfmt::{Formatter, Precision, Scales};
@@ -109,40 +108,71 @@ fn main() {
             let width = s.layout_snapshots[0].bin.bbox().width();
             let usage = s.layout_snapshots[0].usage;
             (width, usage * 100.0)
-        })
-        .sorted_by_key(|(w,u)| OrderedFloat(*w))
-        .unzip();
+        }).unzip();
 
     let n_results = final_widths.len();
 
-    let avg_width = final_widths.iter().sum::<fsize>() / n_results as fsize;
-    let stddev_width = (final_widths.iter().map(|w| (w - avg_width).powi(2)).sum::<fsize>() / n_results as fsize).sqrt();
-    let median_width = match n_results % 2 {
-        0 => (final_widths[n_results / 2] + final_widths[n_results / 2 - 1]) / 2.0,
-        _ => final_widths[n_results / 2],
-    };
-
-    println!("Results widths: {:?}", final_widths);
-    println!("Results usages: {:?}", final_usages);
+    dbg!(&final_widths);
+    dbg!(&final_usages);
 
     println!("----------------- WIDTH -----------------");
-    println!("Best: {}", final_widths.first().unwrap());
-    println!("Worst: {}", final_widths.last().unwrap());
-    println!("Med: {}", median_width);
-    println!("Avg: {}", avg_width);
-    println!("Stddev: {}", stddev_width);
-
-    let avg_yield = final_usages.iter().sum::<fsize>() / n_results as fsize;
-    let stddev_yield = (final_usages.iter().map(|u| (u - avg_yield).powi(2)).sum::<fsize>() / n_results as fsize).sqrt();
-    let median_yield = match n_results % 2 {
-        0 => (final_usages[n_results / 2] + final_usages[n_results / 2 - 1]) / 2.0,
-        _ => final_usages[n_results / 2],
-    };
-
+    println!("Worst: {}", final_widths.iter().max_by_key(|&x| OrderedFloat(*x)).unwrap());
+    println!("25per: {}", calculate_percentile(&final_widths, 0.75));
+    println!("Med: {}", calculate_median(&final_widths));
+    println!("75per: {}", calculate_percentile(&final_widths, 0.25));
+    println!("Best: {}", final_widths.iter().min_by_key(|&x| OrderedFloat(*x)).unwrap());
+    println!("Avg: {}", calculate_average(&final_widths));
+    println!("Stddev: {}", calculate_stddev(&final_widths));
+    println!();
     println!("----------------- USAGE -----------------");
-    println!("Best: {}", final_usages.first().unwrap());
-    println!("Worst: {}", final_usages.last().unwrap());
-    println!("Med: {}", median_yield);
-    println!("Avg: {}", avg_yield);
-    println!("Stddev: {}", stddev_yield);
+    println!("Worst: {}", final_usages.iter().min_by_key(|&x| OrderedFloat(*x)).unwrap());
+    println!("25per: {}", calculate_percentile(&final_usages, 0.25));
+    println!("Median: {}", calculate_median(&final_usages));
+    println!("75per: {}", calculate_percentile(&final_usages, 0.75));
+    println!("Best: {}", final_usages.iter().max_by_key(|&x| OrderedFloat(*x)).unwrap());
+    println!("Avg: {}", calculate_average(&final_usages));
+    println!("Stddev: {}", calculate_stddev(&final_usages));
+}
+
+
+//mimics Excel's percentile function
+pub fn calculate_percentile(v: &[fsize], pct: fsize) -> fsize {
+
+    // Validate input
+    assert!(!v.is_empty(), "Cannot compute percentile of an empty slice");
+    assert!(pct >= 0.0 && pct <= 1.0, "Percent must be between 0.0 and 1.0");
+
+    // Create a sorted copy of the data
+    let mut sorted = v.to_vec();
+    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
+
+    let n = sorted.len();
+    // Compute the rank using Excel's formula (1-indexed):
+    // k = pct * (n - 1) + 1
+    let k = pct * ((n - 1) as f64) + 1.0;
+
+    // Determine the lower and upper indices (still 1-indexed)
+    let lower_index = k.floor() as usize;
+    let upper_index = k.ceil() as usize;
+    let fraction = k - (lower_index as f64);
+
+    // Convert indices to 0-indexed by subtracting 1
+    let lower_value = sorted[lower_index - 1];
+    let upper_value = sorted[upper_index - 1];
+
+    // If k is an integer, fraction is 0 so this returns lower_value exactly.
+    lower_value + fraction * (upper_value - lower_value)
+}
+
+pub fn calculate_median(v: &[fsize]) -> fsize {
+    calculate_percentile(v, 0.5)
+}
+
+pub fn calculate_average(v: &[fsize]) -> fsize {
+    v.iter().sum::<fsize>() / v.len() as fsize
+}
+
+pub fn calculate_stddev(v: &[fsize]) -> fsize {
+    let avg = calculate_average(v);
+    (v.iter().map(|x| (x - avg).powi(2)).sum::<fsize>() / v.len() as fsize).sqrt()
 }

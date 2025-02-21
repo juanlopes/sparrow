@@ -9,7 +9,6 @@ use jagua_rs::io::parser::Parser;
 use jagua_rs::util::config::{CDEConfig, SPSurrogateConfig};
 use jagua_rs::util::polygon_simplification::PolySimplConfig;
 use log::warn;
-use mimalloc::MiMalloc;
 use once_cell::sync::Lazy;
 use rand::prelude::SmallRng;
 use rand::SeedableRng;
