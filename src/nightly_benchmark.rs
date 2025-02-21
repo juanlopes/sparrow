@@ -57,10 +57,13 @@ fn main() {
     };
 
     let mut rng = match RNG_SEED {
-        Some(seed) => SmallRng::seed_from_u64(seed as u64),
+        Some(seed) => {
+            println!("Using seed: {}", seed);
+            SmallRng::seed_from_u64(seed as u64)
+        },
         None => {
             let seed = rand::random();
-            warn!("No seed provided, using: {}", seed);
+            println!("No seed provided, using: {}", seed);
             SmallRng::seed_from_u64(seed)
         }
     };
@@ -79,7 +82,7 @@ fn main() {
         let mut iter_solutions = vec![None; N_PARALLEL_RUNS];
         rayon::scope(|s| {
             for (j, solution_slice) in iter_solutions.iter_mut().enumerate(){
-                let thread_rng = SmallRng::seed_from_u64(rng.gen());
+                let thread_rng = SmallRng::seed_from_u64(rng.random());
                 let svg_output_dir = format!("{}_{}", SVG_OUTPUT_DIR, i * N_PARALLEL_RUNS + j);
                 let instance = sp_instance.clone();
 
