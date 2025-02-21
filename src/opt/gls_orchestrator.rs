@@ -309,12 +309,8 @@ impl GLSOrchestrator {
 
         //Compute the colliding entities after the move
         let colliding_entities = {
-            let shape = item.shape.clone().as_ref().clone()
-                .tap_mut(|s| { s.transform(&d_transf.compose()); });
-
-            let mut colliding_entities = vec![];
-            self.master_prob.layout.cde().collect_poly_collisions(&shape, &[], &mut colliding_entities);
-            colliding_entities
+            let shape = item.shape.transform_clone(&d_transf.into());
+            self.master_prob.layout.cde().collect_poly_collisions(&shape, &[])
         };
 
         assert!(colliding_entities.is_empty() || !matches!(eval, Some(SampleEval::Valid(_))), "colliding entities detected for valid placement");

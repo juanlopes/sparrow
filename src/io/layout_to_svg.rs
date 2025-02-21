@@ -293,9 +293,8 @@ pub fn layout_to_svg(layout: &Layout, instance: &impl InstanceGeneric, options: 
                 .set("id", "overlap_lines")
                 .set("transform", transform_to_svg(&inv_bin_transf));
             for (pkey, pi) in layout.placed_items().iter() {
-                let mut collides_with = vec![];
-                layout.cde()
-                    .collect_poly_collisions(pi.shape.as_ref(), &[pi.into()], &mut collides_with);
+                let collides_with = layout.cde()
+                    .collect_poly_collisions(pi.shape.as_ref(), &[pi.into()]);
                 for haz_entity in collides_with {
                     match haz_entity {
                         HazardEntity::PlacedItem { .. } => {
@@ -622,9 +621,8 @@ pub fn layout_to_svg_2(layout: &Layout, options: SvgDrawOptions) -> Document {
                 .set("id", "overlap_lines")
                 .set("transform", transform_to_svg(&inv_bin_transf));
             for (pkey, pi) in layout.placed_items().iter() {
-                let mut collides_with = vec![];
-                layout.cde()
-                    .collect_poly_collisions(pi.shape.as_ref(), &[pi.into()], &mut collides_with);
+                let collides_with = layout.cde()
+                    .collect_poly_collisions(pi.shape.as_ref(), &[pi.into()]);
                 for haz_entity in collides_with {
                     match haz_entity {
                         HazardEntity::PlacedItem { .. } => {

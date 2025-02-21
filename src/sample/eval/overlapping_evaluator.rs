@@ -55,11 +55,11 @@ impl<'a> SampleEvaluator for OverlappingSampleEvaluator<'a> {
         match self.current_pk {
             Some(current_pk) => {
                 let current_pi = &self.layout.placed_items[current_pk];
-                cde.collect_poly_collisions(&self.shape_buff, &[current_pi.into()], &mut self.coll_buff);
+                cde.collect_poly_collisions_in_buffer(&self.shape_buff, &[current_pi.into()], &mut self.coll_buff);
             }
             None => {
                 panic!();
-                cde.collect_poly_collisions(&self.shape_buff, &[], &mut self.coll_buff);
+                cde.collect_poly_collisions_in_buffer(&self.shape_buff, &[], &mut self.coll_buff);
             }
         }
 

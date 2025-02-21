@@ -88,11 +88,7 @@ impl OverlapTracker {
         let shape = pi.shape.as_ref();
 
         // Detect which hazards are overlapping with the item
-        let overlapping = {
-            let mut buffer = vec![];
-            l.cde().collect_poly_collisions(shape, &[pi.into()], &mut buffer);
-            buffer
-        };
+        let overlapping = l.cde().collect_poly_collisions(shape, &[pi.into()]);
 
         // For each overlapping hazard, calculate the amount of overlap using the proxy functions
         // and store it in the overlap tracker
@@ -151,22 +147,24 @@ impl OverlapTracker {
             .fold(0.0, |a, b| a.max(b));
 
         for (idx1, idx2) in (0..self.capacity).tuple_combinations() {
-            let (o,w) = (self.pair_overlap[(idx1, idx2)], &mut self.pair_weights[(idx1, idx2)]);
+            let (o,w) = (self.pair_overlap[(idx1, idx2)], self.pair_weights[(idx1, idx2)]);
             let multiplier = match o == 0.0 {
                 true => OT_DECAY, // no overlap
                 false => OT_MIN_INCREASE + (OT_MAX_INCREASE - OT_MIN_INCREASE) * (o / max_o),
             };
-
-            *w = (*w * multiplier).max(1.0);
+            let new_w = (w * multiplier).max(1.0);
+            self.pair_weights[(idx1, idx2)] = new_w;
+            self.pair_weights[(idx2, idx1)] = new_w;
         }
         for idx in 0..self.capacity {
-            let (o,w) = (self.bin_overlap[idx], &mut self.bin_weights[idx]);
+            let (o,w) = (self.bin_overlap[idx], self.bin_weights[idx]);
             let multiplier = match o == 0.0 {
                 true => OT_DECAY, // no overlap
                 false => OT_MAX_INCREASE,
             };
 
-            *w = (*w * multiplier).max(1.0);
+            let new_w = (w * multiplier).max(1.0);
+            self.bin_weights[idx] = new_w;
         }
 
         self.current_iter += 1;
@@ -257,9 +255,7 @@ pub fn tracker_matches_layout(ot: &OverlapTracker, l: &Layout) -> bool {
     assert!(assertions::layout_qt_matches_fresh_qt(l));
 
     for (pk1, pi1) in l.placed_items.iter() {
-        let mut collisions = vec![];
-        l.cde()
-            .collect_poly_collisions(&pi1.shape, &[pi1.into()], &mut collisions);
+        let mut collisions = l.cde().collect_poly_collisions(&pi1.shape, &[pi1.into()]);
         assert_eq!(ot.get_pair_overlap(pk1, pk1), 0.0);
         for (pk2, pi2) in l.placed_items.iter().filter(|(k, _)| *k != pk1) {
             let stored_overlap = ot.get_pair_overlap(pk1, pk2);
@@ -275,12 +271,8 @@ pub fn tracker_matches_layout(ot: &OverlapTracker, l: &Layout) -> bool {
                         stored_overlap,
                         epsilon = 0.001 * stored_overlap
                     ) {
-                        let mut opposite_collisions = vec![];
-                        l.cde().collect_poly_collisions(
-                            &pi2.shape,
-                            &[pi2.into()],
-                            &mut opposite_collisions,
-                        );
+                        let mut opposite_collisions = l.cde()
+                            .collect_poly_collisions(&pi2.shape, &[pi2.into()]);
                         if opposite_collisions.contains(&(pi1.into())) {
                             dbg!(&pi1.shape.points, &pi2.shape.points);
                             dbg!(
@@ -315,12 +307,8 @@ pub fn tracker_matches_layout(ot: &OverlapTracker, l: &Layout) -> bool {
                     if stored_overlap != 0.0 {
                         let calc_overlap =
                             overlap_proxy::poly_overlap_proxy(&pi1.shape, &pi2.shape, l.bin.bbox());
-                        let mut opposite_collisions = vec![];
-                        l.cde().collect_poly_collisions(
-                            &pi2.shape,
-                            &[pi2.into()],
-                            &mut opposite_collisions,
-                        );
+                        let mut opposite_collisions = l.cde()
+                            .collect_poly_collisions(&pi2.shape, &[pi2.into()]);
                         if !opposite_collisions.contains(&(pi1.into())) {
                             dbg!(&pi1.shape.points, &pi2.shape.points);
                             dbg!(
