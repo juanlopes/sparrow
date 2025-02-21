@@ -11,7 +11,7 @@ use jagua_rs::fsize;
 use jagua_rs::geometry::d_transformation::DTransformation;
 use jagua_rs::geometry::geo_traits::Shape;
 use jagua_rs::PI;
-use log::{info, warn};
+use log::{debug, info, warn};
 use ordered_float::{FloatCore, OrderedFloat};
 
 const TRANSL_DIM_FRACTION: fsize = 0.1;
@@ -57,7 +57,7 @@ impl TabuList {
     }
 
     pub fn sol_is_tabu(&self, sol: &Solution) -> bool {
-        info!("similarities: {:?} (max: {})", self.list.iter().map(|(s,_)| n_similar_placements(sol, s, self.ch_area_cutoff)).collect_vec(), self.n_similar_limit);
+        debug!("[TABU] similarities: {:?} (max: {})", self.list.iter().map(|(s,_)| n_similar_placements(sol, s, self.ch_area_cutoff)).collect_vec(), self.n_similar_limit);
         self.list.iter().any(|(s,_)| n_similar_placements(sol, s, self.ch_area_cutoff) > self.n_similar_limit)
     }
 

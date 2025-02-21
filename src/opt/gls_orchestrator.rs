@@ -1,6 +1,5 @@
 use crate::io::layout_to_svg::{layout_to_svg, s_layout_to_svg};
 use crate::io::svg_util::SvgDrawOptions;
-use crate::opt::gls_optimizer::GLSOptimizer;
 use crate::opt::tabu::TabuList;
 use crate::overlap::overlap_tracker_original;
 use crate::overlap::overlap_tracker_original::{OTSnapshot, OverlapTracker};
@@ -28,8 +27,10 @@ use jagua_rs::geometry::primitives::aa_rectangle::AARectangle;
 use jagua_rs::util::fpa::FPA;
 use log::{debug, info, warn};
 use ordered_float::OrderedFloat;
-use rand_distr::Distribution;
+use rand::prelude::IteratorRandom;
+use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
+use rand_distr::Distribution;
 use rand_distr::Normal;
 use rayon::iter::IntoParallelRefMutIterator;
 use rayon::iter::{split, ParallelIterator};
@@ -40,36 +41,33 @@ use std::iter;
 use std::ops::Range;
 use std::path::Path;
 use std::time::{Duration, Instant};
-use rand::prelude::IteratorRandom;
-use rand::rngs::SmallRng;
 use tap::Tap;
+use crate::opt::gls_worker::GLSWorker;
 
-const N_ITER_NO_IMPROVEMENT: usize = 50;
+pub const N_ITER_NO_IMPROVEMENT: usize = 50;
 
-const N_STRIKES: usize = 5;
+pub const N_STRIKES: usize = 5;
 
 //TODO: Let the shrink rate depend on the time left. example: 0.5% for the first 3/4, 0.05% for the following 3/4, 0.005% for the last 1/16
-const R_SHRINK: fsize = 0.005;
+pub const R_SHRINK: fsize = 0.005;
 //const R_EXPAND: fsize = 0.003;
 
-const N_UNIFORM_SAMPLES: usize = 100;
-const N_COORD_DESCENTS: usize = 2;
-const RESCALE_WEIGHT_TARGET: fsize = 2.0;
+pub const N_UNIFORM_SAMPLES: usize = 100;
+pub const N_COORD_DESCENTS: usize = 2;
+pub const RESCALE_WEIGHT_TARGET: fsize = 2.0;
 
-const WEIGHT_INCREMENT: fsize = 1.2;
-const TABU_SIZE: usize = 10_000;
-const JUMP_COOLDOWN: usize = 5;
+pub const WEIGHT_INCREMENT: fsize = 1.2;
+pub const TABU_SIZE: usize = 10_000;
+pub const JUMP_COOLDOWN: usize = 5;
 
-const N_THREADS: usize = 2;
-
-const N_MOVEMENTS: usize = usize::MAX;
+pub const N_THREADS: usize = 2;
 
 pub struct GLSOrchestrator {
     pub instance: SPInstance,
     pub rng: SmallRng,
     pub master_prob: SPProblem,
     pub master_ot: OverlapTracker,
-    pub optimizers: Vec<GLSOptimizer>,
+    pub workers: Vec<GLSWorker>,
     pub output_folder: String,
     pub svg_counter: usize,
     pub tabu_list: TabuList,
@@ -84,18 +82,20 @@ impl GLSOrchestrator {
     ) -> Self {
         let overlap_tracker = OverlapTracker::new(&problem.layout, RESCALE_WEIGHT_TARGET, WEIGHT_INCREMENT, JUMP_COOLDOWN);
         let tabu_list = TabuList::new(TABU_SIZE, &instance);
-        let optimizers = (0..N_THREADS)
-            .map(|i| {
-                let output_folder = format!("{}/opt_{}", output_folder, i);
-                GLSOptimizer::new(problem.clone(), instance.clone(), SmallRng::seed_from_u64(rng.gen()), output_folder)
-            })
-            .collect();
+        let workers = (0..N_THREADS)
+            .map(|_| GLSWorker{
+                instance: instance.clone(),
+                prob: problem.clone(),
+                ot: overlap_tracker.clone(),
+                rng: SmallRng::seed_from_u64(rng.random()),
+                ch_area_cutoff: tabu_list.ch_area_cutoff,
+            }).collect();
         Self {
             master_prob: problem.clone(),
             instance,
             rng,
             master_ot: overlap_tracker.clone(),
-            optimizers,
+            workers,
             svg_counter: 0,
             output_folder,
             tabu_list,
@@ -103,176 +103,179 @@ impl GLSOrchestrator {
     }
 
     pub fn solve(&mut self, time_out: Duration) -> Solution {
-        //self.change_strip_width(5750.0);
         let mut current_width = self.master_prob.occupied_width();
         let (mut best_feasible_solution, mut best_width) = (self.master_prob.create_solution(None), current_width);
 
-
         self.write_to_disk(None, true);
+        info!("[GLS] starting optimization with initial width: {:.3} ({:.3}%)", current_width, self.master_prob.usage() * 100.0);
 
         let start = Instant::now();
-        let mut i = 0;
 
         while start.elapsed() < time_out {
             let local_best = self.separate_layout();
             let total_overlap = self.master_ot.get_total_overlap();
-            let next_width = {
-                if total_overlap == 0.0 {
-                    //successful
-                    if current_width < best_width {
-                        warn!("new best width at: {:.3}", current_width);
-                        best_width = current_width;
-                        best_feasible_solution = local_best.0.clone();
-                    }
-                    current_width * (1.0 - R_SHRINK)
-                } else {
-                    //not successful
-                    //self.rollback(&local_best.0, &local_best.1);
-                    self.tabu_list.push(local_best.0.clone(), total_overlap);
-                    warn!("adding local best to tabu list");
-                    {
-                        let sorted_sols = self.tabu_list.list.iter()
-                            .filter(|(sol, eval)| sol.layout_snapshots[0].bin.bbox().width() == current_width)
-                            .sorted_by_key(|(_, eval)| OrderedFloat(*eval))
-                            .collect_vec();
 
-                        //Map solutions across 3 std devs
-                        let mut distr = Normal::new(0.0_f64, sorted_sols.len() as fsize / 5.0).unwrap();
-                        let selected_idx = (distr.sample(&mut self.rng).abs().floor() as usize).min(sorted_sols.len() - 1);
-
-                        let selected = sorted_sols.get(selected_idx).unwrap();
-
-                        self.rollback(&selected.0.clone(), None);
-                    }
-                    current_width
+            if total_overlap == 0.0 {
+                //layout is successfully separated
+                if current_width < best_width {
+                    info!("[GLS] new best width at : {:.3} ({:.3}%)", current_width, self.master_prob.usage() * 100.0);
+                    best_width = current_width;
+                    best_feasible_solution = local_best.0.clone();
+                    self.write_to_disk(Some(best_feasible_solution.clone()), true);
                 }
-            };
-            self.master_ot.rescale_weights();
-            self.write_to_disk(Some(local_best.0), true);
-            warn!("width: {:.3} -> {:.3} (best: {:.3})", current_width, next_width, best_width);
-            if next_width != current_width {
+                let next_width = current_width * (1.0 - R_SHRINK);
+                info!("[GLS] shrinking width from {:.3} to {:.3}", current_width, next_width);
                 self.change_strip_width(next_width, None);
+                current_width = next_width;
             }
-            current_width = next_width;
-            i += 1;
+            else {
+                //layout was not successfully separated
+                self.tabu_list.push(local_best.0.clone(), total_overlap);
+                info!("[GLS] layout separation unsuccessful, adding local best to tabu list");
+
+                //restore to a random solution from the tabu list, better solutions have more chance to be selected
+                let selected_sol = {
+                    let sorted_sols = self.tabu_list.list.iter()
+                        .filter(|(sol, eval)| sol.layout_snapshots[0].bin.bbox().width() == current_width)
+                        .sorted_by_key(|(_, eval)| OrderedFloat(*eval))
+                        .collect_vec();
+
+                    let mut distr = Normal::new(0.0_f64, sorted_sols.len() as fsize / 5.0).unwrap();
+                    let selected_idx = (distr.sample(&mut self.rng).abs().floor() as usize).min(sorted_sols.len() - 1);
+                    let selected = sorted_sols.get(selected_idx).unwrap();
+                    selected.0.clone()
+                };
+
+                self.rollback(&selected_sol, None);
+            }
         }
 
+        info!("[GLS] time limit reached, returning best solution: {:.3} ({:.3}%)", best_width, best_feasible_solution.layout_snapshots[0].usage * 100.0);
         self.write_to_disk(Some(best_feasible_solution.clone()), true);
 
         best_feasible_solution
     }
 
-    pub fn separate_layout(&mut self) -> (Solution, OTSnapshot) {
+    pub fn separate_layout(&mut self) -> (Solution, OTSnapshot, usize) {
         let mut min_overlap = fsize::INFINITY;
-        let mut min_overlap_solution: Option<(Solution, OTSnapshot)> = None;
-        let initial_overlap = min_overlap;
-        warn!("initial overlap: {:.3}", initial_overlap);
+        let mut min_overlap_sol: Option<(Solution, OTSnapshot)> = None;
 
         let mut n_strikes = 0;
+        let mut n_iter = 0;
+        let mut n_items_moved = 0;
+        let start = Instant::now();
 
         while n_strikes < N_STRIKES {
-            if let Some(min_overlap_solution) = min_overlap_solution.as_ref() {
-                warn!("rolling back to min overlap");
+            let mut n_iter_no_improvement = 0;
+
+            if let Some(min_overlap_solution) = min_overlap_sol.as_ref() {
+                info!("[s:{n_strikes}] Rolling back to min overlap");
                 self.rollback(&min_overlap_solution.0, Some(&min_overlap_solution.1));
             }
-            //self.master_ot.rescale_weights();
-            let mut n_iter_no_improvement = 0;
-            let mut total_movement = 0;
-            let mut total_iter = 0;
-            let initial_strike_overlap = self.master_ot.get_total_overlap();
 
-            let start = Instant::now();
+            let initial_strike_overlap = self.master_ot.get_total_overlap();
+            info!("[s:{n_strikes}] initial overlap: {}", FMT.fmt2(initial_strike_overlap));
+
             while n_iter_no_improvement < N_ITER_NO_IMPROVEMENT {
-                let weighted_overlap_before = self.master_ot.get_total_weighted_overlap();
-                let overlap_before = self.master_ot.get_total_overlap();
-                let n_movements = self.modify();
-                let overlap = self.master_ot.get_total_overlap();
-                let weighted_overlap = self.master_ot.get_total_weighted_overlap();
-                info!("[i:{}]     w_o-1: {} -> {}, n_mov: {}, abs_o: {} (min: {})", n_iter_no_improvement, FMT.fmt2(weighted_overlap_before), FMT.fmt2(weighted_overlap), n_movements, FMT.fmt2(overlap), FMT.fmt2(min_overlap));
-                //assert!(FPA(weighted_overlap) <= FPA(weighted_overlap_before), "weighted overlap increased: {} -> {}", weighted_overlap_before, weighted_overlap);
+                let (overlap_before, w_overlap_before) = (self.master_ot.get_total_overlap(), self.master_ot.get_total_weighted_overlap());
+                let n_moves = self.modify();
+                let (overlap, w_overlap) = (self.master_ot.get_total_overlap(), self.master_ot.get_total_weighted_overlap());
+
+                debug!("[s:{n_strikes}, i:{n_iter}]    w_o: {} -> {}, o: {} -> {}, n_mov: {}, (min o: {})", FMT.fmt2(w_overlap_before), FMT.fmt2(w_overlap), FMT.fmt2(overlap_before), FMT.fmt2(overlap), n_moves, FMT.fmt2(min_overlap));
+                debug_assert!(FPA(w_overlap) <= FPA(w_overlap_before), "weighted overlap increased: {} -> {}", FMT.fmt2(w_overlap_before), FMT.fmt2(w_overlap));
+
                 if overlap == 0.0 {
-                    warn!("[i:{}] (V) w_o-1: {} -> {}, n_mov: {}, abs_o: {} (min: {})", n_iter_no_improvement, FMT.fmt2(weighted_overlap_before), FMT.fmt2(weighted_overlap), n_movements, FMT.fmt2(overlap), FMT.fmt2(min_overlap));
-                    warn!("separation successful, returning");
-                    let non_overlapping_solution = (self.master_prob.create_solution(None), self.master_ot.create_snapshot());
-                    self.write_to_disk(None, false);
-                    return non_overlapping_solution;
+                    //layout is successfully separated
+                    info!("[s:{n_strikes}, i:{n_iter}] (S) w_o: {} -> {}, o: {} -> {}, n_mov: {}, (min o: {})", FMT.fmt2(w_overlap_before), FMT.fmt2(w_overlap), FMT.fmt2(overlap_before), FMT.fmt2(overlap), n_moves, FMT.fmt2(min_overlap));
+                    return (self.master_prob.create_solution(None), self.master_ot.create_snapshot(), n_items_moved);
                 } else if overlap < min_overlap {
+                    //layout is not separated, but absolute overlap is better than before
+
                     let sol = self.master_prob.create_solution(None);
 
                     if !self.tabu_list.sol_is_tabu(&sol) {
-                        warn!("[i:{}] (*) w_o-1: {} -> {}, n_mov: {}, abs_o: {} (min: {})", n_iter_no_improvement, FMT.fmt2(weighted_overlap_before), FMT.fmt2(weighted_overlap), n_movements, FMT.fmt2(overlap), FMT.fmt2(min_overlap));
+                        info!("[s:{n_strikes}, i:{n_iter}] (*) w_o: {} -> {}, o: {} -> {}, n_mov: {}, (min o: {})", FMT.fmt2(w_overlap_before), FMT.fmt2(w_overlap), FMT.fmt2(overlap_before), FMT.fmt2(overlap), n_moves, FMT.fmt2(min_overlap));
                         min_overlap = overlap;
-                        min_overlap_solution = Some((sol, self.master_ot.create_snapshot()));
+                        min_overlap_sol = Some((sol, self.master_ot.create_snapshot()));
                         n_iter_no_improvement = 0;
-                        //self.overlap_tracker.rescale_weights();
-                        //self.write_to_disk(None, true);
                     } else {
-                        warn!("[i: {}] tabu solution encountered", n_iter_no_improvement);
+                        info!("[s:{n_strikes}, i: {n_iter}] tabu solution encountered, swapping two items");
                         self.swap_tabu_item();
-                        //self.write_to_disk(None, true);
-                        //n_iter_no_improvement += 1;
                     }
                 } else {
                     n_iter_no_improvement += 1;
                 }
 
                 self.master_ot.increment_weights();
-                self.write_to_disk(None, false);
-                total_movement += n_movements;
-                total_iter += 1;
+                n_items_moved += n_moves;
+                n_iter += 1;
             }
-            self.write_to_disk(None, true);
+            info!("[s:{n_strikes}, i: {n_iter}] {} iter no improvement, min overlap: {}", n_iter_no_improvement, FMT.fmt2(min_overlap));
             if initial_strike_overlap * 0.98 <= min_overlap {
+                info!("[s:{n_strikes}, i: {n_iter}] no substantial improvement, adding strike");
                 n_strikes += 1;
             } else {
+                info!("[s:{n_strikes}, i: {n_iter}] improvement, resetting strikes");
                 n_strikes = 0;
             }
-            warn!("{:.1} moves/s, {:.1} iter/s, strike: #{}", total_movement as f64 / start.elapsed().as_secs_f64(), total_iter as f64 / start.elapsed().as_secs_f64(), n_strikes);
+            self.write_to_disk(None, true);
         }
+        info!("[GLS] strike limit reached ({}), moves/s: {}, iter/s: {}, time: {}ms",
+            n_strikes,
+            (n_items_moved as fsize / start.elapsed().as_secs_f64()) as usize,
+            (n_iter as fsize / start.elapsed().as_secs_f64()) as usize,
+            start.elapsed().as_millis());
 
-        min_overlap_solution.unwrap()
+        let min_overlap_sol = min_overlap_sol.expect("no solution found");
+
+        (min_overlap_sol.0, min_overlap_sol.1, n_items_moved)
     }
 
     pub fn modify(&mut self) -> usize {
         let master_sol = self.master_prob.create_solution(None);
 
-        self.optimizers.par_iter_mut()
-            .for_each(|opt| {
-                // Sync the workers
-                opt.load(&master_sol, &self.master_ot);
+        let n_movements = self.workers.par_iter_mut()
+            .map(|worker| {
+                // Sync the workers with the master
+                worker.load(&master_sol, &self.master_ot);
                 // Let them modify
-                opt.modify_greedy(Some(N_MOVEMENTS));
-            });
-
-        info!("{:?}", self.optimizers.iter().map(|opt| opt.overlap_tracker.get_total_weighted_overlap()).collect_vec());
-
-        // Save the best one
-        let best_opt = self.optimizers.iter_mut()
-            .min_by_key(|opt| {
-                let w_o = opt.overlap_tracker.get_total_weighted_overlap();
-                OrderedFloat(w_o)
+                let n_moves = worker.separate();
+                n_moves
             })
-            .map(|opt| (opt.problem.create_solution(None), &opt.overlap_tracker))
+            .sum();
+
+        debug!("optimizers w_o's: {:?}", self.workers.iter().map(|opt| opt.ot.get_total_weighted_overlap()).collect_vec());
+
+        // Check which worker has the lowest total weighted overlap
+        let best_opt = self.workers.iter_mut()
+            .min_by_key(|opt| OrderedFloat(opt.ot.get_total_weighted_overlap()))
+            .map(|opt| (opt.prob.create_solution(None), &opt.ot))
             .unwrap();
 
+        // Sync the master with the best optimizer
         self.master_prob.restore_to_solution(&best_opt.0);
         self.master_ot = best_opt.1.clone();
 
-        0
+        n_movements
     }
 
     pub fn rollback(&mut self, solution: &Solution, ots: Option<&OTSnapshot>) {
         self.master_prob.restore_to_solution(solution);
 
-        if let Some(ots) = ots {
-            self.master_ot.restore(ots, &self.master_prob.layout);
-        } else {
-            self.master_ot = OverlapTracker::new(&self.master_prob.layout, RESCALE_WEIGHT_TARGET, WEIGHT_INCREMENT, JUMP_COOLDOWN);
+        match ots {
+            Some(ots) => {
+                //if an snapshot of the overlap tracker was provided, restore it
+                self.master_ot.restore(ots, &self.master_prob.layout);
+            }
+            None => {
+                //otherwise, rebuild it
+                self.master_ot = OverlapTracker::new(&self.master_prob.layout, RESCALE_WEIGHT_TARGET, WEIGHT_INCREMENT, JUMP_COOLDOWN);
+            }
         }
     }
 
     pub fn swap_tabu_item(&mut self) {
-        warn!("swapping tabu item");
+        info!("swapping tabu item");
         let layout = &self.master_prob.layout;
         let (pk1, pi1) = layout.placed_items.iter()
             .filter(|(_, pi)| pi.shape.surrogate().convex_hull_area > self.tabu_list.ch_area_cutoff)
@@ -337,7 +340,7 @@ impl GLSOrchestrator {
         let jumped = old_bbox.relation_to(&new_bbox) == GeoRelation::Disjoint;
         let item_big_enough = item.shape.surrogate().convex_hull_area > self.tabu_list.ch_area_cutoff;
         if jumped && item_big_enough {
-            self.master_ot.set_jumped(new_pk);
+            self.master_ot.register_jump(new_pk);
         }
 
         debug!("Moved item {} from from o: {}, wo: {} to o+1: {}, w_o+1: {} (jump: {})", item.id, FMT.fmt2(old_overlap), FMT.fmt2(old_weighted_overlap), FMT.fmt2(new_overlap), FMT.fmt2(new_weighted_overlap), jumped);
@@ -372,8 +375,14 @@ impl GLSOrchestrator {
         self.master_prob.layout.change_bin(new_bin);
         self.master_ot = OverlapTracker::new(&self.master_prob.layout, RESCALE_WEIGHT_TARGET, WEIGHT_INCREMENT, JUMP_COOLDOWN);
 
-        self.optimizers.iter_mut().for_each(|opt| {
-            opt.change_strip_width(new_width);
+        self.workers.iter_mut().for_each(|opt| {
+            *opt = GLSWorker{
+                instance: self.instance.clone(),
+                prob: self.master_prob.clone(),
+                ot: self.master_ot.clone(),
+                rng: SmallRng::seed_from_u64(self.rng.random()),
+                ch_area_cutoff: self.tabu_list.ch_area_cutoff,
+            };
         });
 
         info!("changed strip width to {}", new_width);
@@ -399,7 +408,6 @@ impl GLSOrchestrator {
                     &s_layout_to_svg(&sol.layout_snapshots[0], &self.instance, SvgDrawOptions::default()),
                     Path::new(&filename),
                 );
-                warn!("wrote layout to disk: {}", filename);
             }
             None => {
                 let filename = format!("{}/{}_{:.2}.svg", &self.output_folder, self.svg_counter, self.master_prob.layout.bin.bbox().x_max);
@@ -407,7 +415,6 @@ impl GLSOrchestrator {
                     &layout_to_svg(&self.master_prob.layout, &self.instance, SvgDrawOptions::default()),
                     Path::new(&filename),
                 );
-                warn!("wrote layout to disk: {}", filename);
             }
         }
 
