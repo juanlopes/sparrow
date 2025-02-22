@@ -1,15 +1,13 @@
 use jagua_rs::fsize;
-use jagua_rs::geometry::geo_enums::GeoPosition;
-use jagua_rs::geometry::geo_traits::{Distance, SeparationDistance, Shape};
+use jagua_rs::geometry::geo_traits::{Distance, Shape};
 use jagua_rs::geometry::primitives::aa_rectangle::AARectangle;
 use jagua_rs::geometry::primitives::circle::Circle;
 use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
-use ordered_float::{Float, OrderedFloat};
+use ordered_float::{Float};
+use crate::opt::gls_orchestrator::PROXY_EPSILON_DIAM_FRAC;
 
-pub const NORMALIZER_DIAM_FRAC: fsize = 0.01;
-
-pub fn poly_overlap_proxy(s1: &SimplePolygon, s2: &SimplePolygon, bin_bbox: AARectangle) -> fsize {
-    let normalizer = fsize::max(s1.diameter(), s2.diameter()) * NORMALIZER_DIAM_FRAC;
+pub fn poly_overlap_proxy(s1: &SimplePolygon, s2: &SimplePolygon) -> fsize {
+    let normalizer = fsize::max(s1.diameter(), s2.diameter()) * PROXY_EPSILON_DIAM_FRAC;
 
     let deficit = poles_overlap_proxy(
         s1.surrogate().poles.iter(),
@@ -17,12 +15,12 @@ pub fn poly_overlap_proxy(s1: &SimplePolygon, s2: &SimplePolygon, bin_bbox: AARe
         normalizer,
     );
 
-    let s1_penalty = (s1.surrogate().convex_hull_area); //+ //0.1 * (s1.diameter / 4.0).powi(2));
-    let s2_penalty = (s2.surrogate().convex_hull_area); // + 0.1 * (s2.diameter / 4.0).powi(2));
+    let s1_penalty = (s1.surrogate().convex_hull_area);
+    let s2_penalty = (s2.surrogate().convex_hull_area);
 
     let penalty = 0.99 * fsize::min(s1_penalty,s2_penalty) + 0.01 * fsize::max(s1_penalty,s2_penalty);
 
-    (deficit + 0.0001 * penalty).sqrt() * penalty.sqrt()
+    (deficit + 0.001 * penalty).sqrt() * penalty.sqrt()
 }
 
 pub fn bin_overlap_proxy(s: &SimplePolygon, bin_bbox: AARectangle) -> fsize {
@@ -39,7 +37,7 @@ pub fn bin_overlap_proxy(s: &SimplePolygon, bin_bbox: AARectangle) -> fsize {
     };
     let penalty = s.surrogate().convex_hull_area;
 
-    100.0 * (deficit + 0.001 * penalty).sqrt() * penalty.sqrt()
+    10.0 * (deficit + 0.001 * penalty).sqrt() * penalty.sqrt()
 }
 
 pub fn poles_overlap_proxy<'a, C>(poles_1: C, poles_2: C, epsilon: fsize) -> fsize

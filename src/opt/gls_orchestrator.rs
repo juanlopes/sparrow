@@ -1,8 +1,8 @@
 use crate::io::layout_to_svg::{layout_to_svg, s_layout_to_svg};
 use crate::io::svg_util::SvgDrawOptions;
 use crate::opt::tabu::TabuList;
-use crate::overlap::overlap_tracker;
-use crate::overlap::overlap_tracker::{OTSnapshot, OverlapTracker};
+use crate::overlap::tracker;
+use crate::overlap::tracker::{OTSnapshot, OverlapTracker};
 use crate::sample::eval::overlapping_evaluator::OverlappingSampleEvaluator;
 use crate::sample::eval::SampleEval;
 use crate::sample::search;
@@ -62,6 +62,8 @@ pub const N_THREADS: usize = 2;
 pub const OT_MAX_INCREASE : fsize = 2.0;
 pub const OT_MIN_INCREASE: fsize = 1.2;
 pub const OT_DECAY: fsize = 0.95;
+
+pub const PROXY_EPSILON_DIAM_FRAC: fsize = 0.01;
 
 pub struct GLSOrchestrator {
     pub instance: SPInstance,
@@ -266,7 +268,7 @@ impl GLSOrchestrator {
         match ots {
             Some(ots) => {
                 //if an snapshot of the overlap tracker was provided, restore it
-                self.master_ot.restore(ots, &self.master_prob.layout);
+                self.master_ot.restore_but_keep_weights(ots, &self.master_prob.layout);
             }
             None => {
                 //otherwise, rebuild it
@@ -297,7 +299,7 @@ impl GLSOrchestrator {
     }
 
     fn move_item(&mut self, pik: PItemKey, d_transf: DTransformation, eval: Option<SampleEval>) -> PItemKey {
-        debug_assert!(overlap_tracker::tracker_matches_layout(&self.master_ot, &self.master_prob.layout));
+        debug_assert!(tracker::tracker_matches_layout(&self.master_ot, &self.master_prob.layout));
 
         let old_overlap = self.master_ot.get_overlap(pik);
         let old_weighted_overlap = self.master_ot.get_weighted_overlap(pik);
@@ -341,7 +343,7 @@ impl GLSOrchestrator {
 
         debug!("Moved item {} from from o: {}, wo: {} to o+1: {}, w_o+1: {} (jump: {})", item.id, FMT.fmt2(old_overlap), FMT.fmt2(old_weighted_overlap), FMT.fmt2(new_overlap), FMT.fmt2(new_weighted_overlap), jumped);
 
-        debug_assert!(overlap_tracker::tracker_matches_layout(&self.master_ot, &self.master_prob.layout));
+        debug_assert!(tracker::tracker_matches_layout(&self.master_ot, &self.master_prob.layout));
 
         new_pk
     }
