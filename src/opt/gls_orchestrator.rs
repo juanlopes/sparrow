@@ -1,8 +1,8 @@
 use crate::io::layout_to_svg::{layout_to_svg, s_layout_to_svg};
 use crate::io::svg_util::SvgDrawOptions;
 use crate::opt::tabu::TabuList;
-use crate::overlap::overlap_tracker_original;
-use crate::overlap::overlap_tracker_original::{OTSnapshot, OverlapTracker};
+use crate::overlap::overlap_tracker;
+use crate::overlap::overlap_tracker::{OTSnapshot, OverlapTracker};
 use crate::sample::eval::overlapping_evaluator::OverlappingSampleEvaluator;
 use crate::sample::eval::SampleEval;
 use crate::sample::search;
@@ -54,13 +54,14 @@ pub const R_SHRINK: fsize = 0.005;
 
 pub const N_UNIFORM_SAMPLES: usize = 100;
 pub const N_COORD_DESCENTS: usize = 2;
-pub const RESCALE_WEIGHT_TARGET: fsize = 2.0;
-
-pub const WEIGHT_INCREMENT: fsize = 1.2;
 pub const TABU_SIZE: usize = 10_000;
 pub const JUMP_COOLDOWN: usize = 5;
 
 pub const N_THREADS: usize = 2;
+
+pub const OT_MAX_INCREASE : fsize = 2.0;
+pub const OT_MIN_INCREASE: fsize = 1.2;
+pub const OT_DECAY: fsize = 0.95;
 
 pub struct GLSOrchestrator {
     pub instance: SPInstance,
@@ -80,7 +81,7 @@ impl GLSOrchestrator {
         mut rng: SmallRng,
         output_folder: String,
     ) -> Self {
-        let overlap_tracker = OverlapTracker::new(&problem.layout, RESCALE_WEIGHT_TARGET, WEIGHT_INCREMENT, JUMP_COOLDOWN);
+        let overlap_tracker = OverlapTracker::from_layout(&problem.layout);
         let tabu_list = TabuList::new(TABU_SIZE, &instance);
         let workers = (0..N_THREADS)
             .map(|_| GLSWorker{
@@ -269,7 +270,7 @@ impl GLSOrchestrator {
             }
             None => {
                 //otherwise, rebuild it
-                self.master_ot = OverlapTracker::new(&self.master_prob.layout, RESCALE_WEIGHT_TARGET, WEIGHT_INCREMENT, JUMP_COOLDOWN);
+                self.master_ot = OverlapTracker::from_layout(&self.master_prob.layout);
             }
         }
     }
@@ -293,11 +294,10 @@ impl GLSOrchestrator {
 
         let new_pk1 = self.move_item(pk1, dtransf2, None);
         let new_pk2 = self.move_item(pk2, dtransf1, None);
-        self.master_ot.set_pair_weight(new_pk1, new_pk2, RESCALE_WEIGHT_TARGET * 2.0);
     }
 
     fn move_item(&mut self, pik: PItemKey, d_transf: DTransformation, eval: Option<SampleEval>) -> PItemKey {
-        debug_assert!(overlap_tracker_original::tracker_matches_layout(&self.master_ot, &self.master_prob.layout));
+        debug_assert!(overlap_tracker::tracker_matches_layout(&self.master_ot, &self.master_prob.layout));
 
         let old_overlap = self.master_ot.get_overlap(pik);
         let old_weighted_overlap = self.master_ot.get_weighted_overlap(pik);
@@ -309,12 +309,8 @@ impl GLSOrchestrator {
 
         //Compute the colliding entities after the move
         let colliding_entities = {
-            let shape = item.shape.clone().as_ref().clone()
-                .tap_mut(|s| { s.transform(&d_transf.compose()); });
-
-            let mut colliding_entities = vec![];
-            self.master_prob.layout.cde().collect_poly_collisions(&shape, &[], &mut colliding_entities);
-            colliding_entities
+            let shape = item.shape.transform_clone(&d_transf.into());
+            self.master_prob.layout.cde().collect_poly_collisions(&shape, &[])
         };
 
         assert!(colliding_entities.is_empty() || !matches!(eval, Some(SampleEval::Valid(_))), "colliding entities detected for valid placement");
@@ -331,7 +327,7 @@ impl GLSOrchestrator {
 
         //info!("moving item {} from {:?} to {:?} ({:?}->{:?})", item.id, old_p_opt.d_transf, new_p_opt.d_transf, pik, new_pik);
 
-        self.master_ot.move_item(&self.master_prob.layout, pik, new_pk);
+        self.master_ot.register_item_move(&self.master_prob.layout, pik, new_pk);
 
         let new_overlap = self.master_ot.get_overlap(new_pk);
         let new_weighted_overlap = self.master_ot.get_weighted_overlap(new_pk);
@@ -345,7 +341,7 @@ impl GLSOrchestrator {
 
         debug!("Moved item {} from from o: {}, wo: {} to o+1: {}, w_o+1: {} (jump: {})", item.id, FMT.fmt2(old_overlap), FMT.fmt2(old_weighted_overlap), FMT.fmt2(new_overlap), FMT.fmt2(new_weighted_overlap), jumped);
 
-        debug_assert!(overlap_tracker_original::tracker_matches_layout(&self.master_ot, &self.master_prob.layout));
+        debug_assert!(overlap_tracker::tracker_matches_layout(&self.master_ot, &self.master_prob.layout));
 
         new_pk
     }
@@ -373,7 +369,7 @@ impl GLSOrchestrator {
             self.master_prob.layout.bin.base_cde.config().clone(),
         );
         self.master_prob.layout.change_bin(new_bin);
-        self.master_ot = OverlapTracker::new(&self.master_prob.layout, RESCALE_WEIGHT_TARGET, WEIGHT_INCREMENT, JUMP_COOLDOWN);
+        self.master_ot = OverlapTracker::from_layout(&self.master_prob.layout);
 
         self.workers.iter_mut().for_each(|opt| {
             *opt = GLSWorker{

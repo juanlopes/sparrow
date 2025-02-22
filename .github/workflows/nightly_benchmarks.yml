@@ -1,12 +1,9 @@
 name: nightly benches
 
 on:
-  # Run once a day at 23:00 UTC (0:00 CEST)
   schedule:
     - cron: '0 23 * * *'
-  # Allows manually trigger the workflow if needed
   workflow_dispatch:
-  # Allows running the workflow on push to exp/* branches
   push:
     branches:
       - exp/*

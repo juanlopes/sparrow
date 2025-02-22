@@ -15,8 +15,8 @@ use rand::prelude::{SliceRandom, SmallRng};
 use tap::Tap;
 use crate::FMT;
 use crate::opt::gls_orchestrator;
-use crate::overlap::overlap_tracker_original;
-use crate::overlap::overlap_tracker_original::OverlapTracker;
+use crate::overlap::overlap_tracker;
+use crate::overlap::overlap_tracker::OverlapTracker;
 use crate::sample::eval::overlapping_evaluator::OverlappingSampleEvaluator;
 use crate::sample::eval::SampleEval;
 use crate::sample::search;
@@ -74,7 +74,7 @@ impl GLSWorker {
     }
 
     pub fn move_item(&mut self, pik: PItemKey, d_transf: DTransformation, eval: Option<SampleEval>) -> PItemKey {
-        debug_assert!(overlap_tracker_original::tracker_matches_layout(&self.ot, &self.prob.layout));
+        debug_assert!(overlap_tracker::tracker_matches_layout(&self.ot, &self.prob.layout));
 
         let old_overlap = self.ot.get_overlap(pik);
         let old_weighted_overlap = self.ot.get_weighted_overlap(pik);
@@ -86,12 +86,8 @@ impl GLSWorker {
 
         //Compute the colliding entities after the move
         let colliding_entities = {
-            let shape = item.shape.clone().as_ref().clone()
-                .tap_mut(|s| { s.transform(&d_transf.compose()); });
-
-            let mut colliding_entities = vec![];
-            self.prob.layout.cde().collect_poly_collisions(&shape, &[], &mut colliding_entities);
-            colliding_entities
+            let shape = item.shape.transform_clone(&d_transf.into());
+            self.prob.layout.cde().collect_poly_collisions(&shape, &[])
         };
 
         assert!(colliding_entities.is_empty() || !matches!(eval, Some(SampleEval::Valid(_))), "colliding entities detected for valid placement");
@@ -106,7 +102,7 @@ impl GLSWorker {
             new_pik
         };
 
-        self.ot.move_item(&self.prob.layout, pik, new_pk);
+        self.ot.register_item_move(&self.prob.layout, pik, new_pk);
 
         let new_overlap = self.ot.get_overlap(new_pk);
         let new_weighted_overlap = self.ot.get_weighted_overlap(new_pk);
@@ -120,7 +116,7 @@ impl GLSWorker {
 
         debug!("Moved item {} from from o: {}, wo: {} to o+1: {}, w_o+1: {} (jump: {})", item.id, FMT.fmt2(old_overlap), FMT.fmt2(old_weighted_overlap), FMT.fmt2(new_overlap), FMT.fmt2(new_weighted_overlap), jumped);
 
-        debug_assert!(overlap_tracker_original::tracker_matches_layout(&self.ot, &self.prob.layout));
+        debug_assert!(overlap_tracker::tracker_matches_layout(&self.ot, &self.prob.layout));
 
         new_pk
     }
