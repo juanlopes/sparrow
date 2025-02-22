@@ -1,8 +1,7 @@
 use std::cmp::Reverse;
-use crate::io::layout_to_svg::layout_to_svg;
 use crate::sample::eval::SampleEval;
 use crate::sample::search::{search_placement, SearchConfig};
-use crate::{io, DRAW_OPTIONS};
+use crate::{DRAW_OPTIONS};
 use itertools::Itertools;
 use jagua_rs::entities::instances::instance_generic::InstanceGeneric;
 use jagua_rs::entities::instances::strip_packing::SPInstance;

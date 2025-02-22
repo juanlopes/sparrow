@@ -1,13 +1,11 @@
-use crate::io::layout_to_svg::{layout_to_svg, s_layout_to_svg};
-use crate::io::svg_util::SvgDrawOptions;
 use crate::opt::tabu::TabuList;
-use crate::overlap::overlap_tracker;
-use crate::overlap::overlap_tracker::{OTSnapshot, OverlapTracker};
+use crate::overlap::tracker;
+use crate::overlap::tracker::{OTSnapshot, OverlapTracker};
 use crate::sample::eval::overlapping_evaluator::OverlappingSampleEvaluator;
 use crate::sample::eval::SampleEval;
 use crate::sample::search;
 use crate::sample::search::SearchConfig;
-use crate::{io, FMT, SVG_OUTPUT_DIR};
+use crate::{FMT, SVG_OUTPUT_DIR};
 use float_cmp::approx_eq;
 use itertools::{sorted, Itertools};
 use jagua_rs::entities::bin::Bin;
@@ -43,6 +41,10 @@ use std::path::Path;
 use std::time::{Duration, Instant};
 use tap::Tap;
 use crate::opt::gls_worker::GLSWorker;
+use crate::util::assertions::tracker_matches_layout;
+use crate::util::io;
+use crate::util::io::layout_to_svg::{layout_to_svg, s_layout_to_svg};
+use crate::util::io::svg_util::SvgDrawOptions;
 
 pub const N_ITER_NO_IMPROVEMENT: usize = 50;
 
@@ -63,6 +65,8 @@ pub const OT_MAX_INCREASE : fsize = 2.0;
 pub const OT_MIN_INCREASE: fsize = 1.2;
 pub const OT_DECAY: fsize = 0.95;
 
+pub const PROXY_EPSILON_DIAM_FRAC: fsize = 0.01;
+
 pub struct GLSOrchestrator {
     pub instance: SPInstance,
     pub rng: SmallRng,
@@ -81,7 +85,7 @@ impl GLSOrchestrator {
         mut rng: SmallRng,
         output_folder: String,
     ) -> Self {
-        let overlap_tracker = OverlapTracker::from_layout(&problem.layout);
+        let overlap_tracker = OverlapTracker::new(&problem.layout);
         let tabu_list = TabuList::new(TABU_SIZE, &instance);
         let workers = (0..N_THREADS)
             .map(|_| GLSWorker{
@@ -266,11 +270,11 @@ impl GLSOrchestrator {
         match ots {
             Some(ots) => {
                 //if an snapshot of the overlap tracker was provided, restore it
-                self.master_ot.restore(ots, &self.master_prob.layout);
+                self.master_ot.restore_but_keep_weights(ots, &self.master_prob.layout);
             }
             None => {
                 //otherwise, rebuild it
-                self.master_ot = OverlapTracker::from_layout(&self.master_prob.layout);
+                self.master_ot = OverlapTracker::new(&self.master_prob.layout);
             }
         }
     }
@@ -297,7 +301,7 @@ impl GLSOrchestrator {
     }
 
     fn move_item(&mut self, pik: PItemKey, d_transf: DTransformation, eval: Option<SampleEval>) -> PItemKey {
-        debug_assert!(overlap_tracker::tracker_matches_layout(&self.master_ot, &self.master_prob.layout));
+        debug_assert!(tracker_matches_layout(&self.master_ot, &self.master_prob.layout));
 
         let old_overlap = self.master_ot.get_overlap(pik);
         let old_weighted_overlap = self.master_ot.get_weighted_overlap(pik);
@@ -341,7 +345,7 @@ impl GLSOrchestrator {
 
         debug!("Moved item {} from from o: {}, wo: {} to o+1: {}, w_o+1: {} (jump: {})", item.id, FMT.fmt2(old_overlap), FMT.fmt2(old_weighted_overlap), FMT.fmt2(new_overlap), FMT.fmt2(new_weighted_overlap), jumped);
 
-        debug_assert!(overlap_tracker::tracker_matches_layout(&self.master_ot, &self.master_prob.layout));
+        debug_assert!(tracker_matches_layout(&self.master_ot, &self.master_prob.layout));
 
         new_pk
     }
@@ -369,7 +373,7 @@ impl GLSOrchestrator {
             self.master_prob.layout.bin.base_cde.config().clone(),
         );
         self.master_prob.layout.change_bin(new_bin);
-        self.master_ot = OverlapTracker::from_layout(&self.master_prob.layout);
+        self.master_ot = OverlapTracker::new(&self.master_prob.layout);
 
         self.workers.iter_mut().for_each(|opt| {
             *opt = GLSWorker{
