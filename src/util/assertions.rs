@@ -7,9 +7,9 @@ use jagua_rs::fsize;
 use jagua_rs::util::assertions;
 use jagua_rs::util::fpa::FPA;
 use log::warn;
-use crate::io;
-use crate::io::layout_to_svg::layout_to_svg_2;
-use crate::io::svg_util::SvgDrawOptions;
+use crate::util::io;
+use crate::util::io::layout_to_svg::layout_to_svg_2;
+use crate::util::io::svg_util::SvgDrawOptions;
 use crate::overlap::overlap_proxy;
 use crate::overlap::tracker::OverlapTracker;
 

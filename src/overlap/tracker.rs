@@ -1,6 +1,3 @@
-use crate::io;
-use crate::io::layout_to_svg::{layout_to_svg, layout_to_svg_2};
-use crate::io::svg_util::SvgDrawOptions;
 use crate::opt::gls_orchestrator::{JUMP_COOLDOWN, OT_DECAY, OT_MAX_INCREASE, OT_MIN_INCREASE};
 use crate::overlap::pair_matrix::PairMatrix;
 use crate::overlap::overlap_proxy;
@@ -189,10 +186,7 @@ impl OverlapTracker {
     }
 
     pub fn get_pair_weight(&self, pk1: PItemKey, pk2: PItemKey) -> fsize {
-        assert_ne!(pk1, pk2);
-        let idx1 = self.pk_idx_map[pk1];
-        let idx2 = self.pk_idx_map[pk2];
-
+        let (idx1, idx2) = (self.pk_idx_map[pk1], self.pk_idx_map[pk2]);
         self.pair_overlap[(idx1, idx2)].weight
     }
 
@@ -202,9 +196,7 @@ impl OverlapTracker {
     }
 
     pub fn get_pair_overlap(&self, pk1: PItemKey, pk2: PItemKey) -> fsize {
-        let idx1 = self.pk_idx_map[pk1];
-        let idx2 = self.pk_idx_map[pk2];
-
+        let (idx1, idx2) = (self.pk_idx_map[pk1], self.pk_idx_map[pk2]);
         self.pair_overlap[(idx1, idx2)].overlap
     }
 

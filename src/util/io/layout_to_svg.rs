@@ -1,5 +1,5 @@
-use crate::io::svg_util::SvgDrawOptions;
-use crate::io::{svg_export, svg_util};
+use crate::util::io::svg_util::SvgDrawOptions;
+use crate::util::io::{svg_export, svg_util};
 use itertools::Itertools;
 use jagua_rs::collision_detection::hazard::HazardEntity;
 use jagua_rs::entities::instances::instance::Instance;

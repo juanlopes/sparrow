@@ -15,12 +15,12 @@ use once_cell::sync::Lazy;
 use ordered_float::OrderedFloat;
 use rand::prelude::SmallRng;
 use rand::{Rng, SeedableRng};
-use gls_strip_packing::{io, SVG_OUTPUT_DIR};
+use gls_strip_packing::SVG_OUTPUT_DIR;
 use gls_strip_packing::opt::constr_builder::ConstructiveBuilder;
-use gls_strip_packing::opt::gls_optimizer::GLSOptimizer;
 use gls_strip_packing::opt::gls_orchestrator::GLSOrchestrator;
 use gls_strip_packing::sample::search::SearchConfig;
 use numfmt::{Formatter, Precision, Scales};
+use gls_strip_packing::util::io;
 
 const INPUT_FILE: &str = "libs/jagua-rs/assets/swim.json";
 
@@ -87,7 +87,7 @@ fn main() {
         let mut iter_solutions = vec![None; N_PARALLEL_RUNS];
         rayon::scope(|s| {
             for (j, solution_slice) in iter_solutions.iter_mut().enumerate(){
-                let thread_rng = SmallRng::seed_from_u64(rng.gen());
+                let thread_rng = SmallRng::seed_from_u64(rng.random());
                 let svg_output_dir = format!("{}_{}", SVG_OUTPUT_DIR, i * N_PARALLEL_RUNS + j);
                 let instance = sp_instance.clone();
 

@@ -2,9 +2,7 @@ use std::time::Instant;
 use mimalloc::MiMalloc;
 use numfmt::{Formatter, Precision, Scales};
 use once_cell::sync::Lazy;
-use crate::io::svg_util::{SvgDrawOptions, SvgLayoutTheme};
-
-pub mod io;
+use crate::util::io::svg_util::{SvgDrawOptions, SvgLayoutTheme};
 pub mod sample;
 pub mod overlap;
 pub mod opt;

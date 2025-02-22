@@ -1,5 +1,3 @@
-use crate::io::layout_to_svg::{layout_to_svg, s_layout_to_svg};
-use crate::io::svg_util::SvgDrawOptions;
 use crate::opt::tabu::TabuList;
 use crate::overlap::tracker;
 use crate::overlap::tracker::{OTSnapshot, OverlapTracker};
@@ -7,7 +5,7 @@ use crate::sample::eval::overlapping_evaluator::OverlappingSampleEvaluator;
 use crate::sample::eval::SampleEval;
 use crate::sample::search;
 use crate::sample::search::SearchConfig;
-use crate::{io, FMT, SVG_OUTPUT_DIR};
+use crate::{FMT, SVG_OUTPUT_DIR};
 use float_cmp::approx_eq;
 use itertools::{sorted, Itertools};
 use jagua_rs::entities::bin::Bin;
@@ -44,6 +42,9 @@ use std::time::{Duration, Instant};
 use tap::Tap;
 use crate::opt::gls_worker::GLSWorker;
 use crate::util::assertions::tracker_matches_layout;
+use crate::util::io;
+use crate::util::io::layout_to_svg::{layout_to_svg, s_layout_to_svg};
+use crate::util::io::svg_util::SvgDrawOptions;
 
 pub const N_ITER_NO_IMPROVEMENT: usize = 50;
 
