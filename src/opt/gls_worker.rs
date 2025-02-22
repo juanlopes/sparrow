@@ -21,6 +21,7 @@ use crate::sample::eval::overlapping_evaluator::OverlappingSampleEvaluator;
 use crate::sample::eval::SampleEval;
 use crate::sample::search;
 use crate::sample::search::SearchConfig;
+use crate::util::assertions::tracker_matches_layout;
 
 pub struct GLSWorker {
     pub instance: SPInstance,
@@ -74,7 +75,7 @@ impl GLSWorker {
     }
 
     pub fn move_item(&mut self, pik: PItemKey, d_transf: DTransformation, eval: Option<SampleEval>) -> PItemKey {
-        debug_assert!(tracker::tracker_matches_layout(&self.ot, &self.prob.layout));
+        debug_assert!(tracker_matches_layout(&self.ot, &self.prob.layout));
 
         let old_overlap = self.ot.get_overlap(pik);
         let old_weighted_overlap = self.ot.get_weighted_overlap(pik);
@@ -116,7 +117,7 @@ impl GLSWorker {
 
         debug!("Moved item {} from from o: {}, wo: {} to o+1: {}, w_o+1: {} (jump: {})", item.id, FMT.fmt2(old_overlap), FMT.fmt2(old_weighted_overlap), FMT.fmt2(new_overlap), FMT.fmt2(new_weighted_overlap), jumped);
 
-        debug_assert!(tracker::tracker_matches_layout(&self.ot, &self.prob.layout));
+        debug_assert!(tracker_matches_layout(&self.ot, &self.prob.layout));
 
         new_pk
     }

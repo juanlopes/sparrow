@@ -8,6 +8,7 @@ pub mod io;
 pub mod sample;
 pub mod overlap;
 pub mod opt;
+pub mod util;
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;

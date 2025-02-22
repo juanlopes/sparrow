@@ -16,17 +16,6 @@ impl PairMatrix {
             data: vec![OTEntry::default(); len],
         }
     }
-
-    pub fn clear_overlaps_for(&mut self, i: usize) {
-        for j in 0..self.size {
-            self[(j, i)].overlap = 0.0;
-            self[(i, j)].overlap = 0.0;
-        }
-    }
-
-    pub fn row_iter(&self, row: usize) -> impl Iterator<Item=&OTEntry> {
-        (0..self.size).map(move |col| &self[(row, col)])
-    }
 }
 
 impl Index<(usize, usize)> for PairMatrix {

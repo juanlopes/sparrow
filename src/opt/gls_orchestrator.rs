@@ -43,6 +43,7 @@ use std::path::Path;
 use std::time::{Duration, Instant};
 use tap::Tap;
 use crate::opt::gls_worker::GLSWorker;
+use crate::util::assertions::tracker_matches_layout;
 
 pub const N_ITER_NO_IMPROVEMENT: usize = 50;
 
@@ -83,7 +84,7 @@ impl GLSOrchestrator {
         mut rng: SmallRng,
         output_folder: String,
     ) -> Self {
-        let overlap_tracker = OverlapTracker::from_layout(&problem.layout);
+        let overlap_tracker = OverlapTracker::new(&problem.layout);
         let tabu_list = TabuList::new(TABU_SIZE, &instance);
         let workers = (0..N_THREADS)
             .map(|_| GLSWorker{
@@ -272,7 +273,7 @@ impl GLSOrchestrator {
             }
             None => {
                 //otherwise, rebuild it
-                self.master_ot = OverlapTracker::from_layout(&self.master_prob.layout);
+                self.master_ot = OverlapTracker::new(&self.master_prob.layout);
             }
         }
     }
@@ -299,7 +300,7 @@ impl GLSOrchestrator {
     }
 
     fn move_item(&mut self, pik: PItemKey, d_transf: DTransformation, eval: Option<SampleEval>) -> PItemKey {
-        debug_assert!(tracker::tracker_matches_layout(&self.master_ot, &self.master_prob.layout));
+        debug_assert!(tracker_matches_layout(&self.master_ot, &self.master_prob.layout));
 
         let old_overlap = self.master_ot.get_overlap(pik);
         let old_weighted_overlap = self.master_ot.get_weighted_overlap(pik);
@@ -343,7 +344,7 @@ impl GLSOrchestrator {
 
         debug!("Moved item {} from from o: {}, wo: {} to o+1: {}, w_o+1: {} (jump: {})", item.id, FMT.fmt2(old_overlap), FMT.fmt2(old_weighted_overlap), FMT.fmt2(new_overlap), FMT.fmt2(new_weighted_overlap), jumped);
 
-        debug_assert!(tracker::tracker_matches_layout(&self.master_ot, &self.master_prob.layout));
+        debug_assert!(tracker_matches_layout(&self.master_ot, &self.master_prob.layout));
 
         new_pk
     }
@@ -371,7 +372,7 @@ impl GLSOrchestrator {
             self.master_prob.layout.bin.base_cde.config().clone(),
         );
         self.master_prob.layout.change_bin(new_bin);
-        self.master_ot = OverlapTracker::from_layout(&self.master_prob.layout);
+        self.master_ot = OverlapTracker::new(&self.master_prob.layout);
 
         self.workers.iter_mut().for_each(|opt| {
             *opt = GLSWorker{
