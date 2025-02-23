@@ -44,7 +44,9 @@ pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, mut e
         None => None,
     };
 
-    let bin_sampler = HPGBiasedSampler::new(item, l);
+    //let bin_sampler = HPGBiasedSampler::new(item, l);
+    let bin_sampler = UniformAARectSampler::new(l.bin.bbox(), item);
+
     for _ in 0..search_config.n_bin_samples {
         let transf = bin_sampler.sample(rng);
         let d_transf = transf.into();

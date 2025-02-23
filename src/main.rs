@@ -41,7 +41,7 @@ fn main() {
     
     let cde_config = CDEConfig{
         quadtree_depth: 4,
-        hpg_n_cells: 2000,
+        hpg_n_cells: 1,
         item_surrogate_config: SPSurrogateConfig {
             pole_coverage_goal: 0.95,
             max_poles: 20,
