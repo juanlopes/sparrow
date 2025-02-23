@@ -43,7 +43,7 @@ fn calc_idx(i: usize, j: usize, n: usize) -> usize {
     */
 
     debug_assert!(i < n && j < n);
-    if (i <= j) {
+    if i <= j {
         i * n - (i - 1) * i / 2 + j - i
     }
     else {

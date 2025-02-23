@@ -1,10 +1,9 @@
 use std::cmp::Ordering;
 use std::fmt::Debug;
-use std::thread::current;
 use jagua_rs::fsize;
 use jagua_rs::geometry::d_transformation::DTransformation;
 use jagua_rs::geometry::primitives::point::Point;
-use log::{debug, trace};
+use log::trace;
 use rand::Rng;
 use crate::sample::eval::{SampleEval, SampleEvaluator};
 
@@ -29,7 +28,7 @@ pub fn coordinate_descent(
     let mut cd_state = CDState {
         pos: init,
         eval: init_eval,
-        axis: AXES[rng.gen_range(0..4)],
+        axis: AXES[rng.random_range(0..4)],
         steps: (min_dim * STEP_INIT_RATIO, min_dim * STEP_INIT_RATIO),
         step_limit: min_dim * STEP_LIMIT_RATIO,
     };

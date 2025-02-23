@@ -1,12 +1,10 @@
 use crate::overlap::overlap_proxy::{bin_overlap_proxy, poly_overlap_proxy};
 use crate::overlap::tracker::OverlapTracker;
-use crate::sample::eval::hpg_eval::hpg_value;
 use crate::sample::eval::{SampleEval, SampleEvaluator};
 use jagua_rs::collision_detection::hazard::HazardEntity;
 use jagua_rs::entities::item::Item;
 use jagua_rs::entities::layout::Layout;
 use jagua_rs::entities::placed_item::PItemKey;
-use jagua_rs::fsize;
 use jagua_rs::geometry::d_transformation::DTransformation;
 use jagua_rs::geometry::geo_traits::{Shape, TransformableFrom};
 use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
@@ -49,13 +47,22 @@ impl<'a> SampleEvaluator for OverlappingSampleEvaluator<'a> {
         if self.coll_buff.is_empty() {
             SampleEval::Valid(0.0)
         } else {
-            let w_overlap = Self::calc_weighted_overlap(
-                self.layout,
-                &self.shape_buff,
-                self.current_pk,
-                &self.coll_buff,
-                self.ot
-            );
+            let w_overlap = self.coll_buff.iter()
+                .map(|haz| match haz {
+                    HazardEntity::PlacedItem { .. } => {
+                        let other_pk = self.layout.hazard_to_p_item_key(&haz).unwrap();
+                        let other_shape = &self.layout.placed_items[other_pk].shape;
+                        let overlap = poly_overlap_proxy(&self.shape_buff, other_shape);
+                        let weight = self.ot.get_pair_weight(self.current_pk, other_pk);
+                        overlap * weight
+                    }
+                    HazardEntity::BinExterior => {
+                        let overlap = bin_overlap_proxy(&self.shape_buff, self.layout.bin.bbox());
+                        let weight = self.ot.get_bin_weight(self.current_pk);
+                        2.0 * overlap * weight
+                    }
+                    _ => unimplemented!("unsupported hazard entity")
+                }).sum();
 
             SampleEval::Colliding(w_overlap)
         }
@@ -63,25 +70,5 @@ impl<'a> SampleEvaluator for OverlappingSampleEvaluator<'a> {
 
     fn n_evals(&self) -> usize {
         self.n_evals
-    }
-}
-
-impl<'a> OverlappingSampleEvaluator<'a> {
-    fn calc_weighted_overlap(l: &Layout, s: &SimplePolygon, ref_pk: PItemKey, colliding: &[HazardEntity], ot: &OverlapTracker) -> fsize {
-        colliding.iter().map(|haz| match haz {
-            HazardEntity::PlacedItem { .. } => {
-                let other_pk = l.hazard_to_p_item_key(&haz).unwrap();
-                let other_shape = &l.placed_items[other_pk].shape;
-                let overlap = poly_overlap_proxy(s, other_shape);
-                let weight = ot.get_pair_weight(ref_pk, other_pk);
-                overlap * weight
-            }
-            HazardEntity::BinExterior => {
-                let overlap = bin_overlap_proxy(s, l.bin.bbox());
-                let weight = ot.get_bin_weight(ref_pk);
-                2.0 * overlap * weight
-            }
-            _ => unimplemented!("unsupported hazard entity")
-        }).sum()
     }
 }
