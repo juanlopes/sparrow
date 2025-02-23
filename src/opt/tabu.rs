@@ -35,10 +35,6 @@ impl TabuList {
             .map(|(_, qty)| *qty)
             .sum::<usize>();
         let n_similar_limit = (N_SIMILAR_PI_RATIO * n_relevant_items as fsize).floor() as usize;
-        //dbg!(capacity);
-        //dbg!(n_similar_limit);
-        //dbg!(ch_area_cutoff);
-        //dbg!(n_relevant_items);
 
         TabuList {
             ch_area_cutoff,

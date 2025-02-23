@@ -1,6 +1,5 @@
 pub mod constructive_evaluator;
 pub mod overlapping_evaluator;
-pub mod hpg_eval;
 
 use jagua_rs::fsize;
 use jagua_rs::geometry::d_transformation::DTransformation;
