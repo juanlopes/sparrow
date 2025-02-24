@@ -4,7 +4,7 @@ use jagua_rs::geometry::geo_enums::AllowedRotation;
 use jagua_rs::geometry::primitives::aa_rectangle::AARectangle;
 use jagua_rs::{PI, fsize};
 use rand::Rng;
-use rand::prelude::{Distribution, IndexedRandom, SliceRandom};
+use rand::prelude::{Distribution, IndexedRandom};
 use std::ops::Range;
 
 #[derive(Clone, Debug)]
@@ -28,8 +28,8 @@ impl UniformBBoxSampler {
 
     pub fn sample(&self, rng: &mut impl Rng) -> DTransformation {
         let r_sample = self.uniform_r.sample(rng);
-        let x_sample = rng.gen_range(self.uniform_x.clone());
-        let y_sample = rng.gen_range(self.uniform_y.clone());
+        let x_sample = rng.random_range(self.uniform_x.clone());
+        let y_sample = rng.random_range(self.uniform_y.clone());
 
         DTransformation::new(r_sample, (x_sample, y_sample))
     }
@@ -54,7 +54,7 @@ impl UniformRotDistr {
     pub fn sample(&self, rng: &mut impl Rng) -> fsize {
         match self {
             UniformRotDistr::None => 0.0,
-            UniformRotDistr::Range(u) => rng.gen_range(u.clone()),
+            UniformRotDistr::Range(u) => rng.random_range(u.clone()),
             UniformRotDistr::Discrete(a_o) => *a_o.choose(rng).unwrap(),
         }
     }

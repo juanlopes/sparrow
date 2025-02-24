@@ -15,17 +15,17 @@ pub const STEP_INIT_RATIO: fsize = 0.25; //25% of the item's min dimension
 pub const STEP_LIMIT_RATIO: fsize = 0.001; //0.1% of the item's min dimension
 
 pub fn coordinate_descent(
-    (init_transf, init_eval): (DTransformation, SampleEval),
+    (init_dt, init_eval): (DTransformation, SampleEval),
     evaluator: &mut impl SampleEvaluator,
     min_dim: fsize,
     rng: &mut impl Rng,
 ) -> (DTransformation, SampleEval) {
     let mut counter = 0;
-    let init = init_transf.translation().into();
-    let rot = init_transf.rotation.into();
+    let init_pos = init_dt.translation().into();
+    let rot = init_dt.rotation.into();
 
     let mut cd_state = CDState {
-        pos: init,
+        pos: init_pos,
         eval: init_eval,
         axis: AXES[rng.random_range(0..4)],
         steps: (min_dim * STEP_INIT_RATIO, min_dim * STEP_INIT_RATIO),
@@ -37,27 +37,26 @@ pub fn coordinate_descent(
         let c0_eval = evaluator.eval(DTransformation::new(rot, c0.into()));
         let c1_eval = evaluator.eval(DTransformation::new(rot, c1.into()));
 
-        let c0_cmp = c0_eval.partial_cmp(&cd_state.eval);
-        let c1_cmp = c1_eval.partial_cmp(&cd_state.eval);
+        let c0_cmp = c0_eval.cmp(&cd_state.eval);
+        let c1_cmp = c1_eval.cmp(&cd_state.eval);
 
         trace!("CD: {:?}", cd_state);
 
         cd_state = match (c0_cmp, c1_cmp) {
-            (Some(Ordering::Less), Some(Ordering::Less)) => {
+            (Ordering::Less, Ordering::Less) => {
                 //both are better, go to the best
-                let move_to = match c0_eval <= c1_eval {
-                    true => (c0, c0_eval.clone()),
-                    false => (c1, c1_eval.clone()),
-                };
+                let move_to = [(c0, c0_eval), (c1, c1_eval)].iter()
+                    .min_by_key(|(_, eval)| *eval).unwrap().clone();
+
                 cd_state.evolve(Some(move_to), true)
             }
-            (Some(Ordering::Less), _) => cd_state.evolve(Some((c0, c0_eval.clone())), true),
-            (_, Some(Ordering::Less)) => cd_state.evolve(Some((c1, c1_eval.clone())), true),
-            (Some(Ordering::Equal), Some(Ordering::Equal)) => {
+            (Ordering::Less, _) => cd_state.evolve(Some((c0, c0_eval.clone())), true),
+            (_, Ordering::Less) => cd_state.evolve(Some((c1, c1_eval.clone())), true),
+            (Ordering::Equal, Ordering::Equal) => {
                 cd_state.evolve(Some((c0, c0_eval.clone())), false)
             }
-            (Some(Ordering::Equal), _) => cd_state.evolve(Some((c0, c0_eval.clone())), false),
-            (_, Some(Ordering::Equal)) => cd_state.evolve(Some((c1, c1_eval.clone())), false),
+            (Ordering::Equal, _) => cd_state.evolve(Some((c0, c0_eval.clone())), false),
+            (_, Ordering::Equal) => cd_state.evolve(Some((c1, c1_eval.clone())), false),
             (_, _) => {
                 //both are worse, switch axis and decrease step
                 cd_state.evolve(None, false)
@@ -68,13 +67,13 @@ pub fn coordinate_descent(
             counter < 100_000,
             "[CD] too many iterations, CD: {:?}, init: ({:.3}, {:.3})",
             cd_state,
-            init.0,
-            init.1
+            init_pos.0,
+            init_pos.1
         );
     }
     trace!(
         "CD: {} evals, t: ({:.3}, {:.3}) -> ({:.3}, {:.3}), eval: {:?}",
-        counter, init.0, init.1, cd_state.pos.0, cd_state.pos.1, cd_state.eval
+        counter, init_pos.0, init_pos.1, cd_state.pos.0, cd_state.pos.1, cd_state.eval
     );
     let cd_d_transf = DTransformation::new(rot, cd_state.pos.into());
     (cd_d_transf, cd_state.eval)
@@ -120,7 +119,7 @@ impl<T: PartialOrd + Debug> CDState<T> {
         let (sx, sy) = self.steps;
 
         if sx < self.step_limit && sy < self.step_limit {
-            return None;
+            None
         } else {
             let c = match self.axis {
                 CDAxis::Horizontal => [Point(p.0 + sx, p.1), Point(p.0 - sx, p.1)],

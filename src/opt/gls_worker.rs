@@ -97,10 +97,7 @@ impl GLSWorker {
             self.prob.layout.cde().collect_poly_collisions(&shape, &[])
         };
 
-        assert!(
-            colliding_entities.is_empty() || !matches!(eval, Some(SampleEval::Valid(_))),
-            "colliding entities detected for valid placement"
-        );
+        assert!(colliding_entities.is_empty() || !matches!(eval, Some(SampleEval::Valid(_))), "colliding entities detected for valid placement");
 
         let new_pk = {
             let new_p_opt = PlacingOption {
@@ -124,16 +121,7 @@ impl GLSWorker {
             self.ot.register_jump(new_pk);
         }
 
-        debug!(
-            "Moved item {} from from o: {}, wo: {} to o+1: {}, w_o+1: {} (jump: {})",
-            item.id,
-            FMT.fmt2(old_overlap),
-            FMT.fmt2(old_weighted_overlap),
-            FMT.fmt2(new_overlap),
-            FMT.fmt2(new_weighted_overlap),
-            jumped
-        );
-
+        debug!("Moved item {} from from o: {}, wo: {} to o+1: {}, w_o+1: {} (jump: {})",item.id,FMT.fmt2(old_overlap),FMT.fmt2(old_weighted_overlap),FMT.fmt2(new_overlap),FMT.fmt2(new_weighted_overlap),jumped);
         debug_assert!(tracker_matches_layout(&self.ot, &self.prob.layout));
 
         new_pk
