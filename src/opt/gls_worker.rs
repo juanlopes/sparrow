@@ -1,3 +1,12 @@
+use crate::FMT;
+use crate::opt::gls_orchestrator;
+use crate::overlap::tracker;
+use crate::overlap::tracker::OverlapTracker;
+use crate::sample::eval::SampleEval;
+use crate::sample::eval::overlapping_evaluator::OverlappingSampleEvaluator;
+use crate::sample::search;
+use crate::sample::search::SearchConfig;
+use crate::util::assertions::tracker_matches_layout;
 use itertools::Itertools;
 use jagua_rs::entities::instances::instance_generic::InstanceGeneric;
 use jagua_rs::entities::instances::strip_packing::SPInstance;
@@ -13,15 +22,6 @@ use jagua_rs::geometry::geo_traits::{Shape, Transformable};
 use log::debug;
 use rand::prelude::{SliceRandom, SmallRng};
 use tap::Tap;
-use crate::FMT;
-use crate::opt::gls_orchestrator;
-use crate::overlap::tracker;
-use crate::overlap::tracker::OverlapTracker;
-use crate::sample::eval::overlapping_evaluator::OverlappingSampleEvaluator;
-use crate::sample::eval::SampleEval;
-use crate::sample::search;
-use crate::sample::search::SearchConfig;
-use crate::util::assertions::tracker_matches_layout;
 
 pub struct GLSWorker {
     pub instance: SPInstance,
@@ -38,7 +38,10 @@ impl GLSWorker {
     }
 
     pub fn separate(&mut self) -> usize {
-        let candidates = self.prob.layout.placed_items()
+        let candidates = self
+            .prob
+            .layout
+            .placed_items()
             .keys()
             .filter(|pk| self.ot.get_overlap(*pk) > 0.0)
             .collect_vec()
@@ -49,14 +52,12 @@ impl GLSWorker {
         for &pk in candidates.iter() {
             let current_overlap = self.ot.get_overlap(pk);
             if current_overlap > 0.0 {
-                let item = self.instance.item(self.prob.layout.placed_items()[pk].item_id);
+                let item = self
+                    .instance
+                    .item(self.prob.layout.placed_items()[pk].item_id);
 
-                let evaluator = OverlappingSampleEvaluator::new(
-                    &self.prob.layout,
-                    item,
-                    pk,
-                    &self.ot,
-                );
+                let evaluator =
+                    OverlappingSampleEvaluator::new(&self.prob.layout, item, pk, &self.ot);
 
                 let new_placement = search::search_placement(
                     &self.prob.layout,
@@ -74,7 +75,12 @@ impl GLSWorker {
         n_movements
     }
 
-    pub fn move_item(&mut self, pik: PItemKey, d_transf: DTransformation, eval: Option<SampleEval>) -> PItemKey {
+    pub fn move_item(
+        &mut self,
+        pik: PItemKey,
+        d_transf: DTransformation,
+        eval: Option<SampleEval>,
+    ) -> PItemKey {
         debug_assert!(tracker_matches_layout(&self.ot, &self.prob.layout));
 
         let old_overlap = self.ot.get_overlap(pik);
@@ -91,7 +97,10 @@ impl GLSWorker {
             self.prob.layout.cde().collect_poly_collisions(&shape, &[])
         };
 
-        assert!(colliding_entities.is_empty() || !matches!(eval, Some(SampleEval::Valid(_))), "colliding entities detected for valid placement");
+        assert!(
+            colliding_entities.is_empty() || !matches!(eval, Some(SampleEval::Valid(_))),
+            "colliding entities detected for valid placement"
+        );
 
         let new_pk = {
             let new_p_opt = PlacingOption {
@@ -115,7 +124,15 @@ impl GLSWorker {
             self.ot.register_jump(new_pk);
         }
 
-        debug!("Moved item {} from from o: {}, wo: {} to o+1: {}, w_o+1: {} (jump: {})", item.id, FMT.fmt2(old_overlap), FMT.fmt2(old_weighted_overlap), FMT.fmt2(new_overlap), FMT.fmt2(new_weighted_overlap), jumped);
+        debug!(
+            "Moved item {} from from o: {}, wo: {} to o+1: {}, w_o+1: {} (jump: {})",
+            item.id,
+            FMT.fmt2(old_overlap),
+            FMT.fmt2(old_weighted_overlap),
+            FMT.fmt2(new_overlap),
+            FMT.fmt2(new_weighted_overlap),
+            jumped
+        );
 
         debug_assert!(tracker_matches_layout(&self.ot, &self.prob.layout));
 
@@ -135,6 +152,6 @@ pub fn generate_search_config(ot: &OverlapTracker, pk: PItemKey) -> SearchConfig
             n_bin_samples: 0,
             n_focussed_samples: gls_orchestrator::N_UNIFORM_SAMPLES,
             n_coord_descents: gls_orchestrator::N_COORD_DESCENTS,
-        }
+        },
     }
 }

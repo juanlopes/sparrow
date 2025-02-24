@@ -15,8 +15,8 @@ use jagua_rs::io::parser;
 use log::warn;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::ptr::hash;
-use svg::node::element::{Definitions, Group, Title, Use};
 use svg::Document;
+use svg::node::element::{Definitions, Group, Title, Use};
 
 pub fn s_layout_to_svg(
     s_layout: &LayoutSnapshot,
@@ -27,7 +27,11 @@ pub fn s_layout_to_svg(
     layout_to_svg(&layout, instance, options)
 }
 
-pub fn layout_to_svg(layout: &Layout, instance: &impl InstanceGeneric, options: SvgDrawOptions) -> Document {
+pub fn layout_to_svg(
+    layout: &Layout,
+    instance: &impl InstanceGeneric,
+    options: SvgDrawOptions,
+) -> Document {
     let internal_bin = &layout.bin;
     let inv_bin_transf = internal_bin.pretransform.clone().inverse();
     let bin = parser::pretransform_bin(internal_bin, &inv_bin_transf);
@@ -71,7 +75,7 @@ pub fn layout_to_svg(layout: &Layout, instance: &impl InstanceGeneric, options: 
                         ("stroke-width", &*format!("{}", 1.0 * stroke_width)),
                     ],
                 )
-                    .add(Title::new(format!("hole #{}", hole_idx))),
+                .add(Title::new(format!("hole #{}", hole_idx))),
             );
         }
         bin_group
@@ -99,7 +103,7 @@ pub fn layout_to_svg(layout: &Layout, instance: &impl InstanceGeneric, options: 
                             ("stroke-linejoin", "round"),
                         ],
                     )
-                        .add(Title::new(format!("quality zone, q: {}", qz.quality))),
+                    .add(Title::new(format!("quality zone, q: {}", qz.quality))),
                 );
             }
         }
@@ -293,7 +297,8 @@ pub fn layout_to_svg(layout: &Layout, instance: &impl InstanceGeneric, options: 
                 .set("id", "overlap_lines")
                 .set("transform", transform_to_svg(&inv_bin_transf));
             for (pkey, pi) in layout.placed_items().iter() {
-                let collides_with = layout.cde()
+                let collides_with = layout
+                    .cde()
                     .collect_poly_collisions(pi.shape.as_ref(), &[pi.into()]);
                 for haz_entity in collides_with {
                     match haz_entity {
@@ -309,16 +314,22 @@ pub fn layout_to_svg(layout: &Layout, instance: &impl InstanceGeneric, options: 
                                 hasher.finish()
                             };
 
-                            if haz_hash < pi_hash { // avoid duplicate lines
+                            if haz_hash < pi_hash {
+                                // avoid duplicate lines
                                 let start = pi.shape.poi.center;
-                                let colliding_pkey = layout.hazard_to_p_item_key(&haz_entity).expect("collding placed item not found");
+                                let colliding_pkey = layout
+                                    .hazard_to_p_item_key(&haz_entity)
+                                    .expect("collding placed item not found");
                                 let end = layout.placed_items[colliding_pkey].shape.poi.center;
                                 overlap_group = overlap_group.add(svg_export::data_to_path(
                                     svg_export::edge_data(&Edge { start, end }),
                                     &[
                                         ("stroke", "lime"),
                                         ("stroke-width", &*format!("{}", stroke_width * 2.0)),
-                                        ("stroke-dasharray", &*format!("{} {}", stroke_width, 4.0 * stroke_width)),
+                                        (
+                                            "stroke-dasharray",
+                                            &*format!("{} {}", stroke_width, 4.0 * stroke_width),
+                                        ),
                                         ("stroke-linecap", "round"),
                                         ("stroke-linejoin", "round"),
                                     ],
@@ -357,8 +368,6 @@ pub fn layout_to_svg(layout: &Layout, instance: &impl InstanceGeneric, options: 
         .add(qz_group)
         .add(optionals)
 }
-
-
 
 pub fn layout_to_svg_2(layout: &Layout, options: SvgDrawOptions) -> Document {
     let internal_bin = &layout.bin;
@@ -404,7 +413,7 @@ pub fn layout_to_svg_2(layout: &Layout, options: SvgDrawOptions) -> Document {
                         ("stroke-width", &*format!("{}", 1.0 * stroke_width)),
                     ],
                 )
-                    .add(Title::new(format!("hole #{}", hole_idx))),
+                .add(Title::new(format!("hole #{}", hole_idx))),
             );
         }
         bin_group
@@ -432,7 +441,7 @@ pub fn layout_to_svg_2(layout: &Layout, options: SvgDrawOptions) -> Document {
                             ("stroke-linejoin", "round"),
                         ],
                     )
-                        .add(Title::new(format!("quality zone, q: {}", qz.quality))),
+                    .add(Title::new(format!("quality zone, q: {}", qz.quality))),
                 );
             }
         }
@@ -448,7 +457,13 @@ pub fn layout_to_svg_2(layout: &Layout, options: SvgDrawOptions) -> Document {
             let shape = pi.shape.as_ref();
             let color = theme.item_fill.to_owned();
 
-            let def_id = format!("id_{}_t_{:.3}_{:.3}_r_{:.3}", pi.item_id, pi.d_transf.translation().0, pi.d_transf.translation().1, pi.d_transf.rotation());
+            let def_id = format!(
+                "id_{}_t_{:.3}_{:.3}_r_{:.3}",
+                pi.item_id,
+                pi.d_transf.translation().0,
+                pi.d_transf.translation().1,
+                pi.d_transf.rotation()
+            );
 
             item_defs = item_defs.add(Group::new().set("id", format!("item_{}", def_id)).add(
                 svg_export::data_to_path(
@@ -523,7 +538,13 @@ pub fn layout_to_svg_2(layout: &Layout, options: SvgDrawOptions) -> Document {
                 abs_transf.decompose()
             ));
 
-            let def_id = format!("id_{}_t_{:.3}_{:.3}_r_{:.3}", pi.item_id, pi.d_transf.translation().0, pi.d_transf.translation().1, pi.d_transf.rotation());
+            let def_id = format!(
+                "id_{}_t_{:.3}_{:.3}_r_{:.3}",
+                pi.item_id,
+                pi.d_transf.translation().0,
+                pi.d_transf.translation().1,
+                pi.d_transf.rotation()
+            );
 
             let pi_ref = Use::new()
                 .set("transform", transform_to_svg(&abs_transf))
@@ -621,7 +642,8 @@ pub fn layout_to_svg_2(layout: &Layout, options: SvgDrawOptions) -> Document {
                 .set("id", "overlap_lines")
                 .set("transform", transform_to_svg(&inv_bin_transf));
             for (pkey, pi) in layout.placed_items().iter() {
-                let collides_with = layout.cde()
+                let collides_with = layout
+                    .cde()
                     .collect_poly_collisions(pi.shape.as_ref(), &[pi.into()]);
                 for haz_entity in collides_with {
                     match haz_entity {
@@ -637,16 +659,22 @@ pub fn layout_to_svg_2(layout: &Layout, options: SvgDrawOptions) -> Document {
                                 hasher.finish()
                             };
 
-                            if haz_hash < pi_hash { // avoid duplicate lines
+                            if haz_hash < pi_hash {
+                                // avoid duplicate lines
                                 let start = pi.shape.poi.center;
-                                let colliding_pkey = layout.hazard_to_p_item_key(&haz_entity).expect("collding placed item not found");
+                                let colliding_pkey = layout
+                                    .hazard_to_p_item_key(&haz_entity)
+                                    .expect("collding placed item not found");
                                 let end = layout.placed_items[colliding_pkey].shape.poi.center;
                                 overlap_group = overlap_group.add(svg_export::data_to_path(
                                     svg_export::edge_data(&Edge { start, end }),
                                     &[
                                         ("stroke", "lime"),
                                         ("stroke-width", &*format!("{}", stroke_width * 2.0)),
-                                        ("stroke-dasharray", &*format!("{} {}", stroke_width, 4.0 * stroke_width)),
+                                        (
+                                            "stroke-dasharray",
+                                            &*format!("{} {}", stroke_width, 4.0 * stroke_width),
+                                        ),
                                         ("stroke-linecap", "round"),
                                         ("stroke-linejoin", "round"),
                                     ],
@@ -686,7 +714,6 @@ pub fn layout_to_svg_2(layout: &Layout, options: SvgDrawOptions) -> Document {
         .add(optionals)
 }
 
-
 fn transform_to_svg(t: &Transformation) -> String {
     //https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/transform
     //operations are effectively applied from right to left
@@ -695,4 +722,3 @@ fn transform_to_svg(t: &Transformation) -> String {
     let r = dt.rotation().to_degrees();
     format!("translate({tx} {ty}), rotate({r})")
 }
-

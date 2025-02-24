@@ -20,7 +20,12 @@ pub struct OverlappingSampleEvaluator<'a> {
 }
 
 impl<'a> OverlappingSampleEvaluator<'a> {
-    pub fn new(layout: &'a Layout, item: &'a Item, current_pk: PItemKey, ot: &'a OverlapTracker) -> Self {
+    pub fn new(
+        layout: &'a Layout,
+        item: &'a Item,
+        current_pk: PItemKey,
+        ot: &'a OverlapTracker,
+    ) -> Self {
         Self {
             layout,
             item,
@@ -47,7 +52,9 @@ impl<'a> SampleEvaluator for OverlappingSampleEvaluator<'a> {
         if self.coll_buff.is_empty() {
             SampleEval::Valid(0.0)
         } else {
-            let w_overlap = self.coll_buff.iter()
+            let w_overlap = self
+                .coll_buff
+                .iter()
                 .map(|haz| match haz {
                     HazardEntity::PlacedItem { .. } => {
                         let other_pk = self.layout.hazard_to_p_item_key(&haz).unwrap();
@@ -61,8 +68,9 @@ impl<'a> SampleEvaluator for OverlappingSampleEvaluator<'a> {
                         let weight = self.ot.get_bin_weight(self.current_pk);
                         2.0 * overlap * weight
                     }
-                    _ => unimplemented!("unsupported hazard entity")
-                }).sum();
+                    _ => unimplemented!("unsupported hazard entity"),
+                })
+                .sum();
 
             SampleEval::Colliding(w_overlap)
         }

@@ -1,20 +1,20 @@
-use std::ops::Range;
 use jagua_rs::entities::item::Item;
-use jagua_rs::{fsize, PI};
 use jagua_rs::geometry::d_transformation::DTransformation;
 use jagua_rs::geometry::geo_enums::AllowedRotation;
 use jagua_rs::geometry::primitives::aa_rectangle::AARectangle;
-use rand::prelude::{Distribution, IndexedRandom, SliceRandom};
+use jagua_rs::{PI, fsize};
 use rand::Rng;
+use rand::prelude::{Distribution, IndexedRandom, SliceRandom};
+use std::ops::Range;
 
 #[derive(Clone, Debug)]
-pub struct UniformAARectSampler{
+pub struct UniformBBoxSampler {
     pub uniform_x: Range<fsize>,
     pub uniform_y: Range<fsize>,
     pub uniform_r: UniformRotDistr,
 }
 
-impl UniformAARectSampler {
+impl UniformBBoxSampler {
     pub fn new(bbox: AARectangle, item: &Item) -> Self {
         let uniform_x = bbox.x_min..bbox.x_max;
         let uniform_y = bbox.y_min..bbox.y_max;

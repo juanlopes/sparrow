@@ -1,5 +1,5 @@
-use std::ops::{Index, IndexMut};
 use crate::overlap::tracker::OTEntry;
+use std::ops::{Index, IndexMut};
 
 // Triangular matrix of pair-wise overlaps and weights
 #[derive(Debug, Clone)]
@@ -32,7 +32,6 @@ impl IndexMut<(usize, usize)> for PairMatrix {
     }
 }
 
-
 fn calc_idx(i: usize, j: usize, n: usize) -> usize {
     //https://stackoverflow.com/questions/3187957/how-to-store-a-symmetric-matrix
     /* Example:
@@ -45,8 +44,7 @@ fn calc_idx(i: usize, j: usize, n: usize) -> usize {
     debug_assert!(i < n && j < n);
     if i <= j {
         i * n - (i - 1) * i / 2 + j - i
-    }
-    else {
+    } else {
         j * n - (j - 1) * j / 2 + i - j
     }
 }

@@ -1,11 +1,11 @@
-use std::cmp::Ordering;
-use std::fmt::Debug;
+use crate::sample::eval::{SampleEval, SampleEvaluator};
 use jagua_rs::fsize;
 use jagua_rs::geometry::d_transformation::DTransformation;
 use jagua_rs::geometry::primitives::point::Point;
 use log::trace;
 use rand::Rng;
-use crate::sample::eval::{SampleEval, SampleEvaluator};
+use std::cmp::Ordering;
+use std::fmt::Debug;
 
 pub const K_SUCC: fsize = 1.1;
 pub const K_FAIL: fsize = 0.5;
@@ -13,7 +13,6 @@ pub const K_FAIL: fsize = 0.5;
 pub const STEP_INIT_RATIO: fsize = 0.25; //25% of the item's min dimension
 
 pub const STEP_LIMIT_RATIO: fsize = 0.001; //0.1% of the item's min dimension
-
 
 pub fn coordinate_descent(
     (init_transf, init_eval): (DTransformation, SampleEval),
@@ -38,12 +37,6 @@ pub fn coordinate_descent(
         let c0_eval = evaluator.eval(DTransformation::new(rot, c0.into()));
         let c1_eval = evaluator.eval(DTransformation::new(rot, c1.into()));
 
-        // debug!(
-        //     "c0: ({:.0},{:.0}) c1: ({:.0},{:.0}) evals: {:?} {:?}",
-        //     c0.0, c0.1, c1.0, c1.1,
-        //     c0_eval, c1_eval
-        // );
-
         let c0_cmp = c0_eval.partial_cmp(&cd_state.eval);
         let c1_cmp = c1_eval.partial_cmp(&cd_state.eval);
 
@@ -58,30 +51,31 @@ pub fn coordinate_descent(
                 };
                 cd_state.evolve(Some(move_to), true)
             }
-            (Some(Ordering::Less), _) => {
-                cd_state.evolve(Some((c0, c0_eval.clone())), true)
-            }
-            (_, Some(Ordering::Less)) => {
-                cd_state.evolve(Some((c1, c1_eval.clone())), true)
-            }
+            (Some(Ordering::Less), _) => cd_state.evolve(Some((c0, c0_eval.clone())), true),
+            (_, Some(Ordering::Less)) => cd_state.evolve(Some((c1, c1_eval.clone())), true),
             (Some(Ordering::Equal), Some(Ordering::Equal)) => {
                 cd_state.evolve(Some((c0, c0_eval.clone())), false)
             }
-            (Some(Ordering::Equal), _) => {
-                cd_state.evolve(Some((c0, c0_eval.clone())), false)
-            }
-            (_, Some(Ordering::Equal)) => {
-                cd_state.evolve(Some((c1, c1_eval.clone())), false)
-            }
+            (Some(Ordering::Equal), _) => cd_state.evolve(Some((c0, c0_eval.clone())), false),
+            (_, Some(Ordering::Equal)) => cd_state.evolve(Some((c1, c1_eval.clone())), false),
             (_, _) => {
                 //both are worse, switch axis and decrease step
                 cd_state.evolve(None, false)
             }
         };
         counter += 2;
-        assert!(counter < 100_000, "[CD] too many iterations, CD: {:?}, init: ({:.3}, {:.3})", cd_state, init.0, init.1);
+        assert!(
+            counter < 100_000,
+            "[CD] too many iterations, CD: {:?}, init: ({:.3}, {:.3})",
+            cd_state,
+            init.0,
+            init.1
+        );
     }
-    trace!("CD: {} evals, t: ({:.3}, {:.3}) -> ({:.3}, {:.3}), eval: {:?}", counter, init.0, init.1, cd_state.pos.0, cd_state.pos.1, cd_state.eval);
+    trace!(
+        "CD: {} evals, t: ({:.3}, {:.3}) -> ({:.3}, {:.3}), eval: {:?}",
+        counter, init.0, init.1, cd_state.pos.0, cd_state.pos.1, cd_state.eval
+    );
     let cd_d_transf = DTransformation::new(rot, cd_state.pos.into());
     (cd_d_transf, cd_state.eval)
 }
