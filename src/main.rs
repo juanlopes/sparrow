@@ -24,9 +24,7 @@ const INPUT_FILE: &str = "libs/jagua-rs/assets/swim.json";
 
 const TIME_LIMIT_S: u64 = 20 * 60;
 
-const RNG_SEED: Option<usize> = Some(2);
-
-//const RNG_SEED: Option<usize> = None;
+const RNG_SEED: Option<usize> = None;
 
 fn main() {
     if cfg!(debug_assertions) {
@@ -38,12 +36,12 @@ fn main() {
     let json_instance = io::read_json_instance(Path::new(&INPUT_FILE));
 
     let cde_config = CDEConfig {
-        quadtree_depth: 4,
+        quadtree_depth: 3,
         hpg_n_cells: 0,
         item_surrogate_config: SPSurrogateConfig {
             pole_coverage_goal: 0.95,
             max_poles: 20,
-            n_ff_poles: 2,
+            n_ff_poles: 4,
             n_ff_piers: 0,
         },
     };

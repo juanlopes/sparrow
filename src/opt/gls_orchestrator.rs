@@ -2,17 +2,17 @@ use crate::opt::gls_worker::GLSWorker;
 use crate::opt::tabu::TabuList;
 use crate::overlap::tracker;
 use crate::overlap::tracker::{OTSnapshot, OverlapTracker};
-use crate::sample::eval::SampleEval;
 use crate::sample::eval::overlapping_evaluator::OverlappingSampleEvaluator;
+use crate::sample::eval::SampleEval;
 use crate::sample::search;
 use crate::sample::search::SearchConfig;
 use crate::util::assertions::tracker_matches_layout;
 use crate::util::io;
 use crate::util::io::layout_to_svg::{layout_to_svg, s_layout_to_svg};
 use crate::util::io::svg_util::SvgDrawOptions;
-use crate::{FMT, SVG_OUTPUT_DIR};
+use crate::{DRAW_OPTIONS, FMT, SVG_OUTPUT_DIR};
 use float_cmp::approx_eq;
-use itertools::{Itertools, sorted};
+use itertools::{sorted, Itertools};
 use jagua_rs::entities::bin::Bin;
 use jagua_rs::entities::instances::instance_generic::InstanceGeneric;
 use jagua_rs::entities::instances::strip_packing::SPInstance;
@@ -36,7 +36,7 @@ use rand::{Rng, SeedableRng};
 use rand_distr::Distribution;
 use rand_distr::Normal;
 use rayon::iter::IntoParallelRefMutIterator;
-use rayon::iter::{ParallelIterator, split};
+use rayon::iter::{split, ParallelIterator};
 use std::char::decode_utf16;
 use std::cmp::Reverse;
 use std::collections::VecDeque;
@@ -58,14 +58,12 @@ pub const N_UNIFORM_SAMPLES: usize = 100;
 pub const N_COORD_DESCENTS: usize = 2;
 pub const TABU_SIZE: usize = 10_000;
 pub const JUMP_COOLDOWN: usize = 5;
-
-pub const N_THREADS: usize = 2;
-
+pub const N_WORKERS: usize = 2;
 pub const OT_MAX_INCREASE: fsize = 2.0;
 pub const OT_MIN_INCREASE: fsize = 1.2;
 pub const OT_DECAY: fsize = 0.95;
-
 pub const PROXY_EPSILON_DIAM_FRAC: fsize = 0.01;
+pub const STDDEV_SPREAD: fsize = 5.0;
 
 pub struct GLSOrchestrator {
     pub instance: SPInstance,
@@ -87,7 +85,7 @@ impl GLSOrchestrator {
     ) -> Self {
         let overlap_tracker = OverlapTracker::new(&problem.layout);
         let tabu_list = TabuList::new(TABU_SIZE, &instance);
-        let workers = (0..N_THREADS)
+        let workers = (0..N_WORKERS)
             .map(|_| GLSWorker {
                 instance: instance.clone(),
                 prob: problem.clone(),
@@ -113,7 +111,7 @@ impl GLSOrchestrator {
         let (mut best_feasible_solution, mut best_width) =
             (self.master_prob.create_solution(None), current_width);
 
-        self.write_to_disk(None, true);
+        self.write_to_disk(None, "init", true);
         info!("[GLS] starting optimization with initial width: {:.3} ({:.3}%)",current_width,self.master_prob.usage() * 100.0);
 
         let start = Instant::now();
@@ -128,7 +126,7 @@ impl GLSOrchestrator {
                     info!("[GLS] new best width at : {:.3} ({:.3}%)",current_width,self.master_prob.usage() * 100.0);
                     best_width = current_width;
                     best_feasible_solution = local_best.0.clone();
-                    self.write_to_disk(Some(best_feasible_solution.clone()), true);
+                    self.write_to_disk(Some(best_feasible_solution.clone()), "c", true);
                 }
                 let next_width = current_width * (1.0 - R_SHRINK);
                 info!("[GLS] shrinking width from {:.3} to {:.3}",current_width, next_width);
@@ -137,7 +135,8 @@ impl GLSOrchestrator {
             } else {
                 //layout was not successfully separated
                 self.tabu_list.push(local_best.0.clone(), total_overlap);
-                info!("[GLS] layout separation unsuccessful, adding local best to tabu list");
+                info!("[GLS] layout separation unsuccessful, adding local best to tabu list (o: {})", FMT.fmt2(total_overlap));
+                self.write_to_disk(Some(local_best.0.clone()), "o", true);
 
                 //restore to a random solution from the tabu list, better solutions have more chance to be selected
                 let selected_sol = {
@@ -148,9 +147,10 @@ impl GLSOrchestrator {
                         .sorted_by_key(|(_, eval)| OrderedFloat(*eval))
                         .collect_vec();
 
-                    let distr = Normal::new(0.0 as fsize, sorted_sols.len() as fsize / 5.0).unwrap();
+                    let distr = Normal::new(0.0 as fsize, sorted_sols.len() as fsize / STDDEV_SPREAD).unwrap();
                     let selected_idx = (distr.sample(&mut self.rng).abs().floor() as usize).min(sorted_sols.len() - 1);
                     let selected = sorted_sols.get(selected_idx).unwrap();
+                    info!("[GLS] selected starting solution {}/{} from tabu list (o: {})", selected_idx, sorted_sols.len(), FMT.fmt2(selected.1));
                     selected.0.clone()
                 };
 
@@ -159,7 +159,7 @@ impl GLSOrchestrator {
         }
 
         info!("[GLS] time limit reached, returning best solution: {:.3} ({:.3}%)",best_width,best_feasible_solution.layout_snapshots[0].usage * 100.0);
-        self.write_to_disk(Some(best_feasible_solution.clone()), true);
+        self.write_to_disk(Some(best_feasible_solution.clone()), "final", true);
 
         best_feasible_solution
     }
@@ -236,7 +236,7 @@ impl GLSOrchestrator {
                 info!("[s:{n_strikes}, i: {n_iter}] improvement, resetting strikes");
                 n_strikes = 0;
             }
-            self.write_to_disk(None, true);
+            self.write_to_disk(None, "strike", false);
         }
         info!("[GLS] strike limit reached ({}), moves/s: {}, iter/s: {}, time: {}ms",n_strikes,(n_items_moved as f64 / start.elapsed().as_secs_f64()) as usize,(n_iter as f64 / start.elapsed().as_secs_f64()) as usize,start.elapsed().as_millis());
 
@@ -408,9 +408,9 @@ impl GLSOrchestrator {
         info!("changed strip width to {}", new_width);
     }
 
-    pub fn write_to_disk(&mut self, solution: Option<Solution>, force: bool) {
+    pub fn write_to_disk(&mut self, solution: Option<Solution>, suffix: &str, force: bool) {
         //make sure we are in debug mode or force is true
-        if !force && !cfg!(debug_assertions) && true {
+        if !force && !cfg!(debug_assertions) {
             return;
         }
 
@@ -422,16 +422,16 @@ impl GLSOrchestrator {
 
         match solution {
             Some(sol) => {
-                let filename = format!("{}/{}_{:.2}_s.svg", &self.output_folder, self.svg_counter, sol.layout_snapshots[0].bin.bbox().x_max);
+                let filename = format!("{}/{}_{:.2}_{suffix}.svg", &self.output_folder, self.svg_counter, sol.layout_snapshots[0].bin.bbox().x_max);
                 io::write_svg(
-                    &s_layout_to_svg(&sol.layout_snapshots[0], &self.instance, SvgDrawOptions::default()),
+                    &s_layout_to_svg(&sol.layout_snapshots[0], &self.instance, DRAW_OPTIONS),
                     Path::new(&filename),
                 );
             }
             None => {
-                let filename = format!("{}/{}_{:.2}.svg", &self.output_folder, self.svg_counter, self.master_prob.layout.bin.bbox().x_max);
+                let filename = format!("{}/{}_{:.2}_{suffix}.svg", &self.output_folder, self.svg_counter, self.master_prob.layout.bin.bbox().x_max);
                 io::write_svg(
-                    &layout_to_svg(&self.master_prob.layout, &self.instance, SvgDrawOptions::default()),
+                    &layout_to_svg(&self.master_prob.layout, &self.instance, DRAW_OPTIONS),
                     Path::new(&filename),
                 );
             }

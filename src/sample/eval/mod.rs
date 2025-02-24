@@ -6,6 +6,8 @@ use jagua_rs::geometry::d_transformation::DTransformation;
 use jagua_rs::util::fpa::FPA;
 use std::cmp::Ordering;
 
+use SampleEval::{Invalid, Valid, Colliding};
+
 #[derive(Clone, Debug, PartialEq, Copy)]
 pub enum SampleEval {
     Valid(fsize),
@@ -13,29 +15,16 @@ pub enum SampleEval {
     Invalid,
 }
 
-impl SampleEval {
-    fn variant_index(&self) -> u8 {
-        match self {
-            SampleEval::Valid(_) => 0,
-            SampleEval::Colliding(_) => 1,
-            SampleEval::Invalid => 2,
-        }
-    }
-}
-
 impl PartialOrd for SampleEval {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        match u8::cmp(&self.variant_index(), &other.variant_index()) {
-            Ordering::Less => Some(Ordering::Less),
-            Ordering::Greater => Some(Ordering::Greater),
-            Ordering::Equal => match (self, other) {
-                (SampleEval::Colliding(wo1), SampleEval::Colliding(wo2)) => {
-                    FPA(*wo1).partial_cmp(&FPA(*wo2))
-                }
-                (SampleEval::Valid(v1), SampleEval::Valid(v2)) => FPA(*v1).partial_cmp(&FPA(*v2)),
-                (SampleEval::Invalid, SampleEval::Invalid) => Some(Ordering::Equal),
-                _ => unreachable!(),
-            },
+        match (self, other){
+            (Invalid, Invalid) => Some(Ordering::Equal),
+            (Invalid, _) => Some(Ordering::Greater),
+            (_, Invalid) => Some(Ordering::Less),
+            (Colliding(_), Valid(_)) => Some(Ordering::Greater),
+            (Valid(_), Colliding(_)) => Some(Ordering::Less),
+            (Colliding(wo1), Colliding(wo2)) => FPA(*wo1).partial_cmp(&FPA(*wo2)),
+            (Valid(v1), Valid(v2)) => FPA(*v1).partial_cmp(&FPA(*v2)),
         }
     }
 }

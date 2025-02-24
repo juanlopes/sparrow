@@ -1,5 +1,4 @@
 use crate::sample::eval::{SampleEval, SampleEvaluator};
-use jagua_rs::collision_detection::hazard::HazardEntity;
 use jagua_rs::entities::item::Item;
 use jagua_rs::entities::layout::Layout;
 use jagua_rs::entities::problems::strip_packing;
