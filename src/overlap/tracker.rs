@@ -35,6 +35,7 @@ pub struct OTSnapshot {
     pub pk_idx_map: SecondaryMap<PItemKey, usize>,
     pub pair_overlap: PairMatrix,
     pub bin_overlap: Vec<OTEntry>,
+    pub total_overlap: fsize,
 }
 
 #[derive(Debug, Clone)]
@@ -134,6 +135,7 @@ impl OverlapTracker {
             pk_idx_map: self.pk_idx_map.clone(),
             pair_overlap: self.pair_overlap.clone(),
             bin_overlap: self.bin_overlap.clone(),
+            total_overlap: self.get_total_overlap(),
         }
     }
 
