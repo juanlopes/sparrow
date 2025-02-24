@@ -70,11 +70,7 @@ impl ConstructiveBuilder {
         }
 
         self.prob.fit_strip();
-        debug!(
-            "[CONSTR] built solution in {:?}, width: {:?}",
-            start.elapsed(),
-            self.prob.strip_width()
-        );
+        debug!("[CONSTR] built solution in {:?}, width: {:?}",start.elapsed(),self.prob.strip_width());
 
         self.prob.create_solution(None)
     }
@@ -83,21 +79,11 @@ impl ConstructiveBuilder {
         match self.find_placement(item_id) {
             Some(p_opt) => {
                 self.prob.place_item(p_opt);
-                debug!(
-                    "[CONSTR] placing item {}/{} with id {} at [{}]",
-                    self.prob.placed_item_qtys().sum::<usize>(),
-                    self.instance.total_item_qty(),
-                    p_opt.item_id,
-                    p_opt.d_transf
-                );
+                debug!("[CONSTR] placing item {}/{} with id {} at [{}]",self.prob.placed_item_qtys().sum::<usize>(),self.instance.total_item_qty(),p_opt.item_id,p_opt.d_transf);
             }
             None => {
-                debug!(
-                    "[CONSTR] failed to place item with id {}, increasing strip width",
-                    item_id
-                );
-                self.prob
-                    .modify_strip_in_back(self.prob.strip_width() * 1.2);
+                debug!("[CONSTR] failed to place item with id {}, increasing strip width",item_id);
+                self.prob.modify_strip_in_back(self.prob.strip_width() * 1.2);
                 self.place_item(item_id);
             }
         }
@@ -107,7 +93,7 @@ impl ConstructiveBuilder {
         let layout = &self.prob.layout;
         //search for a place
         let item = self.instance.item(item_id);
-        let mut evaluator = ConstructiveEvaluator::new(layout, item);
+        let evaluator = ConstructiveEvaluator::new(layout, item);
 
         let (d_transf, eval) = search_placement(
             layout,

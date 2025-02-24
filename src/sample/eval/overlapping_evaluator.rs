@@ -52,9 +52,7 @@ impl<'a> SampleEvaluator for OverlappingSampleEvaluator<'a> {
         if self.coll_buff.is_empty() {
             SampleEval::Valid(0.0)
         } else {
-            let w_overlap = self
-                .coll_buff
-                .iter()
+            let w_overlap = self.coll_buff.iter()
                 .map(|haz| match haz {
                     HazardEntity::PlacedItem { .. } => {
                         let other_pk = self.layout.hazard_to_p_item_key(&haz).unwrap();

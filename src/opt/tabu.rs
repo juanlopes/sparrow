@@ -69,8 +69,7 @@ impl TabuList {
                 .collect_vec(),
             self.n_similar_limit
         );
-        self.list
-            .iter()
+        self.list.iter()
             .any(|(s, _)| n_similar_placements(sol, s, self.ch_area_cutoff) > self.n_similar_limit)
     }
 
@@ -99,8 +98,7 @@ fn n_similar_placements(sol1: &Solution, sol2: &Solution, ch_area_cutoff: fsize)
         let x_threshold = pi1.shape.bbox.width() * TRANSL_DIM_FRACTION;
         let y_theshold = pi1.shape.bbox.height() * TRANSL_DIM_FRACTION;
 
-        let similar_exists = l2
-            .placed_items
+        let similar_exists = l2.placed_items
             .values()
             .filter(|pi2| pi2.shape.surrogate().convex_hull_area > ch_area_cutoff)
             .any(|pi2| placed_items_are_similar(pi1, pi2, x_threshold, y_theshold));
