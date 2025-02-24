@@ -1,22 +1,15 @@
 use crate::opt::gls_worker::GLSWorker;
 use crate::opt::tabu::TabuList;
-use crate::overlap::tracker;
 use crate::overlap::tracker::{OTSnapshot, OverlapTracker};
-use crate::sample::eval::overlapping_evaluator::OverlappingSampleEvaluator;
 use crate::sample::eval::SampleEval;
-use crate::sample::search;
-use crate::sample::search::SearchConfig;
 use crate::util::assertions::tracker_matches_layout;
 use crate::util::io;
 use crate::util::io::layout_to_svg::{layout_to_svg, s_layout_to_svg};
-use crate::util::io::svg_util::SvgDrawOptions;
-use crate::{DRAW_OPTIONS, FMT, SVG_OUTPUT_DIR};
-use float_cmp::approx_eq;
-use itertools::{sorted, Itertools};
+use crate::{DRAW_OPTIONS, FMT};
+use itertools::Itertools;
 use jagua_rs::entities::bin::Bin;
 use jagua_rs::entities::instances::instance_generic::InstanceGeneric;
 use jagua_rs::entities::instances::strip_packing::SPInstance;
-use jagua_rs::entities::layout::Layout;
 use jagua_rs::entities::placed_item::PItemKey;
 use jagua_rs::entities::placing_option::PlacingOption;
 use jagua_rs::entities::problems::problem_generic::{ProblemGeneric, STRIP_LAYOUT_IDX};
@@ -28,7 +21,7 @@ use jagua_rs::geometry::geo_enums::GeoRelation;
 use jagua_rs::geometry::geo_traits::{Shape, Transformable};
 use jagua_rs::geometry::primitives::aa_rectangle::AARectangle;
 use jagua_rs::util::fpa::FPA;
-use log::{debug, info, warn};
+use log::{debug, info};
 use ordered_float::OrderedFloat;
 use rand::prelude::IteratorRandom;
 use rand::rngs::SmallRng;
@@ -36,15 +29,9 @@ use rand::{Rng, SeedableRng};
 use rand_distr::Distribution;
 use rand_distr::Normal;
 use rayon::iter::IntoParallelRefMutIterator;
-use rayon::iter::{split, ParallelIterator};
-use std::char::decode_utf16;
-use std::cmp::Reverse;
-use std::collections::VecDeque;
-use std::iter;
-use std::ops::Range;
+use rayon::iter::ParallelIterator;
 use std::path::Path;
 use std::time::{Duration, Instant};
-use tap::Tap;
 
 pub const N_ITER_NO_IMPROVEMENT: usize = 50;
 
@@ -141,7 +128,7 @@ impl GLSOrchestrator {
                 //restore to a random solution from the tabu list, better solutions have more chance to be selected
                 let selected_sol = {
                     let sorted_sols = self.tabu_list.list.iter()
-                        .filter(|(sol, eval)| {
+                        .filter(|(sol, _)| {
                             sol.layout_snapshots[0].bin.bbox().width() == current_width
                         })
                         .sorted_by_key(|(_, eval)| OrderedFloat(*eval))
@@ -305,8 +292,8 @@ impl GLSOrchestrator {
         let dt1 = pi1.d_transf;
         let dt2 = pi2.d_transf;
 
-        let new_pk1 = self.move_item(pk1, dt2, None);
-        let new_pk2 = self.move_item(pk2, dt1, None);
+        self.move_item(pk1, dt2, None);
+        self.move_item(pk2, dt1, None);
     }
 
     fn move_item(&mut self, pik: PItemKey, dt: DTransformation, eval: Option<SampleEval>) -> PItemKey {

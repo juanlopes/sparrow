@@ -1,26 +1,19 @@
-use crate::DRAW_OPTIONS;
 use crate::sample::eval::SampleEval;
 use crate::sample::eval::constructive_evaluator::ConstructiveEvaluator;
 use crate::sample::search::{SearchConfig, search_placement};
 use itertools::Itertools;
 use jagua_rs::entities::instances::instance_generic::InstanceGeneric;
 use jagua_rs::entities::instances::strip_packing::SPInstance;
-use jagua_rs::entities::placed_item::PItemKey;
 use jagua_rs::entities::placing_option::PlacingOption;
 use jagua_rs::entities::problems::problem_generic::{ProblemGeneric, STRIP_LAYOUT_IDX};
 use jagua_rs::entities::problems::strip_packing::SPProblem;
 use jagua_rs::entities::solution::Solution;
-use jagua_rs::fsize;
-use jagua_rs::geometry::geo_traits::Shape;
-use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
 use jagua_rs::util::config::CDEConfig;
-use log::{debug, info, log, warn};
+use log::debug;
 use ordered_float::OrderedFloat;
-use rand::Rng;
-use rand::prelude::{Distribution, SmallRng};
+use rand::prelude::{SmallRng};
 use std::cmp::Reverse;
 use std::iter;
-use std::path::Path;
 use std::time::Instant;
 
 pub struct ConstructiveBuilder {

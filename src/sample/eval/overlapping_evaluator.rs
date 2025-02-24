@@ -8,10 +8,8 @@ use jagua_rs::entities::layout::Layout;
 use jagua_rs::entities::placed_item::PItemKey;
 use jagua_rs::fsize;
 use jagua_rs::geometry::d_transformation::DTransformation;
-use jagua_rs::geometry::geo_traits::{Shape, TransformableFrom};
+use jagua_rs::geometry::geo_traits::TransformableFrom;
 use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
-
-const USE_NEW_EVAL: bool = true;
 
 pub struct OverlappingSampleEvaluator<'a> {
     layout: &'a Layout,

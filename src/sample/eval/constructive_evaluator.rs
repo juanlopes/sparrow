@@ -1,7 +1,6 @@
 use crate::sample::eval::{SampleEval, SampleEvaluator};
 use jagua_rs::entities::item::Item;
 use jagua_rs::entities::layout::Layout;
-use jagua_rs::entities::problems::strip_packing;
 use jagua_rs::fsize;
 use jagua_rs::geometry::d_transformation::DTransformation;
 use jagua_rs::geometry::geo_traits::{Shape, TransformableFrom};
@@ -14,25 +13,22 @@ pub struct ConstructiveEvaluator<'a> {
     layout: &'a Layout,
     item: &'a Item,
     shape_buff: SimplePolygon,
-    n_evals: usize,
-    strip_occup: fsize,
+    n_evals: usize
 }
 
 impl<'a> ConstructiveEvaluator<'a> {
     pub fn new(layout: &'a Layout, item: &'a Item) -> Self {
-        let strip_occup = strip_packing::occupied_range(layout).map_or(0.0, |(min, max)| max);
         Self {
             layout,
             item,
             shape_buff: item.shape.as_ref().clone(),
-            n_evals: 0,
-            strip_occup,
+            n_evals: 0
         }
     }
 }
 
 impl<'a> SampleEvaluator for ConstructiveEvaluator<'a> {
-    fn eval(&mut self, dt: DTransformation, upper_bound: Option<SampleEval>) -> SampleEval {
+    fn eval(&mut self, dt: DTransformation, _upper_bound: Option<SampleEval>) -> SampleEval {
         self.n_evals += 1;
         let cde = self.layout.cde();
         let t = dt.into();

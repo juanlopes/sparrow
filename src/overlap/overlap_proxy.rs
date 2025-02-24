@@ -1,10 +1,9 @@
 use crate::opt::gls_orchestrator::PROXY_EPSILON_DIAM_FRAC;
 use jagua_rs::fsize;
-use jagua_rs::geometry::geo_traits::{Distance, Shape};
+use jagua_rs::geometry::geo_traits::Shape;
 use jagua_rs::geometry::primitives::aa_rectangle::AARectangle;
 use jagua_rs::geometry::primitives::circle::Circle;
 use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
-use ordered_float::Float;
 
 pub fn poly_overlap_proxy(s1: &SimplePolygon, s2: &SimplePolygon) -> fsize {
     let normalizer = fsize::max(s1.diameter(), s2.diameter()) * PROXY_EPSILON_DIAM_FRAC;
@@ -15,8 +14,8 @@ pub fn poly_overlap_proxy(s1: &SimplePolygon, s2: &SimplePolygon) -> fsize {
         normalizer,
     );
 
-    let s1_penalty = (s1.surrogate().convex_hull_area);
-    let s2_penalty = (s2.surrogate().convex_hull_area);
+    let s1_penalty = s1.surrogate().convex_hull_area;
+    let s2_penalty = s2.surrogate().convex_hull_area;
 
     let penalty =
         0.99 * fsize::min(s1_penalty, s2_penalty) + 0.01 * fsize::max(s1_penalty, s2_penalty);

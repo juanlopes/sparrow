@@ -2,7 +2,7 @@ use crate::sample::eval::{SampleEval, SampleEvaluator};
 use jagua_rs::fsize;
 use jagua_rs::geometry::d_transformation::DTransformation;
 use jagua_rs::geometry::primitives::point::Point;
-use log::{debug, info, trace};
+use log::trace;
 use rand::Rng;
 use std::cmp::Ordering;
 use std::fmt::Debug;

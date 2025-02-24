@@ -5,20 +5,17 @@ use gls_strip_packing::opt::gls_orchestrator::GLSOrchestrator;
 use gls_strip_packing::sample::search::SearchConfig;
 use gls_strip_packing::util::io;
 use gls_strip_packing::util::io::layout_to_svg::s_layout_to_svg;
-use gls_strip_packing::util::io::svg_util::{SvgDrawOptions, SvgLayoutTheme};
 use gls_strip_packing::{DRAW_OPTIONS, SVG_OUTPUT_DIR};
 use jagua_rs::entities::instances::instance::Instance;
 use jagua_rs::entities::instances::instance_generic::InstanceGeneric;
-use jagua_rs::entities::problems::strip_packing::SPProblem;
 use jagua_rs::io::parser::Parser;
 use jagua_rs::util::config::{CDEConfig, SPSurrogateConfig};
 use jagua_rs::util::polygon_simplification::PolySimplConfig;
 use log::{info, warn};
-use once_cell::sync::Lazy;
 use rand::SeedableRng;
 use rand::prelude::SmallRng;
 use std::path::Path;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 const INPUT_FILE: &str = "libs/jagua-rs/assets/swim.json";
 

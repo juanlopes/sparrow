@@ -1,19 +1,11 @@
 use crate::sample;
-use float_cmp::approx_eq;
 use itertools::Itertools;
-use jagua_rs::PI;
-use jagua_rs::entities::instances::instance::Instance;
 use jagua_rs::entities::instances::instance_generic::InstanceGeneric;
 use jagua_rs::entities::placed_item::PlacedItem;
-use jagua_rs::entities::placing_option::PlacingOption;
-use jagua_rs::entities::problems::strip_packing::SPProblem;
 use jagua_rs::entities::solution::Solution;
 use jagua_rs::fsize;
-use jagua_rs::geometry::d_transformation::DTransformation;
-use jagua_rs::geometry::geo_traits::Shape;
-use log::{debug, info, warn};
-use ordered_float::{FloatCore, OrderedFloat};
-use std::collections::VecDeque;
+use log::debug;
+use ordered_float::{OrderedFloat};
 
 const TRANSL_DIM_FRACTION: fsize = 0.1;
 const N_SIMILAR_PI_RATIO: fsize = 0.99;

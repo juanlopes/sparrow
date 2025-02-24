@@ -1,4 +1,3 @@
-use crate::overlap::tracker::OverlapTracker;
 use crate::sample::best_samples::BestSamples;
 use crate::sample::coord_descent::coordinate_descent;
 use crate::sample::eval::{SampleEval, SampleEvaluator};
@@ -6,15 +5,10 @@ use crate::sample::uniform_sampler::UniformBBoxSampler;
 use jagua_rs::entities::item::Item;
 use jagua_rs::entities::layout::Layout;
 use jagua_rs::entities::placed_item::PItemKey;
-use jagua_rs::entities::placing_option::PlacingOption;
-use jagua_rs::entities::problems::problem_generic::STRIP_LAYOUT_IDX;
-use jagua_rs::entities::problems::strip_packing::SPProblem;
 use jagua_rs::fsize;
 use jagua_rs::geometry::d_transformation::DTransformation;
 use jagua_rs::geometry::geo_traits::Shape;
-use jagua_rs::geometry::primitives::aa_rectangle::AARectangle;
-use jagua_rs::geometry::primitives::circle::Circle;
-use log::{debug, info, trace};
+use log::debug;
 use rand::Rng;
 
 #[derive(Debug, Clone, Copy)]

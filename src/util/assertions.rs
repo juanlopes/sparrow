@@ -18,7 +18,7 @@ pub fn tracker_matches_layout(ot: &OverlapTracker, l: &Layout) -> bool {
     assert!(assertions::layout_qt_matches_fresh_qt(l));
 
     for (pk1, pi1) in l.placed_items.iter() {
-        let mut collisions = l.cde().collect_poly_collisions(&pi1.shape, &[pi1.into()]);
+        let collisions = l.cde().collect_poly_collisions(&pi1.shape, &[pi1.into()]);
         assert_eq!(ot.get_pair_overlap(pk1, pk1), 0.0);
         for (pk2, pi2) in l.placed_items.iter().filter(|(k, _)| *k != pk1) {
             let stored_overlap = ot.get_pair_overlap(pk1, pk2);
@@ -32,7 +32,7 @@ pub fn tracker_matches_layout(ot: &OverlapTracker, l: &Layout) -> bool {
                         stored_overlap,
                         epsilon = 0.001 * stored_overlap
                     ) {
-                        let mut opposite_collisions =
+                        let opposite_collisions =
                             l.cde().collect_poly_collisions(&pi2.shape, &[pi2.into()]);
                         if opposite_collisions.contains(&(pi1.into())) {
                             dbg!(&pi1.shape.points, &pi2.shape.points);
@@ -90,7 +90,7 @@ pub fn tracker_matches_layout(ot: &OverlapTracker, l: &Layout) -> bool {
                     if stored_overlap != 0.0 {
                         let calc_overlap =
                             overlap_proxy::poly_overlap_proxy(&pi1.shape, &pi2.shape);
-                        let mut opposite_collisions =
+                        let opposite_collisions =
                             l.cde().collect_poly_collisions(&pi2.shape, &[pi2.into()]);
                         if !opposite_collisions.contains(&(pi1.into())) {
                             dbg!(&pi1.shape.points, &pi2.shape.points);
