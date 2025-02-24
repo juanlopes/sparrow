@@ -1,11 +1,11 @@
-use std::time::Instant;
+use crate::util::io::svg_util::{SvgDrawOptions, SvgLayoutTheme};
 use mimalloc::MiMalloc;
 use numfmt::{Formatter, Precision, Scales};
 use once_cell::sync::Lazy;
-use crate::util::io::svg_util::{SvgDrawOptions, SvgLayoutTheme};
-pub mod sample;
-pub mod overlap;
+use std::time::Instant;
 pub mod opt;
+pub mod overlap;
+pub mod sample;
 pub mod util;
 
 #[global_allocator]
@@ -17,7 +17,7 @@ pub const OUTPUT_DIR: &str = "output";
 
 pub const SVG_OUTPUT_DIR: &str = "output/svg";
 
-pub const DRAW_OPTIONS: SvgDrawOptions = SvgDrawOptions{
+pub const DRAW_OPTIONS: SvgDrawOptions = SvgDrawOptions {
     theme: SvgLayoutTheme::GRAY_THEME,
     quadtree: false,
     haz_prox_grid: false,
@@ -25,6 +25,8 @@ pub const DRAW_OPTIONS: SvgDrawOptions = SvgDrawOptions{
     overlap_lines: true,
 };
 
-const FMT: Lazy<Formatter> = Lazy::new(
-    || Formatter::new().scales(Scales::short()).precision(Precision::Significance(3))
-);
+const FMT: Lazy<Formatter> = Lazy::new(|| {
+    Formatter::new()
+        .scales(Scales::short())
+        .precision(Precision::Significance(3))
+});

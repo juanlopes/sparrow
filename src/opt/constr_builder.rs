@@ -1,7 +1,7 @@
-use std::cmp::Reverse;
+use crate::DRAW_OPTIONS;
 use crate::sample::eval::SampleEval;
-use crate::sample::search::{search_placement, SearchConfig};
-use crate::{DRAW_OPTIONS};
+use crate::sample::eval::constructive_evaluator::ConstructiveEvaluator;
+use crate::sample::search::{SearchConfig, search_placement};
 use itertools::Itertools;
 use jagua_rs::entities::instances::instance_generic::InstanceGeneric;
 use jagua_rs::entities::instances::strip_packing::SPInstance;
@@ -13,25 +13,30 @@ use jagua_rs::entities::solution::Solution;
 use jagua_rs::fsize;
 use jagua_rs::geometry::geo_traits::Shape;
 use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
+use jagua_rs::util::config::CDEConfig;
 use log::{debug, info, log, warn};
-use rand::prelude::{Distribution, SmallRng};
+use ordered_float::OrderedFloat;
 use rand::Rng;
+use rand::prelude::{Distribution, SmallRng};
+use std::cmp::Reverse;
 use std::iter;
 use std::path::Path;
 use std::time::Instant;
-use jagua_rs::util::config::CDEConfig;
-use ordered_float::OrderedFloat;
-use crate::sample::eval::constructive_evaluator::ConstructiveEvaluator;
 
 pub struct ConstructiveBuilder {
     pub instance: SPInstance,
     pub prob: SPProblem,
     pub rng: SmallRng,
-    pub search_config: SearchConfig
+    pub search_config: SearchConfig,
 }
 
 impl ConstructiveBuilder {
-    pub fn new(instance: SPInstance, cde_config: CDEConfig, rng: SmallRng, search_config: SearchConfig) -> Self {
+    pub fn new(
+        instance: SPInstance,
+        cde_config: CDEConfig,
+        rng: SmallRng,
+        search_config: SearchConfig,
+    ) -> Self {
         let strip_width_init = instance.item_area / instance.strip_height; //100% utilization
         let prob = SPProblem::new(instance.clone(), strip_width_init, cde_config);
 
@@ -65,7 +70,11 @@ impl ConstructiveBuilder {
         }
 
         self.prob.fit_strip();
-        debug!("[CONSTR] built solution in {:?}, width: {:?}", start.elapsed(), self.prob.strip_width());
+        debug!(
+            "[CONSTR] built solution in {:?}, width: {:?}",
+            start.elapsed(),
+            self.prob.strip_width()
+        );
 
         self.prob.create_solution(None)
     }
@@ -75,16 +84,20 @@ impl ConstructiveBuilder {
             Some(p_opt) => {
                 self.prob.place_item(p_opt);
                 debug!(
-                            "[CONSTR] placing item {}/{} with id {} at [{}]",
-                            self.prob.placed_item_qtys().sum::<usize>(),
-                            self.instance.total_item_qty(),
-                            p_opt.item_id,
-                            p_opt.d_transf
-                        );
+                    "[CONSTR] placing item {}/{} with id {} at [{}]",
+                    self.prob.placed_item_qtys().sum::<usize>(),
+                    self.instance.total_item_qty(),
+                    p_opt.item_id,
+                    p_opt.d_transf
+                );
             }
             None => {
-                debug!("[CONSTR] failed to place item with id {}, increasing strip width", item_id);
-                self.prob.modify_strip_in_back(self.prob.strip_width() * 1.2);
+                debug!(
+                    "[CONSTR] failed to place item with id {}, increasing strip width",
+                    item_id
+                );
+                self.prob
+                    .modify_strip_in_back(self.prob.strip_width() * 1.2);
                 self.place_item(item_id);
             }
         }
@@ -96,8 +109,14 @@ impl ConstructiveBuilder {
         let item = self.instance.item(item_id);
         let mut evaluator = ConstructiveEvaluator::new(layout, item);
 
-        let (d_transf, eval) =
-            search_placement(layout, item, None, evaluator, self.search_config, &mut self.rng);
+        let (d_transf, eval) = search_placement(
+            layout,
+            item,
+            None,
+            evaluator,
+            self.search_config,
+            &mut self.rng,
+        );
 
         //if found add it and go to next iteration, if not, remove item type from the list
         match eval {
@@ -108,11 +127,11 @@ impl ConstructiveBuilder {
                     d_transf,
                 };
                 Some(p_opt)
-            },
+            }
             _ => {
                 debug!("Failed to place item #{}", item_id);
                 None
-            },
+            }
         }
     }
 }

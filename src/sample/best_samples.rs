@@ -1,5 +1,5 @@
 use crate::sample::eval::SampleEval;
-use crate::sample::search;
+use crate::sample::{dtransfs_are_similar, search};
 use itertools::Itertools;
 use jagua_rs::fsize;
 use jagua_rs::geometry::d_transformation::DTransformation;
@@ -24,12 +24,15 @@ impl BestSamples {
 
     pub fn report(&mut self, dt: DTransformation, eval: SampleEval) -> bool {
         if eval >= self.worst().1 {
-            trace!("[BS] sample rejected, worse than upper bound: {:?} ({})", &eval, dt);
+            trace!(
+                "[BS] sample rejected, worse than upper bound: {:?} ({})",
+                &eval, dt
+            );
             false
-        }
-        else {
-            let similar_sample_idx = self.samples.iter()
-                .find_position(|(d, _)| !search::d_transfs_are_unique(*d, dt, self.unique_threshold));
+        } else {
+            let similar_sample_idx = self.samples.iter().find_position(|(d, _)| {
+                dtransfs_are_similar(*d, dt, self.unique_threshold, self.unique_threshold)
+            });
             match similar_sample_idx {
                 None => {
                     // no similar sample exists
@@ -42,12 +45,14 @@ impl BestSamples {
                 Some((idx, sim)) => {
                     //similar sample found
                     if eval < sim.1 {
-                        trace!("[BS] sample accepted, better than similar: {:?} ({})", &eval, dt);
+                        trace!(
+                            "[BS] sample accepted, better than similar: {:?} ({})",
+                            &eval, dt
+                        );
                         self.samples[idx] = (dt, eval);
                         self.samples.sort_by(|a, b| a.1.cmp(&b.1));
                         true
-                    }
-                    else {
+                    } else {
                         trace!("sample rejected, worse than similar: {:?} ({})", &eval, dt);
                         false
                     }

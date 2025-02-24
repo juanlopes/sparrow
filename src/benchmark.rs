@@ -1,7 +1,10 @@
 extern crate core;
 
-use std::path::Path;
-use std::time::{Duration, Instant};
+use gls_strip_packing::SVG_OUTPUT_DIR;
+use gls_strip_packing::opt::constr_builder::ConstructiveBuilder;
+use gls_strip_packing::opt::gls_orchestrator::GLSOrchestrator;
+use gls_strip_packing::sample::search::SearchConfig;
+use gls_strip_packing::util::io;
 use itertools::Itertools;
 use jagua_rs::entities::instances::instance::Instance;
 use jagua_rs::entities::problems::strip_packing::SPProblem;
@@ -11,16 +14,13 @@ use jagua_rs::util::config::{CDEConfig, SPSurrogateConfig};
 use jagua_rs::util::polygon_simplification::PolySimplConfig;
 use log::{info, warn};
 use mimalloc::MiMalloc;
+use numfmt::{Formatter, Precision, Scales};
 use once_cell::sync::Lazy;
 use ordered_float::OrderedFloat;
 use rand::prelude::SmallRng;
 use rand::{Rng, SeedableRng};
-use gls_strip_packing::SVG_OUTPUT_DIR;
-use gls_strip_packing::opt::constr_builder::ConstructiveBuilder;
-use gls_strip_packing::opt::gls_orchestrator::GLSOrchestrator;
-use gls_strip_packing::sample::search::SearchConfig;
-use numfmt::{Formatter, Precision, Scales};
-use gls_strip_packing::util::io;
+use std::path::Path;
+use std::time::{Duration, Instant};
 
 const INPUT_FILE: &str = "libs/jagua-rs/assets/swim.json";
 
@@ -32,11 +32,9 @@ const N_PARALLEL_RUNS: usize = 8;
 const TIME_LIMIT_S: u64 = 20 * 60;
 
 fn main() {
-
     if cfg!(debug_assertions) {
         io::init_logger(log::LevelFilter::Debug);
-    }
-    else {
+    } else {
         io::init_logger(log::LevelFilter::Warn);
     }
 
@@ -44,7 +42,7 @@ fn main() {
     let args: Vec<String> = std::env::args().collect();
     let json_instance = io::read_json_instance(Path::new(&args[1]));
 
-    let cde_config = CDEConfig{
+    let cde_config = CDEConfig {
         quadtree_depth: 4,
         hpg_n_cells: 2000,
         item_surrogate_config: SPSurrogateConfig {
@@ -58,7 +56,7 @@ fn main() {
     let parser = Parser::new(PolySimplConfig::Disabled, cde_config, true);
     let instance = parser.parse(&json_instance);
 
-    let sp_instance = match instance.clone(){
+    let sp_instance = match instance.clone() {
         Instance::SP(spi) => spi,
         _ => panic!("Expected SPInstance"),
     };
@@ -72,12 +70,11 @@ fn main() {
         }
     };
 
-    let constr_search_config = SearchConfig{
+    let constr_search_config = SearchConfig {
         n_bin_samples: 1000,
         n_focussed_samples: 0,
         n_coord_descents: 3,
     };
-
 
     let mut final_solutions = vec![];
     let mut n_iterations = (N_RUNS_TOTAL as fsize / N_PARALLEL_RUNS as fsize).ceil() as usize;
@@ -86,13 +83,18 @@ fn main() {
         warn!("[BENCH] Iteration {}/{}", i + 1, n_iterations);
         let mut iter_solutions = vec![None; N_PARALLEL_RUNS];
         rayon::scope(|s| {
-            for (j, solution_slice) in iter_solutions.iter_mut().enumerate(){
+            for (j, solution_slice) in iter_solutions.iter_mut().enumerate() {
                 let thread_rng = SmallRng::seed_from_u64(rng.random());
                 let svg_output_dir = format!("{}_{}", SVG_OUTPUT_DIR, i * N_PARALLEL_RUNS + j);
                 let instance = sp_instance.clone();
 
                 s.spawn(|_| {
-                    let mut constr_builder = ConstructiveBuilder::new(instance, cde_config, thread_rng, constr_search_config);
+                    let mut constr_builder = ConstructiveBuilder::new(
+                        instance,
+                        cde_config,
+                        thread_rng,
+                        constr_search_config,
+                    );
                     constr_builder.build();
 
                     let instance = constr_builder.instance;
@@ -111,22 +113,37 @@ fn main() {
     }
 
     //print statistics about the solutions, print best, worst, median and average
-    let (mut final_widths, mut final_usages): (Vec<fsize>, Vec<fsize>) = final_solutions.into_iter()
+    let (mut final_widths, mut final_usages): (Vec<fsize>, Vec<fsize>) = final_solutions
+        .into_iter()
         .map(|s| {
             let width = s.layout_snapshots[0].bin.bbox().width();
             let usage = s.layout_snapshots[0].usage;
             (width, usage * 100.0)
         })
-        .sorted_by_key(|(w,u)| OrderedFloat(*w))
+        .sorted_by_key(|(w, u)| OrderedFloat(*w))
         .unzip();
 
     let n_results = final_widths.len();
 
     let avg_width = final_widths.iter().sum::<fsize>() / n_results as fsize;
-    let stddev_width = (final_widths.iter().map(|w| (w - avg_width).powi(2)).sum::<fsize>() / n_results as fsize).sqrt();
+    let stddev_width = (final_widths
+        .iter()
+        .map(|w| (w - avg_width).powi(2))
+        .sum::<fsize>()
+        / n_results as fsize)
+        .sqrt();
 
-    warn!("Benchmarked {} with {} runs ({}s)", INPUT_FILE, n_results, TIME_LIMIT_S);
-    warn!("Results: {:?}", final_widths.iter().map(|w| format!("{:.2}", w).to_string()).collect::<Vec<String>>());
+    warn!(
+        "Benchmarked {} with {} runs ({}s)",
+        INPUT_FILE, n_results, TIME_LIMIT_S
+    );
+    warn!(
+        "Results: {:?}",
+        final_widths
+            .iter()
+            .map(|w| format!("{:.2}", w).to_string())
+            .collect::<Vec<String>>()
+    );
 
     warn!("----------------- WIDTH -----------------");
     warn!("Best: {}", final_widths.first().unwrap());
@@ -136,7 +153,12 @@ fn main() {
     warn!("Stddev: {}", stddev_width);
 
     let avg_yield = final_usages.iter().sum::<fsize>() / n_results as fsize;
-    let stddev_yield = (final_usages.iter().map(|u| (u - avg_yield).powi(2)).sum::<fsize>() / n_results as fsize).sqrt();
+    let stddev_yield = (final_usages
+        .iter()
+        .map(|u| (u - avg_yield).powi(2))
+        .sum::<fsize>()
+        / n_results as fsize)
+        .sqrt();
 
     warn!("----------------- USAGE -----------------");
     warn!("Best: {}", final_usages.first().unwrap());

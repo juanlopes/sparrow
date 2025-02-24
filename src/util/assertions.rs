@@ -1,4 +1,8 @@
-use std::path::Path;
+use crate::overlap::overlap_proxy;
+use crate::overlap::tracker::OverlapTracker;
+use crate::util::io;
+use crate::util::io::layout_to_svg::layout_to_svg_2;
+use crate::util::io::svg_util::SvgDrawOptions;
 use float_cmp::{approx_eq, assert_approx_eq};
 use itertools::Itertools;
 use jagua_rs::collision_detection::hazard::HazardEntity;
@@ -7,11 +11,7 @@ use jagua_rs::fsize;
 use jagua_rs::util::assertions;
 use jagua_rs::util::fpa::FPA;
 use log::warn;
-use crate::util::io;
-use crate::util::io::layout_to_svg::layout_to_svg_2;
-use crate::util::io::svg_util::SvgDrawOptions;
-use crate::overlap::overlap_proxy;
-use crate::overlap::tracker::OverlapTracker;
+use std::path::Path;
 
 pub fn tracker_matches_layout(ot: &OverlapTracker, l: &Layout) -> bool {
     assert!(l.placed_items.keys().all(|k| ot.pk_idx_map.contains_key(k)));
@@ -24,18 +24,16 @@ pub fn tracker_matches_layout(ot: &OverlapTracker, l: &Layout) -> bool {
             let stored_overlap = ot.get_pair_overlap(pk1, pk2);
             match collisions.contains(&(pi2.into())) {
                 true => {
-                    let calc_overlap =
-                        overlap_proxy::poly_overlap_proxy(&pi1.shape, &pi2.shape);
-                    let calc_overlap2 =
-                        overlap_proxy::poly_overlap_proxy(&pi2.shape, &pi1.shape);
+                    let calc_overlap = overlap_proxy::poly_overlap_proxy(&pi1.shape, &pi2.shape);
+                    let calc_overlap2 = overlap_proxy::poly_overlap_proxy(&pi2.shape, &pi1.shape);
                     if !approx_eq!(
                         fsize,
                         calc_overlap,
                         stored_overlap,
                         epsilon = 0.001 * stored_overlap
                     ) {
-                        let mut opposite_collisions = l.cde()
-                            .collect_poly_collisions(&pi2.shape, &[pi2.into()]);
+                        let mut opposite_collisions =
+                            l.cde().collect_poly_collisions(&pi2.shape, &[pi2.into()]);
                         if opposite_collisions.contains(&(pi1.into())) {
                             dbg!(&pi1.shape.points, &pi2.shape.points);
                             dbg!(
@@ -50,11 +48,33 @@ pub fn tracker_matches_layout(ot: &OverlapTracker, l: &Layout) -> bool {
                         } else {
                             //detecting collisions is not symmetrical (in edge cases)
                             warn!("inconsistent overlap");
-                            warn!("collisions: pi_1 {:?} -> {:?}", HazardEntity::from(pi1), collisions);
-                            warn!("opposite collisions: pi_2 {:?} -> {:?}", HazardEntity::from(pi2), opposite_collisions);
+                            warn!(
+                                "collisions: pi_1 {:?} -> {:?}",
+                                HazardEntity::from(pi1),
+                                collisions
+                            );
+                            warn!(
+                                "opposite collisions: pi_2 {:?} -> {:?}",
+                                HazardEntity::from(pi2),
+                                opposite_collisions
+                            );
 
-                            warn!("pi_1: {:?}", pi1.shape.points.iter().map(|p| format!("({},{})", p.0, p.1)).collect_vec());
-                            warn!("pi_2: {:?}", pi2.shape.points.iter().map(|p| format!("({},{})", p.0, p.1)).collect_vec());
+                            warn!(
+                                "pi_1: {:?}",
+                                pi1.shape
+                                    .points
+                                    .iter()
+                                    .map(|p| format!("({},{})", p.0, p.1))
+                                    .collect_vec()
+                            );
+                            warn!(
+                                "pi_2: {:?}",
+                                pi2.shape
+                                    .points
+                                    .iter()
+                                    .map(|p| format!("({},{})", p.0, p.1))
+                                    .collect_vec()
+                            );
 
                             {
                                 let mut svg_draw_options = SvgDrawOptions::default();
@@ -70,8 +90,8 @@ pub fn tracker_matches_layout(ot: &OverlapTracker, l: &Layout) -> bool {
                     if stored_overlap != 0.0 {
                         let calc_overlap =
                             overlap_proxy::poly_overlap_proxy(&pi1.shape, &pi2.shape);
-                        let mut opposite_collisions = l.cde()
-                            .collect_poly_collisions(&pi2.shape, &[pi2.into()]);
+                        let mut opposite_collisions =
+                            l.cde().collect_poly_collisions(&pi2.shape, &[pi2.into()]);
                         if !opposite_collisions.contains(&(pi1.into())) {
                             dbg!(&pi1.shape.points, &pi2.shape.points);
                             dbg!(
@@ -85,8 +105,16 @@ pub fn tracker_matches_layout(ot: &OverlapTracker, l: &Layout) -> bool {
                         } else {
                             //detecting collisions is not symmetrical (in edge cases)
                             warn!("inconsistent overlap");
-                            warn!("collisions: {:?} -> {:?}", HazardEntity::from(pi1), collisions);
-                            warn!("opposite collisions: {:?} -> {:?}", HazardEntity::from(pi2), opposite_collisions);
+                            warn!(
+                                "collisions: {:?} -> {:?}",
+                                HazardEntity::from(pi1),
+                                collisions
+                            );
+                            warn!(
+                                "opposite collisions: {:?} -> {:?}",
+                                HazardEntity::from(pi2),
+                                opposite_collisions
+                            );
                         }
                     }
                 }

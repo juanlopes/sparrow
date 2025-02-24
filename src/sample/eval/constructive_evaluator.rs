@@ -1,3 +1,4 @@
+use crate::sample::eval::{SampleEval, SampleEvaluator};
 use jagua_rs::collision_detection::hazard::HazardEntity;
 use jagua_rs::entities::item::Item;
 use jagua_rs::entities::layout::Layout;
@@ -6,7 +7,6 @@ use jagua_rs::fsize;
 use jagua_rs::geometry::d_transformation::DTransformation;
 use jagua_rs::geometry::geo_traits::{Shape, TransformableFrom};
 use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
-use crate::sample::eval::{SampleEval, SampleEvaluator};
 
 pub const X_MULTIPLIER: fsize = 10.0;
 pub const Y_MULTIPLIER: fsize = 1.0;
@@ -16,7 +16,7 @@ pub struct ConstructiveEvaluator<'a> {
     item: &'a Item,
     shape_buff: SimplePolygon,
     n_evals: usize,
-    strip_occup: fsize
+    strip_occup: fsize,
 }
 
 impl<'a> ConstructiveEvaluator<'a> {
@@ -27,7 +27,7 @@ impl<'a> ConstructiveEvaluator<'a> {
             item,
             shape_buff: item.shape.as_ref().clone(),
             n_evals: 0,
-            strip_occup
+            strip_occup,
         }
     }
 }
@@ -47,7 +47,8 @@ impl<'a> SampleEvaluator for ConstructiveEvaluator<'a> {
                     false => {
                         let poi = self.shape_buff.poi.center;
                         let poi_eval = X_MULTIPLIER * poi.0 + Y_MULTIPLIER * poi.1;
-                        let bbox_eval = self.shape_buff.bbox().x_max + 0.1 * self.shape_buff.bbox().y_max;
+                        let bbox_eval =
+                            self.shape_buff.bbox().x_max + 0.1 * self.shape_buff.bbox().y_max;
                         SampleEval::Valid(poi_eval + bbox_eval)
                     }
                 }
@@ -59,4 +60,3 @@ impl<'a> SampleEvaluator for ConstructiveEvaluator<'a> {
         self.n_evals
     }
 }
-
