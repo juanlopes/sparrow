@@ -1,3 +1,5 @@
+#![allow(const_item_mutation)]
+
 use crate::util::io::svg_util::{SvgDrawOptions, SvgLayoutTheme};
 use mimalloc::MiMalloc;
 use numfmt::{Formatter, Precision, Scales};

@@ -2,24 +2,13 @@ use crate::opt::gls_orchestrator::{JUMP_COOLDOWN, OT_DECAY, OT_MAX_INCREASE, OT_
 use crate::overlap::overlap_proxy;
 use crate::overlap::pair_matrix::PairMatrix;
 use crate::util::assertions::tracker_matches_layout;
-use float_cmp::{approx_eq, assert_approx_eq};
-use itertools::{Itertools, MinMaxResult};
 use jagua_rs::collision_detection::hazard::HazardEntity;
-use jagua_rs::entities::instances::instance_generic::InstanceGeneric;
 use jagua_rs::entities::layout::Layout;
 use jagua_rs::entities::placed_item::PItemKey;
 use jagua_rs::fsize;
-use jagua_rs::geometry::geo_traits::Shape;
-use jagua_rs::util::assertions;
-use jagua_rs::util::fpa::FPA;
-use log::{debug, info, trace, warn};
-use ordered_float::{Float, OrderedFloat};
-use rand::Rng;
+use log::{trace, warn};
+use ordered_float::Float;
 use slotmap::SecondaryMap;
-use std::cmp::Ordering;
-use std::iter;
-use std::ops::Range;
-use std::path::Path;
 
 #[derive(Debug, Clone, Copy)]
 pub struct OTEntry {

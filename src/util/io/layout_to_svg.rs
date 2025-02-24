@@ -1,20 +1,16 @@
 use crate::util::io::svg_util::SvgDrawOptions;
 use crate::util::io::{svg_export, svg_util};
-use itertools::Itertools;
 use jagua_rs::collision_detection::hazard::HazardEntity;
-use jagua_rs::entities::instances::instance::Instance;
 use jagua_rs::entities::instances::instance_generic::InstanceGeneric;
 use jagua_rs::entities::layout::Layout;
 use jagua_rs::entities::layout::LayoutSnapshot;
 use jagua_rs::fsize;
-use jagua_rs::geometry::geo_traits::Transformable;
 use jagua_rs::geometry::primitives::circle::Circle;
 use jagua_rs::geometry::primitives::edge::Edge;
 use jagua_rs::geometry::transformation::Transformation;
 use jagua_rs::io::parser;
 use log::warn;
 use std::hash::{DefaultHasher, Hash, Hasher};
-use std::ptr::hash;
 use svg::Document;
 use svg::node::element::{Definitions, Group, Title, Use};
 
@@ -296,7 +292,7 @@ pub fn layout_to_svg(
             let mut overlap_group = Group::new()
                 .set("id", "overlap_lines")
                 .set("transform", transform_to_svg(&inv_bin_transf));
-            for (pkey, pi) in layout.placed_items().iter() {
+            for (_, pi) in layout.placed_items().iter() {
                 let collides_with = layout
                     .cde()
                     .collect_poly_collisions(pi.shape.as_ref(), &[pi.into()]);
@@ -453,7 +449,7 @@ pub fn layout_to_svg_2(layout: &Layout, options: SvgDrawOptions) -> Document {
         //define all the items and their surrogates (if enabled)
         let mut item_defs = Definitions::new();
         let mut surrogate_defs = Definitions::new();
-        for (i, (pik, pi)) in layout.placed_items().iter().enumerate() {
+        for pi in layout.placed_items().values() {
             let shape = pi.shape.as_ref();
             let color = theme.item_fill.to_owned();
 
@@ -641,7 +637,7 @@ pub fn layout_to_svg_2(layout: &Layout, options: SvgDrawOptions) -> Document {
             let mut overlap_group = Group::new()
                 .set("id", "overlap_lines")
                 .set("transform", transform_to_svg(&inv_bin_transf));
-            for (pkey, pi) in layout.placed_items().iter() {
+            for pi in layout.placed_items().values() {
                 let collides_with = layout
                     .cde()
                     .collect_poly_collisions(pi.shape.as_ref(), &[pi.into()]);

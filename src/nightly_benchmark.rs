@@ -5,22 +5,16 @@ use gls_strip_packing::opt::constr_builder::ConstructiveBuilder;
 use gls_strip_packing::opt::gls_orchestrator::GLSOrchestrator;
 use gls_strip_packing::sample::search::SearchConfig;
 use gls_strip_packing::util::io;
-use itertools::Itertools;
 use jagua_rs::entities::instances::instance::Instance;
-use jagua_rs::entities::problems::strip_packing::SPProblem;
 use jagua_rs::fsize;
 use jagua_rs::io::parser::Parser;
 use jagua_rs::util::config::{CDEConfig, SPSurrogateConfig};
 use jagua_rs::util::polygon_simplification::PolySimplConfig;
-use log::{info, warn};
-use mimalloc::MiMalloc;
-use numfmt::{Formatter, Precision, Scales};
-use once_cell::sync::Lazy;
 use ordered_float::OrderedFloat;
 use rand::prelude::SmallRng;
 use rand::{Rng, SeedableRng};
 use std::path::Path;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 const RNG_SEED: Option<usize> = None;
 
@@ -77,7 +71,7 @@ fn main() {
     };
 
     let mut final_solutions = vec![];
-    let mut n_iterations = (N_RUNS_TOTAL as fsize / N_PARALLEL_RUNS as fsize).ceil() as usize;
+    let n_iterations = (N_RUNS_TOTAL as fsize / N_PARALLEL_RUNS as fsize).ceil() as usize;
 
     for i in 0..n_iterations {
         println!("Starting iter {}/{}", i + 1, n_iterations);
@@ -113,7 +107,7 @@ fn main() {
     }
 
     //print statistics about the solutions, print best, worst, median and average
-    let (mut final_widths, mut final_usages): (Vec<fsize>, Vec<fsize>) = final_solutions
+    let (final_widths, final_usages): (Vec<fsize>, Vec<fsize>) = final_solutions
         .into_iter()
         .map(|s| {
             let width = s.layout_snapshots[0].bin.bbox().width();
@@ -122,10 +116,8 @@ fn main() {
         })
         .unzip();
 
-    let n_results = final_widths.len();
-
-    dbg!(&final_widths);
-    dbg!(&final_usages);
+    println!("final widths: {:?}", &final_widths);
+    println!("final usages: {:?}", &final_usages);
 
     println!("----------------- WIDTH -----------------");
     println!(

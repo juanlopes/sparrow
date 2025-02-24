@@ -1,6 +1,6 @@
 use std::fs;
 use std::fs::File;
-use std::io::{BufReader, BufWriter};
+use std::io::BufReader;
 use std::path::Path;
 
 use log::{Level, LevelFilter, info, log};

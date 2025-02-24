@@ -1,7 +1,4 @@
-use gls_strip_packing::io;
-use gls_strip_packing::io::svg_export;
 use itertools::Itertools;
-use jagua_rs::PI;
 use jagua_rs::collision_detection::hazard::HazardEntity;
 use jagua_rs::entities::bin::Bin;
 use jagua_rs::entities::instances::instance::Instance;
@@ -10,8 +7,8 @@ use jagua_rs::entities::item::Item;
 use jagua_rs::entities::layout::Layout;
 use jagua_rs::fsize;
 use jagua_rs::geometry::d_transformation::DTransformation;
-use jagua_rs::geometry::geo_enums::{GeoPosition, GeoRelation};
-use jagua_rs::geometry::geo_traits::{Distance, SeparationDistance, Shape, Transformable};
+use jagua_rs::geometry::geo_enums::GeoRelation;
+use jagua_rs::geometry::geo_traits::{Distance, Shape, Transformable};
 use jagua_rs::geometry::primitives::aa_rectangle::AARectangle;
 use jagua_rs::geometry::primitives::circle::Circle;
 use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
@@ -22,10 +19,11 @@ use ordered_float::{Float, OrderedFloat};
 use plotly::common::{ColorScale, ColorScaleElement};
 use plotly::layout::{AspectMode, AspectRatio, LayoutScene};
 use plotly::{Plot, Surface};
-use std::cmp::Ordering;
 use std::path::Path;
 use svg::Document;
 use svg::node::element::Group;
+use gls_strip_packing::util::io;
+use gls_strip_packing::util::io::svg_export;
 
 const INSTANCE_PATH: &str = "libs/jagua-rs/assets/swim.json";
 const ITEM_ID_TO_SAMPLE: usize = 7;
@@ -310,16 +308,13 @@ fn eval(layout: &Layout, item: &Item, dt: DTransformation) -> Overlap {
     if t_shape.bbox().relation_to(&layout.bin.bbox()) != GeoRelation::Enclosed {
         Overlap::Bin
     } else {
-        let mut colliding_buffer = Vec::new();
-        layout
-            .cde()
-            .collect_poly_collisions(&t_shape, &[], &mut colliding_buffer);
-        if colliding_buffer.is_empty() {
+        let collisions = layout.cde().collect_poly_collisions(&t_shape, &[]);
+        if collisions.is_empty() {
             Overlap::None
-        } else if colliding_buffer.contains(&HazardEntity::BinExterior) {
+        } else if collisions.contains(&HazardEntity::BinExterior) {
             Overlap::Bin
         } else {
-            let o = colliding_buffer
+            let o = collisions
                 .iter()
                 .map(|haz| layout.hazard_to_p_item_key(haz).unwrap())
                 .map(|pik| layout.placed_items()[pik].shape.as_ref())
@@ -339,8 +334,8 @@ pub fn poly_overlap_proxy(s1: &SimplePolygon, s2: &SimplePolygon) -> fsize {
         epsilon,
     );
 
-    let s1_penalty = (s1.surrogate().convex_hull_area); //+ //0.1 * (s1.diameter / 4.0).powi(2));
-    let s2_penalty = (s2.surrogate().convex_hull_area); // + 0.1 * (s2.diameter / 4.0).powi(2));
+    let s1_penalty = s1.surrogate().convex_hull_area; //+ //0.1 * (s1.diameter / 4.0).powi(2));
+    let s2_penalty = s2.surrogate().convex_hull_area; // + 0.1 * (s2.diameter / 4.0).powi(2));
 
     let penalty =
         1.00 * fsize::min(s1_penalty, s2_penalty) + 0.00 * fsize::max(s1_penalty, s2_penalty);

@@ -7,20 +7,16 @@ use gls_strip_packing::sample::search::SearchConfig;
 use gls_strip_packing::util::io;
 use itertools::Itertools;
 use jagua_rs::entities::instances::instance::Instance;
-use jagua_rs::entities::problems::strip_packing::SPProblem;
 use jagua_rs::fsize;
 use jagua_rs::io::parser::Parser;
 use jagua_rs::util::config::{CDEConfig, SPSurrogateConfig};
 use jagua_rs::util::polygon_simplification::PolySimplConfig;
-use log::{info, warn};
-use mimalloc::MiMalloc;
-use numfmt::{Formatter, Precision, Scales};
-use once_cell::sync::Lazy;
+use log::warn;
 use ordered_float::OrderedFloat;
 use rand::prelude::SmallRng;
 use rand::{Rng, SeedableRng};
 use std::path::Path;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 const INPUT_FILE: &str = "libs/jagua-rs/assets/swim.json";
 
@@ -77,7 +73,7 @@ fn main() {
     };
 
     let mut final_solutions = vec![];
-    let mut n_iterations = (N_RUNS_TOTAL as fsize / N_PARALLEL_RUNS as fsize).ceil() as usize;
+    let n_iterations = (N_RUNS_TOTAL as fsize / N_PARALLEL_RUNS as fsize).ceil() as usize;
 
     for i in 0..n_iterations {
         warn!("[BENCH] Iteration {}/{}", i + 1, n_iterations);
@@ -113,14 +109,14 @@ fn main() {
     }
 
     //print statistics about the solutions, print best, worst, median and average
-    let (mut final_widths, mut final_usages): (Vec<fsize>, Vec<fsize>) = final_solutions
+    let (final_widths, final_usages): (Vec<fsize>, Vec<fsize>) = final_solutions
         .into_iter()
         .map(|s| {
             let width = s.layout_snapshots[0].bin.bbox().width();
             let usage = s.layout_snapshots[0].usage;
             (width, usage * 100.0)
         })
-        .sorted_by_key(|(w, u)| OrderedFloat(*w))
+        .sorted_by_key(|(w, _)| OrderedFloat(*w))
         .unzip();
 
     let n_results = final_widths.len();

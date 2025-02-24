@@ -2,7 +2,7 @@ use crate::sample::eval::{SampleEval, SampleEvaluator};
 use jagua_rs::fsize;
 use jagua_rs::geometry::d_transformation::DTransformation;
 use jagua_rs::geometry::primitives::point::Point;
-use log::{debug, info, trace};
+use log::trace;
 use rand::Rng;
 use std::cmp::Ordering;
 use std::fmt::Debug;
@@ -39,8 +39,8 @@ pub fn coordinate_descent(
     };
 
     while let Some([c0, c1]) = cd_state.gen_candidates() {
-        let c0_eval = evaluator.eval(DTransformation::new(rot, c0.into()));
-        let c1_eval = evaluator.eval(DTransformation::new(rot, c1.into()));
+        let c0_eval = evaluator.eval(DTransformation::new(rot, c0.into()), Some(cd_state.eval));
+        let c1_eval = evaluator.eval(DTransformation::new(rot, c1.into()), Some(cd_state.eval));
 
         counter += 2;
 
