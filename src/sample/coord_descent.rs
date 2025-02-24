@@ -54,7 +54,7 @@ pub fn coordinate_descent(
 
         assert!(counter < 100_000);
     }
-    info!(
+    trace!(
         "CD: {} evals, t: ({:.3}, {:.3}) -> ({:.3}, {:.3}), eval: {:?}",
         counter, init_pos.0, init_pos.1, cd_state.pos.0, cd_state.pos.1, cd_state.eval
     );
