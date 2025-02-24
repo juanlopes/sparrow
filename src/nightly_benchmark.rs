@@ -116,8 +116,8 @@ fn main() {
         })
         .unzip();
 
-    dbg!(&final_widths);
-    dbg!(&final_usages);
+    println!("final widths: {:?}", &final_widths);
+    println!("final usages: {:?}", &final_usages);
 
     println!("----------------- WIDTH -----------------");
     println!(
