@@ -13,7 +13,7 @@ use jagua_rs::entities::problems::strip_packing::SPProblem;
 use jagua_rs::io::parser::Parser;
 use jagua_rs::util::config::{CDEConfig, SPSurrogateConfig};
 use jagua_rs::util::polygon_simplification::PolySimplConfig;
-use log::warn;
+use log::{info, warn};
 use once_cell::sync::Lazy;
 use rand::SeedableRng;
 use rand::prelude::SmallRng;
@@ -24,9 +24,9 @@ const INPUT_FILE: &str = "libs/jagua-rs/assets/swim.json";
 
 const TIME_LIMIT_S: u64 = 20 * 60;
 
-//const RNG_SEED: Option<usize> = Some(2);
+const RNG_SEED: Option<usize> = Some(2);
 
-const RNG_SEED: Option<usize> = None;
+//const RNG_SEED: Option<usize> = None;
 
 fn main() {
     if cfg!(debug_assertions) {
@@ -51,22 +51,21 @@ fn main() {
     let parser = Parser::new(PolySimplConfig::Disabled, cde_config, true);
     let instance = parser.parse(&json_instance);
 
-    warn!(
-        "#{} items with {} area",
-        instance.total_item_qty(),
-        instance.item_area()
-    );
-
     let sp_instance = match instance.clone() {
         Instance::SP(spi) => spi,
-        _ => panic!("Expected SPInstance"),
+        _ => panic!("expected strip packing instance"),
     };
 
+    info!("[MAIN] loaded instance {} with #{} items", json_instance.name, instance.total_item_qty());
+
     let rng = match RNG_SEED {
-        Some(seed) => SmallRng::seed_from_u64(seed as u64),
+        Some(seed) => {
+            info!("[MAIN] using seed: {}", seed);
+            SmallRng::seed_from_u64(seed as u64)
+        },
         None => {
             let seed = rand::random();
-            warn!("No seed provided, using: {}", seed);
+            warn!("[MAIN] no seed provided, using: {}", seed);
             SmallRng::seed_from_u64(seed)
         }
     };
@@ -77,14 +76,10 @@ fn main() {
         n_coord_descents: 3,
     };
 
-    let mut constr_builder =
-        ConstructiveBuilder::new(sp_instance.clone(), cde_config, rng, constr_search_config);
+    let mut constr_builder = ConstructiveBuilder::new(sp_instance.clone(), cde_config, rng, constr_search_config);
     constr_builder.build();
 
-    let problem = constr_builder.prob;
-    let rng = constr_builder.rng;
-
-    let mut gls_opt = GLSOrchestrator::new(problem, sp_instance, rng, SVG_OUTPUT_DIR.to_string());
+    let mut gls_opt = GLSOrchestrator::new(constr_builder.prob, sp_instance, constr_builder.rng, SVG_OUTPUT_DIR.to_string());
 
     let solution = gls_opt.solve(Duration::from_secs(TIME_LIMIT_S));
 

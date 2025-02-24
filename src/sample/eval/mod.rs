@@ -49,7 +49,7 @@ impl Ord for SampleEval {
 impl Eq for SampleEval {}
 
 pub trait SampleEvaluator {
-    fn eval(&mut self, dt: DTransformation) -> SampleEval;
+    fn eval(&mut self, dt: DTransformation, upper_bound: Option<SampleEval>) -> SampleEval;
 
     fn n_evals(&self) -> usize;
 }

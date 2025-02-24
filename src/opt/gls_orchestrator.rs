@@ -410,7 +410,7 @@ impl GLSOrchestrator {
 
     pub fn write_to_disk(&mut self, solution: Option<Solution>, force: bool) {
         //make sure we are in debug mode or force is true
-        if !force && !cfg!(debug_assertions) {
+        if !force && !cfg!(debug_assertions) && true {
             return;
         }
 

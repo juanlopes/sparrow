@@ -115,7 +115,6 @@ impl ConstructiveBuilder {
                 Some(p_opt)
             }
             _ => {
-                debug!("Failed to place item #{}", item_id);
                 None
             }
         }

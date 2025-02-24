@@ -52,4 +52,8 @@ impl BestSamples {
     pub fn best(&self) -> (DTransformation, SampleEval) {
         self.samples[0].clone()
     }
+
+    pub fn worst(&self) -> (DTransformation, SampleEval) {
+        self.samples[self.size - 1].clone()
+    }
 }

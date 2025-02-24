@@ -33,7 +33,7 @@ impl<'a> ConstructiveEvaluator<'a> {
 }
 
 impl<'a> SampleEvaluator for ConstructiveEvaluator<'a> {
-    fn eval(&mut self, dt: DTransformation) -> SampleEval {
+    fn eval(&mut self, dt: DTransformation, upper_bound: Option<SampleEval>) -> SampleEval {
         self.n_evals += 1;
         let cde = self.layout.cde();
         let t = dt.into();
