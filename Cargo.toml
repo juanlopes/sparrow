@@ -13,10 +13,6 @@ name = "benchmark"
 path = "src/benchmark.rs"
 
 [[bin]]
-name = "nightly_benchmark"
-path = "src/nightly_benchmark.rs"
-
-[[bin]]
 name = "overlap_visualizer"
 path = "src/util/playgrounds/playground_overlap_visualizer.rs"
 
@@ -38,7 +34,6 @@ slotmap = "1.0"
 float-cmp = "0.10.0"
 ordered-float = "5.0.0"
 rayon = "1.10.0"
-num_cpus = "1.16.0"
 numfmt = "1.1.1"
 plotly = "0.12.1"
 
@@ -48,4 +43,11 @@ debug-assertions = true
 debug = true
 
 [profile.release]
-#debug = true
+opt-level = 3
+
+[profile.release-ultimate]
+inherits = "release"
+lto = true
+strip = true
+codegen-units = 1
+panic = "abort"

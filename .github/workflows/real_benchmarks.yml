@@ -19,9 +19,9 @@ jobs:
       - name: Disable compiler warnings
         run: echo "RUSTFLAGS=-Awarnings" >> $GITHUB_ENV
 
-      - name: Run nightly bench for ${{ matrix.instance }}
+      - name: Run bench for ${{ matrix.instance }}
         run: |
-          output=$(cargo run --release --bin nightly_benchmark -- libs/jagua-rs/assets/${{ matrix.instance }}.json)
+          output=$(cargo run --profile release-ultimate --bin benchmark -- libs/jagua-rs/assets/${{ matrix.instance }}.json)
           
           echo "$output"
           

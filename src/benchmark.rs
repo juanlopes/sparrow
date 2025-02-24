@@ -5,20 +5,16 @@ use gls_strip_packing::opt::constr_builder::ConstructiveBuilder;
 use gls_strip_packing::opt::gls_orchestrator::GLSOrchestrator;
 use gls_strip_packing::sample::search::SearchConfig;
 use gls_strip_packing::util::io;
-use itertools::Itertools;
 use jagua_rs::entities::instances::instance::Instance;
 use jagua_rs::fsize;
 use jagua_rs::io::parser::Parser;
 use jagua_rs::util::config::{CDEConfig, SPSurrogateConfig};
 use jagua_rs::util::polygon_simplification::PolySimplConfig;
-use log::warn;
 use ordered_float::OrderedFloat;
 use rand::prelude::SmallRng;
 use rand::{Rng, SeedableRng};
 use std::path::Path;
 use std::time::Duration;
-
-const INPUT_FILE: &str = "libs/jagua-rs/assets/swim.json";
 
 const RNG_SEED: Option<usize> = None;
 
@@ -28,19 +24,18 @@ const N_PARALLEL_RUNS: usize = 8;
 const TIME_LIMIT_S: u64 = 20 * 60;
 
 fn main() {
-    if cfg!(debug_assertions) {
-        io::init_logger(log::LevelFilter::Debug);
-    } else {
-        io::init_logger(log::LevelFilter::Warn);
-    }
-
     //the input file is the first argument
     let args: Vec<String> = std::env::args().collect();
     let json_instance = io::read_json_instance(Path::new(&args[1]));
 
+    println!(
+        "Starting benchmark for {} ({} runs, {} parallel, {}s timelimit)",
+        &args[1], N_RUNS_TOTAL, N_PARALLEL_RUNS, TIME_LIMIT_S
+    );
+
     let cde_config = CDEConfig {
         quadtree_depth: 4,
-        hpg_n_cells: 2000,
+        hpg_n_cells: 0,
         item_surrogate_config: SPSurrogateConfig {
             pole_coverage_goal: 0.95,
             max_poles: 20,
@@ -58,10 +53,13 @@ fn main() {
     };
 
     let mut rng = match RNG_SEED {
-        Some(seed) => SmallRng::seed_from_u64(seed as u64),
+        Some(seed) => {
+            println!("Using seed: {}", seed);
+            SmallRng::seed_from_u64(seed as u64)
+        }
         None => {
             let seed = rand::random();
-            warn!("No seed provided, using: {}", seed);
+            println!("No seed provided, using: {}", seed);
             SmallRng::seed_from_u64(seed)
         }
     };
@@ -76,7 +74,7 @@ fn main() {
     let n_iterations = (N_RUNS_TOTAL as fsize / N_PARALLEL_RUNS as fsize).ceil() as usize;
 
     for i in 0..n_iterations {
-        warn!("[BENCH] Iteration {}/{}", i + 1, n_iterations);
+        println!("Starting iter {}/{}", i + 1, n_iterations);
         let mut iter_solutions = vec![None; N_PARALLEL_RUNS];
         rayon::scope(|s| {
             for (j, solution_slice) in iter_solutions.iter_mut().enumerate() {
@@ -116,50 +114,94 @@ fn main() {
             let usage = s.layout_snapshots[0].usage;
             (width, usage * 100.0)
         })
-        .sorted_by_key(|(w, _)| OrderedFloat(*w))
         .unzip();
 
-    let n_results = final_widths.len();
+    println!("final widths: {:?}", &final_widths);
+    println!("final usages: {:?}", &final_usages);
 
-    let avg_width = final_widths.iter().sum::<fsize>() / n_results as fsize;
-    let stddev_width = (final_widths
-        .iter()
-        .map(|w| (w - avg_width).powi(2))
-        .sum::<fsize>()
-        / n_results as fsize)
-        .sqrt();
-
-    warn!(
-        "Benchmarked {} with {} runs ({}s)",
-        INPUT_FILE, n_results, TIME_LIMIT_S
-    );
-    warn!(
-        "Results: {:?}",
+    println!("----------------- WIDTH -----------------");
+    println!(
+        "Worst: {}",
         final_widths
             .iter()
-            .map(|w| format!("{:.2}", w).to_string())
-            .collect::<Vec<String>>()
+            .max_by_key(|&x| OrderedFloat(*x))
+            .unwrap()
+    );
+    println!("25per: {}", calculate_percentile(&final_widths, 0.75));
+    println!("Med: {}", calculate_median(&final_widths));
+    println!("75per: {}", calculate_percentile(&final_widths, 0.25));
+    println!(
+        "Best: {}",
+        final_widths
+            .iter()
+            .min_by_key(|&x| OrderedFloat(*x))
+            .unwrap()
+    );
+    println!("Avg: {}", calculate_average(&final_widths));
+    println!("Stddev: {}", calculate_stddev(&final_widths));
+    println!();
+    println!("----------------- USAGE -----------------");
+    println!(
+        "Worst: {}",
+        final_usages
+            .iter()
+            .min_by_key(|&x| OrderedFloat(*x))
+            .unwrap()
+    );
+    println!("25per: {}", calculate_percentile(&final_usages, 0.25));
+    println!("Median: {}", calculate_median(&final_usages));
+    println!("75per: {}", calculate_percentile(&final_usages, 0.75));
+    println!(
+        "Best: {}",
+        final_usages
+            .iter()
+            .max_by_key(|&x| OrderedFloat(*x))
+            .unwrap()
+    );
+    println!("Avg: {}", calculate_average(&final_usages));
+    println!("Stddev: {}", calculate_stddev(&final_usages));
+}
+
+//mimics Excel's percentile function
+pub fn calculate_percentile(v: &[fsize], pct: fsize) -> fsize {
+    // Validate input
+    assert!(!v.is_empty(), "Cannot compute percentile of an empty slice");
+    assert!(
+        pct >= 0.0 && pct <= 1.0,
+        "Percent must be between 0.0 and 1.0"
     );
 
-    warn!("----------------- WIDTH -----------------");
-    warn!("Best: {}", final_widths.first().unwrap());
-    warn!("Worst: {}", final_widths.last().unwrap());
-    warn!("Med: {}", final_widths[final_widths.len() / 2]);
-    warn!("Avg: {}", avg_width);
-    warn!("Stddev: {}", stddev_width);
+    // Create a sorted copy of the data
+    let mut sorted = v.to_vec();
+    sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
-    let avg_yield = final_usages.iter().sum::<fsize>() / n_results as fsize;
-    let stddev_yield = (final_usages
-        .iter()
-        .map(|u| (u - avg_yield).powi(2))
-        .sum::<fsize>()
-        / n_results as fsize)
-        .sqrt();
+    let n = sorted.len();
+    // Compute the rank using Excel's formula (1-indexed):
+    // k = pct * (n - 1) + 1
+    let k = pct * ((n - 1) as f64) + 1.0;
 
-    warn!("----------------- USAGE -----------------");
-    warn!("Best: {}", final_usages.first().unwrap());
-    warn!("Worst: {}", final_usages.last().unwrap());
-    warn!("Med: {}", final_usages[final_usages.len() / 2]);
-    warn!("Avg: {}", avg_yield);
-    warn!("Stddev: {}", stddev_yield);
+    // Determine the lower and upper indices (still 1-indexed)
+    let lower_index = k.floor() as usize;
+    let upper_index = k.ceil() as usize;
+    let fraction = k - (lower_index as f64);
+
+    // Convert indices to 0-indexed by subtracting 1
+    let lower_value = sorted[lower_index - 1];
+    let upper_value = sorted[upper_index - 1];
+
+    // If k is an integer, fraction is 0 so this returns lower_value exactly.
+    lower_value + fraction * (upper_value - lower_value)
+}
+
+pub fn calculate_median(v: &[fsize]) -> fsize {
+    calculate_percentile(v, 0.5)
+}
+
+pub fn calculate_average(v: &[fsize]) -> fsize {
+    v.iter().sum::<fsize>() / v.len() as fsize
+}
+
+pub fn calculate_stddev(v: &[fsize]) -> fsize {
+    let avg = calculate_average(v);
+    (v.iter().map(|x| (x - avg).powi(2)).sum::<fsize>() / v.len() as fsize).sqrt()
 }
