@@ -36,7 +36,7 @@ fn main() {
 
     println!(
         "Starting benchmark for {} ({}x{} runs across {} cores, {}s timelimit)",
-        json_instance.name, n_runs_per_iter, n_iterations, num_cpus::get_physical(), GLS_TIME_LIMIT_S + POST_TIME_LIMIT_S
+        json_instance.name, n_iterations, n_runs_per_iter, num_cpus::get_physical(), GLS_TIME_LIMIT_S + POST_TIME_LIMIT_S
     );
 
     let cde_config = CDEConfig {
