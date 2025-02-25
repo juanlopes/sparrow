@@ -27,7 +27,7 @@ pub struct GLSWorker {
     pub prob: SPProblem,
     pub ot: OverlapTracker,
     pub rng: SmallRng,
-    pub ch_area_cutoff: fsize,
+    pub large_area_ch_area_cutoff: fsize,
 }
 
 impl GLSWorker {
@@ -115,7 +115,7 @@ impl GLSWorker {
         let new_bbox = self.prob.layout.placed_items()[new_pk].shape.bbox();
 
         let jumped = old_bbox.relation_to(&new_bbox) == GeoRelation::Disjoint;
-        let item_big_enough = item.shape.surrogate().convex_hull_area > self.ch_area_cutoff;
+        let item_big_enough = item.shape.surrogate().convex_hull_area > self.large_area_ch_area_cutoff;
         if jumped && item_big_enough {
             self.ot.register_jump(new_pk);
         }

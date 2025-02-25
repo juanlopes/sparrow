@@ -1,5 +1,4 @@
 use crate::opt::gls_worker::GLSWorker;
-use crate::opt::tabu::TabuList;
 use crate::overlap::tracker::{OTSnapshot, OverlapTracker};
 use crate::sample::eval::SampleEval;
 use crate::util::assertions::tracker_matches_layout;
@@ -52,7 +51,9 @@ pub const OT_MAX_INCREASE: fsize = 2.0;
 pub const OT_MIN_INCREASE: fsize = 1.2;
 pub const OT_DECAY: fsize = 0.95;
 pub const PROXY_EPSILON_DIAM_FRAC: fsize = 0.01;
-pub const STDDEV_SPREAD: fsize = 5.0;
+pub const STDDEV_SPREAD: fsize = 2.0;
+
+pub const LARGE_ITEM_CH_AREA_CUTOFF_RATIO: fsize = 0.5;
 
 pub struct GLSOrchestrator {
     pub instance: SPInstance,
@@ -62,7 +63,7 @@ pub struct GLSOrchestrator {
     pub workers: Vec<GLSWorker>,
     pub output_folder: String,
     pub svg_counter: usize,
-    pub tabu_list: TabuList,
+    pub large_area_ch_area_cutoff: fsize,
 }
 
 impl GLSOrchestrator {
@@ -73,16 +74,20 @@ impl GLSOrchestrator {
         output_folder: String,
     ) -> Self {
         let overlap_tracker = OverlapTracker::new(&problem.layout);
-        let tabu_list = TabuList::new(TABU_SIZE, &instance);
+        let large_area_ch_area_cutoff = instance.items().iter()
+            .map(|(item, _)| item.shape.surrogate().convex_hull_area)
+            .max_by_key(|&x| OrderedFloat(x))
+            .unwrap() * LARGE_ITEM_CH_AREA_CUTOFF_RATIO;
         let workers = (0..N_WORKERS)
             .map(|_| GLSWorker {
                 instance: instance.clone(),
                 prob: problem.clone(),
                 ot: overlap_tracker.clone(),
                 rng: SmallRng::seed_from_u64(rng.random()),
-                ch_area_cutoff: tabu_list.ch_area_cutoff,
+                large_area_ch_area_cutoff,
             })
             .collect();
+
         Self {
             master_prob: problem.clone(),
             instance,
@@ -91,7 +96,7 @@ impl GLSOrchestrator {
             workers,
             svg_counter: 0,
             output_folder,
-            tabu_list,
+            large_area_ch_area_cutoff,
         }
     }
 
@@ -104,6 +109,7 @@ impl GLSOrchestrator {
         info!("[GLS] starting optimization with initial width: {:.3} ({:.3}%)",current_width,self.master_prob.usage() * 100.0);
 
         let start = Instant::now();
+        let mut local_bests : Vec<(Solution, fsize)> = vec![];
 
         while start.elapsed() < time_out {
             let local_best = self.separate_layout();
@@ -121,29 +127,31 @@ impl GLSOrchestrator {
                 info!("[GLS] shrinking width from {:.3} to {:.3}",current_width, next_width);
                 self.change_strip_width(next_width, None);
                 current_width = next_width;
+                local_bests.clear();
             } else {
-                //layout was not successfully separated
-                self.tabu_list.push(local_best.0.clone(), total_overlap);
-                info!("[GLS] layout separation unsuccessful, adding local best to tabu list (o: {})", FMT.fmt2(total_overlap));
+                info!("[GLS] layout separation unsuccessful, local best overlap: {}", FMT.fmt2(total_overlap));
                 self.write_to_disk(Some(local_best.0.clone()), "o", true);
+
+                //layout was not successfully separated, add to local bests
+                match local_bests.binary_search_by(|(_, o)| o.partial_cmp(&total_overlap).unwrap()) {
+                    Ok(idx) | Err(idx) => local_bests.insert(idx, (local_best.0.clone(), total_overlap)),
+                }
+
+                //make sure it is sorted correctly
+                assert!(local_bests.is_sorted_by(|(_, o1), (_, o2)| o1 <= o2));
 
                 //restore to a random solution from the tabu list, better solutions have more chance to be selected
                 let selected_sol = {
-                    let sorted_sols = self.tabu_list.list.iter()
-                        .filter(|(sol, _)| {
-                            sol.layout_snapshots[0].bin.bbox().width() == current_width
-                        })
-                        .sorted_by_key(|(_, eval)| OrderedFloat(*eval))
-                        .collect_vec();
-
-                    let distr = Normal::new(0.0 as fsize, sorted_sols.len() as fsize / STDDEV_SPREAD).unwrap();
-                    let selected_idx = (distr.sample(&mut self.rng).abs().floor() as usize).min(sorted_sols.len() - 1);
-                    let selected = sorted_sols.get(selected_idx).unwrap();
-                    info!("[GLS] selected starting solution {}/{} from tabu list (o: {})", selected_idx, sorted_sols.len(), FMT.fmt2(selected.1));
+                    let distr = Normal::new(0.0 as fsize, local_bests.len() as fsize / STDDEV_SPREAD).unwrap();
+                    let selected_idx = (distr.sample(&mut self.rng).abs().floor() as usize).min(local_bests.len() - 1);
+                    let selected = local_bests.get(selected_idx).unwrap();
+                    info!("[GLS] selected starting solution {}/{} from local bests (o: {})", selected_idx, local_bests.len(), FMT.fmt2(selected.1));
                     selected.0.clone()
                 };
 
                 self.rollback(&selected_sol, None);
+                //swap two large items
+                self.swap_large_pair_of_items();
             }
         }
 
@@ -197,18 +205,11 @@ impl GLSOrchestrator {
                     );
                 } else if overlap < min_overlap {
                     //layout is not separated, but absolute overlap is better than before
-
                     let sol = self.master_prob.create_solution(None);
-
-                    if !self.tabu_list.sol_is_tabu(&sol) {
-                        info!("[s:{n_strikes}, i:{n_iter}] (*) w_o: {} -> {}, o: {} -> {}, n_mov: {}, (min o: {})",FMT.fmt2(w_overlap_before),FMT.fmt2(w_overlap),FMT.fmt2(overlap_before),FMT.fmt2(overlap),n_moves,FMT.fmt2(min_overlap));
-                        min_overlap = overlap;
-                        min_overlap_sol = Some((sol, self.master_ot.create_snapshot()));
-                        n_iter_no_improvement = 0;
-                    } else {
-                        info!("[s:{n_strikes}, i: {n_iter}] tabu solution encountered, swapping two items");
-                        self.swap_tabu_item();
-                    }
+                    info!("[s:{n_strikes}, i:{n_iter}] (*) w_o: {} -> {}, o: {} -> {}, n_mov: {}, (min o: {})",FMT.fmt2(w_overlap_before),FMT.fmt2(w_overlap),FMT.fmt2(overlap_before),FMT.fmt2(overlap),n_moves,FMT.fmt2(min_overlap));
+                    min_overlap = overlap;
+                    min_overlap_sol = Some((sol, self.master_ot.create_snapshot()));
+                    n_iter_no_improvement = 0;
                 } else {
                     n_iter_no_improvement += 1;
                 }
@@ -277,19 +278,19 @@ impl GLSOrchestrator {
         }
     }
 
-    pub fn swap_tabu_item(&mut self) {
-        info!("swapping tabu item");
+    pub fn swap_large_pair_of_items(&mut self) {
+        info!("[GLS] Swapping two large items");
         let layout = &self.master_prob.layout;
         let (pk1, pi1) = layout.placed_items.iter()
-            .filter(|(_, pi)| pi.shape.surrogate().convex_hull_area > self.tabu_list.ch_area_cutoff)
+            .filter(|(_, pi)| pi.shape.surrogate().convex_hull_area > self.large_area_ch_area_cutoff)
             .choose(&mut self.rng)
             .unwrap();
 
         let (pk2, pi2) = layout.placed_items.iter()
             .filter(|(_, pi)| pi.item_id != pi1.item_id)
-            .filter(|(_, pi)| pi.shape.surrogate().convex_hull_area > self.tabu_list.ch_area_cutoff)
+            .filter(|(_, pi)| pi.shape.surrogate().convex_hull_area > self.large_area_ch_area_cutoff)
             .choose(&mut self.rng)
-            .unwrap();
+            .unwrap_or(layout.placed_items.iter().choose(&mut self.rng).unwrap());
 
         let dt1 = pi1.d_transf;
         let dt2 = pi2.d_transf;
@@ -347,7 +348,7 @@ impl GLSOrchestrator {
 
         let jumped = old_bbox.relation_to(&new_bbox) == GeoRelation::Disjoint;
         let item_big_enough =
-            item.shape.surrogate().convex_hull_area > self.tabu_list.ch_area_cutoff;
+            item.shape.surrogate().convex_hull_area > self.large_area_ch_area_cutoff;
         if jumped && item_big_enough {
             self.master_ot.register_jump(new_pk);
         }
@@ -390,7 +391,7 @@ impl GLSOrchestrator {
                 prob: self.master_prob.clone(),
                 ot: self.master_ot.clone(),
                 rng: SmallRng::seed_from_u64(self.rng.random()),
-                ch_area_cutoff: self.tabu_list.ch_area_cutoff,
+                large_area_ch_area_cutoff: self.large_area_ch_area_cutoff,
             };
         });
 
