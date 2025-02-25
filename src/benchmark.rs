@@ -35,7 +35,7 @@ fn main() {
 
     println!(
         "Starting benchmark for {} ({} runs, {} parallel, {}s timelimit)",
-        &args[1], N_RUNS_TOTAL, N_PARALLEL_RUNS, TIME_LIMIT_S
+        &args[1], N_RUNS_TOTAL, N_PARALLEL_RUNS, GLS_TIME_LIMIT_S + POST_TIME_LIMIT_S
     );
 
     let cde_config = CDEConfig {
