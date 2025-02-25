@@ -19,7 +19,7 @@ use std::path::Path;
 use std::time::{Duration, Instant};
 use gls_strip_packing::opt::post_optimizer::post;
 
-const INPUT_FILE: &str = "libs/jagua-rs/assets/trousers.json";
+const INPUT_FILE: &str = "libs/jagua-rs/assets/swim.json";
 
 const GLS_TIME_LIMIT_S: u64 = 18 * 60;
 

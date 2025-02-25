@@ -1,9 +1,9 @@
 extern crate core;
 
 use std::ops::Add;
-use gls_strip_packing::SVG_OUTPUT_DIR;
+use gls_strip_packing::{DRAW_OPTIONS, SVG_OUTPUT_DIR};
 use gls_strip_packing::opt::constr_builder::ConstructiveBuilder;
-use gls_strip_packing::opt::gls_orchestrator::GLSOrchestrator;
+use gls_strip_packing::opt::gls_orchestrator::{GLSOrchestrator, N_WORKERS};
 use gls_strip_packing::sample::search::SearchConfig;
 use gls_strip_packing::util::io;
 use jagua_rs::entities::instances::instance::Instance;
@@ -17,25 +17,26 @@ use rand::{Rng, SeedableRng};
 use std::path::Path;
 use std::time::{Duration, Instant};
 use gls_strip_packing::opt::post_optimizer::post;
+use gls_strip_packing::util::io::layout_to_svg::s_layout_to_svg;
 
 const RNG_SEED: Option<usize> = None;
-
-const N_RUNS_TOTAL: usize = 16;
-const N_PARALLEL_RUNS: usize = 8;
 
 const GLS_TIME_LIMIT_S: u64 = 18 * 60;
 
 const POST_TIME_LIMIT_S: u64 = 2 * 60;
 
-
 fn main() {
     //the input file is the first argument
     let args: Vec<String> = std::env::args().collect();
-    let json_instance = io::read_json_instance(Path::new(&args[1]));
+    let n_runs_total = args[1].parse::<usize>().unwrap();
+    let json_instance = io::read_json_instance(Path::new(&args[2]));
+
+    let n_runs_per_iter = num_cpus::get_physical() / N_WORKERS;
+    let n_iterations = (n_runs_total as fsize / n_runs_per_iter as fsize).ceil() as usize;
 
     println!(
-        "Starting benchmark for {} ({} runs, {} parallel, {}s timelimit)",
-        &args[1], N_RUNS_TOTAL, N_PARALLEL_RUNS, GLS_TIME_LIMIT_S + POST_TIME_LIMIT_S
+        "Starting benchmark for {} ({}x{} runs across {} cores, {}s timelimit)",
+        json_instance.name, n_runs_per_iter, n_iterations, num_cpus::get_physical(), GLS_TIME_LIMIT_S + POST_TIME_LIMIT_S
     );
 
     let cde_config = CDEConfig {
@@ -76,15 +77,14 @@ fn main() {
     };
 
     let mut final_solutions = vec![];
-    let n_iterations = (N_RUNS_TOTAL as fsize / N_PARALLEL_RUNS as fsize).ceil() as usize;
 
     for i in 0..n_iterations {
         println!("Starting iter {}/{}", i + 1, n_iterations);
-        let mut iter_solutions = vec![None; N_PARALLEL_RUNS];
+        let mut iter_solutions = vec![None; n_runs_per_iter];
         rayon::scope(|s| {
             for (j, solution_slice) in iter_solutions.iter_mut().enumerate() {
                 let thread_rng = SmallRng::seed_from_u64(rng.random());
-                let svg_output_dir = format!("{}_{}", SVG_OUTPUT_DIR, i * N_PARALLEL_RUNS + j);
+                let svg_output_dir = format!("{}_{}_{}", SVG_OUTPUT_DIR, json_instance.name, i * n_runs_per_iter + j);
                 let instance = sp_instance.clone();
 
                 s.spawn(|_| {
@@ -106,8 +106,7 @@ fn main() {
 
                     let post_solution = post(gls_opt, solution.clone(), Instant::now().add(Duration::from_secs(POST_TIME_LIMIT_S)));
 
-                    println!("[POST] from {:.3}% to {:.3}%", solution.usage * 100.0, post_solution.usage * 100.0);
-
+                    println!("[POST] from {:.3}% to {:.3}% (-{:.3}%)", solution.usage * 100.0, post_solution.usage * 100.0, (solution.usage - post_solution.usage) * 100.0);
                     *solution_slice = Some(post_solution);
                 })
             }

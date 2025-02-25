@@ -2,7 +2,7 @@
     General idea: during the last 20% of time, take very small steps to reduce the bin size. Aggressively restoring from previous solutions.
     Run this on top of gls_orchestrator.rs, do a random split position
  */
-use std::time::{Duration, Instant};
+use std::time::Instant;
 use jagua_rs::entities::solution::Solution;
 use jagua_rs::fsize;
 use log::{debug, info};

@@ -6,7 +6,7 @@ use jagua_rs::collision_detection::hazard::HazardEntity;
 use jagua_rs::entities::layout::Layout;
 use jagua_rs::entities::placed_item::PItemKey;
 use jagua_rs::fsize;
-use log::{trace, warn};
+use log::{trace};
 use ordered_float::Float;
 use slotmap::SecondaryMap;
 

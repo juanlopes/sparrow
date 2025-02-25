@@ -11,7 +11,6 @@ use jagua_rs::geometry::transformation::Transformation;
 use jagua_rs::io::parser;
 use log::warn;
 use std::hash::{DefaultHasher, Hash, Hasher};
-use jagua_rs::geometry::geo_traits::Shape;
 use svg::Document;
 use svg::node::element::{Definitions, Group, Title, Use, Text};
 
@@ -50,8 +49,8 @@ pub fn layout_to_svg(
         );
         Text::new(label_content)
             .set("x", bin.bbox().x_min)
-            .set("y", bin.bbox().y_min - 0.5 * 0.025 * vbox.width())
-            .set("font-size", vbox.width() * 0.025)
+            .set("y", bin.bbox().y_min - 0.5 * 0.025 * fsize::min(bin.bbox().width(), bin.bbox().height()))
+            .set("font-size", fsize::min(bin.bbox().width(), bin.bbox().height()) * 0.025)
             .set("font-family", "monospace")
             .set("font-weight", "500")
     };

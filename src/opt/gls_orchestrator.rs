@@ -51,7 +51,7 @@ pub const OT_MAX_INCREASE: fsize = 2.0;
 pub const OT_MIN_INCREASE: fsize = 1.2;
 pub const OT_DECAY: fsize = 0.95;
 pub const PROXY_EPSILON_DIAM_FRAC: fsize = 0.01;
-pub const STDDEV_SPREAD: fsize = 2.0;
+pub const STDDEV_SPREAD: fsize = 4.0;
 
 pub const LARGE_ITEM_CH_AREA_CUTOFF_RATIO: fsize = 0.5;
 
