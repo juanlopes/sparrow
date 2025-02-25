@@ -105,7 +105,6 @@ impl OverlapTracker {
                     self.pair_overlap[(idx, other_idx)].overlap = overlap;
                 }
                 HazardEntity::BinExterior => {
-                    warn!("bin exterior overlap");
                     let overlap = overlap_proxy::bin_overlap_proxy(shape, l.bin.bbox());
                     self.bin_overlap[idx].overlap = overlap;
                 }

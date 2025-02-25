@@ -1,5 +1,6 @@
 extern crate core;
 
+use std::ops::Add;
 use gls_strip_packing::SVG_OUTPUT_DIR;
 use gls_strip_packing::opt::constr_builder::ConstructiveBuilder;
 use gls_strip_packing::opt::gls_orchestrator::GLSOrchestrator;
@@ -14,14 +15,18 @@ use ordered_float::OrderedFloat;
 use rand::prelude::SmallRng;
 use rand::{Rng, SeedableRng};
 use std::path::Path;
-use std::time::Duration;
+use std::time::{Duration, Instant};
+use gls_strip_packing::opt::post_optimizer::post;
 
 const RNG_SEED: Option<usize> = None;
 
 const N_RUNS_TOTAL: usize = 16;
 const N_PARALLEL_RUNS: usize = 8;
 
-const TIME_LIMIT_S: u64 = 20 * 60;
+const GLS_TIME_LIMIT_S: u64 = 18 * 60;
+
+const POST_TIME_LIMIT_S: u64 = 2 * 60;
+
 
 fn main() {
     //the input file is the first argument
@@ -97,9 +102,13 @@ fn main() {
 
                     let mut gls_opt = GLSOrchestrator::new(problem, instance, rng, svg_output_dir);
 
-                    let solution = gls_opt.solve(Duration::from_secs(TIME_LIMIT_S));
+                    let solution = gls_opt.solve(Duration::from_secs(GLS_TIME_LIMIT_S));
 
-                    *solution_slice = Some(solution);
+                    let post_solution = post(gls_opt, solution.clone(), Instant::now().add(Duration::from_secs(POST_TIME_LIMIT_S)));
+
+                    println!("[POST] from {:.3}% to {:.3}%", solution.usage * 100.0, post_solution.usage * 100.0);
+
+                    *solution_slice = Some(post_solution);
                 })
             }
         });

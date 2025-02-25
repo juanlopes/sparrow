@@ -11,8 +11,9 @@ use jagua_rs::geometry::transformation::Transformation;
 use jagua_rs::io::parser;
 use log::warn;
 use std::hash::{DefaultHasher, Hash, Hasher};
+use jagua_rs::geometry::geo_traits::Shape;
 use svg::Document;
-use svg::node::element::{Definitions, Group, Title, Use};
+use svg::node::element::{Definitions, Group, Title, Use, Text};
 
 pub fn s_layout_to_svg(
     s_layout: &LayoutSnapshot,
@@ -32,12 +33,28 @@ pub fn layout_to_svg(
     let inv_bin_transf = internal_bin.pretransform.clone().inverse();
     let bin = parser::pretransform_bin(internal_bin, &inv_bin_transf);
 
-    let vbox = bin.bbox().clone().scale(1.05);
+    let vbox = bin.bbox().clone().scale(1.10);
 
     let theme = &options.theme;
 
     let stroke_width =
         fsize::min(vbox.width(), vbox.height()) * 0.001 * theme.stroke_width_multiplier;
+
+    let label = {
+        //print some information on above the left top of the bin
+        let label_content = format!(
+            "height: {:.3} | width: {:.3} | usage: {:.3}%",
+            layout.bin.bbox().height(),
+            layout.bin.bbox().width(),
+            layout.usage() * 100.0
+        );
+        Text::new(label_content)
+            .set("x", bin.bbox().x_min)
+            .set("y", bin.bbox().y_min - 0.5 * 0.025 * vbox.width())
+            .set("font-size", vbox.width() * 0.025)
+            .set("font-family", "monospace")
+            .set("font-weight", "500")
+    };
 
     //draw bin
     let bin_group = {
@@ -363,6 +380,7 @@ pub fn layout_to_svg(
         .add(items_group)
         .add(qz_group)
         .add(optionals)
+        .add(label)
 }
 
 pub fn layout_to_svg_2(layout: &Layout, options: SvgDrawOptions) -> Document {
