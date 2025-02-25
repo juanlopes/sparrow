@@ -2,6 +2,12 @@ name: real benches
 
 on:
   workflow_dispatch:
+    inputs:
+      n_runs:
+        description: 'Number of times to run each instance'
+        default: 16
+        required: true
+        type: number
 
 jobs:
   benchmark:
@@ -9,7 +15,6 @@ jobs:
     strategy:
       matrix:
         instance: [ "marques", "dagli", "albano", "mao","shirts", "trousers", "swim" ]
-        n_runs: [ 32 ]
 
     steps:
       - uses: actions/checkout@v4
@@ -22,7 +27,7 @@ jobs:
 
       - name: Run bench for ${{ matrix.instance }}
         run: |
-          output=$(cargo run --profile release-ultimate --bin benchmark -- ${{ matrix.n_runs }} libs/jagua-rs/assets/${{ matrix.instance }}.json)
+          output=$(cargo run --profile release-ultimate --bin benchmark -- ${{ github.event.inputs.run_count }} libs/jagua-rs/assets/${{ matrix.instance }}.json)
           
           echo "$output"
           
