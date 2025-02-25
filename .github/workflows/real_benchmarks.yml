@@ -27,7 +27,7 @@ jobs:
 
       - name: Run bench for ${{ matrix.instance }}
         run: |
-          output=$(cargo run --profile release-ultimate --bin benchmark -- ${{ github.event.inputs.run_count }} libs/jagua-rs/assets/${{ matrix.instance }}.json)
+          output=$(cargo run --profile release-ultimate --bin benchmark -- ${{ github.event.inputs.n_runs }} libs/jagua-rs/assets/${{ matrix.instance }}.json)
           
           echo "$output"
           
