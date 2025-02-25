@@ -41,7 +41,9 @@ pub const N_STRIKES: usize = 5;
 pub const R_SHRINK: fsize = 0.005;
 //const R_EXPAND: fsize = 0.003;
 
-pub const N_UNIFORM_SAMPLES: usize = 100;
+pub const N_BIN_SAMPLES: usize = 50;
+
+pub const N_FOCUSSED_SAMPLES: usize = 50;
 pub const N_COORD_DESCENTS: usize = 2;
 pub const TABU_SIZE: usize = 10_000;
 pub const JUMP_COOLDOWN: usize = 5;
@@ -105,7 +107,7 @@ impl GLSOrchestrator {
 
         while start.elapsed() < time_out {
             let local_best = self.separate_layout();
-            let total_overlap = self.master_ot.get_total_overlap();
+            let total_overlap = local_best.1.total_overlap;
 
             if total_overlap == 0.0 {
                 //layout is successfully separated
