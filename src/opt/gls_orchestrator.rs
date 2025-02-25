@@ -108,11 +108,11 @@ impl GLSOrchestrator {
         self.write_to_disk(None, "init", true);
         info!("[GLS] starting optimization with initial width: {:.3} ({:.3}%)",current_width,self.master_prob.usage() * 100.0);
 
-        let start = Instant::now();
+        let end_time = Instant::now() + time_out;
         let mut local_bests : Vec<(Solution, fsize)> = vec![];
 
-        while start.elapsed() < time_out {
-            let local_best = self.separate_layout();
+        while Instant::now() < end_time {
+            let local_best = self.separate_layout(end_time);
             let total_overlap = local_best.1.total_overlap;
 
             if total_overlap == 0.0 {
@@ -161,7 +161,7 @@ impl GLSOrchestrator {
         best_feasible_solution
     }
 
-    pub fn separate_layout(&mut self) -> (Solution, OTSnapshot, usize) {
+    pub fn separate_layout(&mut self, end_time: Instant) -> (Solution, OTSnapshot, usize) {
         let mut min_overlap = fsize::INFINITY;
         let mut min_overlap_sol: Option<(Solution, OTSnapshot)> = None;
 
@@ -170,7 +170,7 @@ impl GLSOrchestrator {
         let mut n_items_moved = 0;
         let start = Instant::now();
 
-        while n_strikes < N_STRIKES {
+        while n_strikes < N_STRIKES && Instant::now() < end_time {
             let mut n_iter_no_improvement = 0;
 
             if let Some(min_overlap_solution) = min_overlap_sol.as_ref() {
