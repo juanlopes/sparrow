@@ -40,7 +40,7 @@ jobs:
           tar -czf ${{ matrix.instance }}_output.tar.gz output/
       
       - name: Upload artifact for ${{ matrix.instance }}
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.instance }}-results
           path: ${{ matrix.instance }}_output.tar.gz
