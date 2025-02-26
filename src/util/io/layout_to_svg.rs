@@ -235,6 +235,7 @@ pub fn layout_to_svg(
         }
     };
 
+    //draw quadtree (if enabled)
     let qt_group = match options.quadtree {
         false => None,
         true => {
@@ -275,6 +276,7 @@ pub fn layout_to_svg(
         }
     };
 
+    //draw hazard proximity grid (if enabled)
     let hpg_group = match options.haz_prox_grid {
         false => None,
         true => {
@@ -302,7 +304,8 @@ pub fn layout_to_svg(
         }
     };
 
-    let overlap_group = match options.overlap_lines {
+    //highlight overlapping items (if enabled)
+    let overlap_group = match options.highlight_overlap {
         false => None,
         true => {
             let mut overlap_group = Group::new()
@@ -336,12 +339,9 @@ pub fn layout_to_svg(
                                 overlap_group = overlap_group.add(svg_export::data_to_path(
                                     svg_export::edge_data(&Edge { start, end }),
                                     &[
-                                        ("stroke", "lime"),
-                                        ("stroke-width", &*format!("{}", stroke_width * 2.0)),
-                                        (
-                                            "stroke-dasharray",
-                                            &*format!("{} {}", stroke_width, 4.0 * stroke_width),
-                                        ),
+                                        ("stroke", &*format!("{}", theme.overlap_highlight_color)),
+                                        ("stroke-width", &*format!("{}", stroke_width * 4.0)),
+                                        ("stroke-dasharray", &*format!("{} {}", 4.0 * stroke_width, 8.0 * stroke_width)),
                                         ("stroke-linecap", "round"),
                                         ("stroke-linejoin", "round"),
                                     ],
@@ -351,8 +351,8 @@ pub fn layout_to_svg(
                         HazardEntity::BinExterior => {
                             overlap_group = overlap_group.add(svg_export::point(
                                 pi.shape.poi.center,
-                                Some("lime"),
-                                Some(2.0 * stroke_width),
+                                Some(&*format!("{}", theme.overlap_highlight_color)),
+                                Some(3.0 * stroke_width),
                             ));
                         }
                         _ => {
@@ -648,7 +648,7 @@ pub fn layout_to_svg_2(layout: &Layout, options: SvgDrawOptions) -> Document {
         }
     };
 
-    let overlap_group = match options.overlap_lines {
+    let overlap_group = match options.highlight_overlap {
         false => None,
         true => {
             let mut overlap_group = Group::new()

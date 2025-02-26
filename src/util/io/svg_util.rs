@@ -22,7 +22,7 @@ pub struct SvgDrawOptions {
     pub surrogate: bool,
     ///Draw lines between overlapping items
     #[serde(default)]
-    pub overlap_lines: bool,
+    pub highlight_overlap: bool,
 }
 
 impl Default for SvgDrawOptions {
@@ -32,7 +32,7 @@ impl Default for SvgDrawOptions {
             quadtree: false,
             haz_prox_grid: false,
             surrogate: true,
-            overlap_lines: true,
+            highlight_overlap: true,
         }
     }
 }
@@ -45,6 +45,7 @@ pub struct SvgLayoutTheme {
     pub hole_fill: Color,
     pub qz_fill: [Color; N_QUALITIES],
     pub qz_stroke_opac: fsize,
+    pub overlap_highlight_color: Color,
 }
 
 impl Default for SvgLayoutTheme {
@@ -73,6 +74,7 @@ impl SvgLayoutTheme {
                 "#CBFF00".into(), //GREEN
             ],
             qz_stroke_opac: 0.5,
+            overlap_highlight_color: "#00FF00".into(), //LIME
         }
     }
 
@@ -95,6 +97,7 @@ impl SvgLayoutTheme {
                 "#636363".into(), //GRAY
             ],
             qz_stroke_opac: 0.9,
+            overlap_highlight_color: "#00FF00".into(), //LIME
         }
     }
 
@@ -116,6 +119,7 @@ impl SvgLayoutTheme {
             Color(0x63, 0x63, 0x63), //GRAY
         ],
         qz_stroke_opac: 0.9,
+        overlap_highlight_color: Color(0x00, 0xFF, 0x00), //LIME
     };
 }
 

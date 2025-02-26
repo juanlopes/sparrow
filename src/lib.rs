@@ -24,7 +24,7 @@ pub const DRAW_OPTIONS: SvgDrawOptions = SvgDrawOptions {
     quadtree: false,
     haz_prox_grid: false,
     surrogate: false,
-    overlap_lines: true,
+    highlight_overlap: true,
 };
 
 const FMT: Lazy<Formatter> = Lazy::new(|| {

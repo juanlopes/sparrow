@@ -10,7 +10,7 @@ use log::{debug, info};
 use rand::Rng;
 use crate::opt::gls_orchestrator::{GLSOrchestrator, R_SHRINK};
 
-pub const SHRINK_STEP: fsize = 0.0001; // one tenth of the normal shrink
+pub const SHRINK_STEP: fsize = R_SHRINK / 10.0; // one tenth of the normal shrink
 
 pub fn compact(gls: &mut GLSOrchestrator, init: &Solution, time_out: Instant) -> Solution {
     //restore to the initial solution and width

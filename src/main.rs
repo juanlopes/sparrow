@@ -82,18 +82,13 @@ fn main() {
     let mut gls_opt = GLSOrchestrator::new(constr_builder.prob, sp_instance, constr_builder.rng, SVG_OUTPUT_DIR.to_string());
 
     let mut solutions = gls_opt.solve(Duration::from_secs(GLS_TIME_LIMIT_S));
+    let sol = solutions.last().expect("no solutions found");
 
-    //do post optimization for the last 2 solutions
-    for sol in solutions.iter_mut().rev().take(2) {
-        let compacted_sol = compact(&mut gls_opt, &sol, Instant::now().add(Duration::from_secs(POST_TIME_LIMIT_S / 2)));
-        info!("[POST] from {:.3}% to {:.3}%", sol.usage * 100.0, compacted_sol.usage * 100.0);
-        *sol = compacted_sol;
-    }
-
-    let final_solution = solutions.iter().max_by_key(|s| OrderedFloat(s.usage)).unwrap();
+    let compacted_sol = compact(&mut gls_opt, &sol, Instant::now().add(Duration::from_secs(POST_TIME_LIMIT_S)));
+    info!("[POST] from {:.3}% to {:.3}% (+{:.3}%)", sol.usage * 100.0, compacted_sol.usage * 100.0, (compacted_sol.usage - sol.usage) * 100.0);
 
     io::write_svg(
-        &s_layout_to_svg(&final_solution.layout_snapshots[0], &instance, DRAW_OPTIONS),
+        &s_layout_to_svg(&compacted_sol.layout_snapshots[0], &instance, DRAW_OPTIONS),
         Path::new(format!("{}/{}.svg", SVG_OUTPUT_DIR, "final").as_str()),
     );
 }
