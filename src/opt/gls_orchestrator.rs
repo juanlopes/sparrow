@@ -170,7 +170,7 @@ impl GLSOrchestrator {
         let mut n_items_moved = 0;
         let start = Instant::now();
 
-        while n_strikes < N_STRIKES && Instant::now() < end_time {
+        while n_strikes < N_STRIKES && (Instant::now() < end_time || min_overlap_sol.is_none()) {
             let mut n_iter_no_improvement = 0;
 
             if let Some(min_overlap_solution) = min_overlap_sol.as_ref() {
