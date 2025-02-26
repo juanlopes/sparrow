@@ -12,7 +12,7 @@ use jagua_rs::entities::instances::strip_packing::SPInstance;
 use jagua_rs::entities::placed_item::PItemKey;
 use jagua_rs::entities::placing_option::PlacingOption;
 use jagua_rs::entities::problems::problem_generic::{ProblemGeneric, STRIP_LAYOUT_IDX};
-use jagua_rs::entities::problems::strip_packing::SPProblem;
+use jagua_rs::entities::problems::strip_packing::{strip_width, SPProblem};
 use jagua_rs::entities::solution::Solution;
 use jagua_rs::fsize;
 use jagua_rs::geometry::d_transformation::DTransformation;
@@ -100,16 +100,17 @@ impl GLSOrchestrator {
         }
     }
 
-    pub fn solve(&mut self, time_out: Duration) -> Solution {
+    pub fn solve(&mut self, time_out: Duration) -> Vec<Solution> {
         let mut current_width = self.master_prob.occupied_width();
-        let (mut best_feasible_solution, mut best_width) =
-            (self.master_prob.create_solution(None), current_width);
+        let mut best_width= current_width;
+
+        let mut feasible_solutions = vec![self.master_prob.create_solution(None)];
 
         self.write_to_disk(None, "init", true);
         info!("[GLS] starting optimization with initial width: {:.3} ({:.3}%)",current_width,self.master_prob.usage() * 100.0);
 
         let end_time = Instant::now() + time_out;
-        let mut local_bests : Vec<(Solution, fsize)> = vec![];
+        let mut local_bests: Vec<(Solution, fsize)> = vec![];
 
         while Instant::now() < end_time {
             let local_best = self.separate_layout(end_time);
@@ -120,8 +121,8 @@ impl GLSOrchestrator {
                 if current_width < best_width {
                     info!("[GLS] new best width at : {:.3} ({:.3}%)",current_width,self.master_prob.usage() * 100.0);
                     best_width = current_width;
-                    best_feasible_solution = local_best.0.clone();
-                    self.write_to_disk(Some(best_feasible_solution.clone()), "c", true);
+                    feasible_solutions.push(local_best.0.clone());
+                    self.write_to_disk(Some(local_best.0.clone()), "f", true);
                 }
                 let next_width = current_width * (1.0 - R_SHRINK);
                 info!("[GLS] shrinking width from {:.3} to {:.3}",current_width, next_width);
@@ -155,10 +156,9 @@ impl GLSOrchestrator {
             }
         }
 
-        info!("[GLS] time limit reached, returning best solution: {:.3} ({:.3}%)",best_width,best_feasible_solution.layout_snapshots[0].usage * 100.0);
-        self.write_to_disk(Some(best_feasible_solution.clone()), "final", true);
+        info!("[GLS] time limit reached, best solution found: {:.3} ({:.3}%)",best_width,feasible_solutions.last().unwrap().usage * 100.0);
 
-        best_feasible_solution
+        feasible_solutions
     }
 
     pub fn separate_layout(&mut self, end_time: Instant) -> (Solution, OTSnapshot, usize) {
@@ -263,8 +263,9 @@ impl GLSOrchestrator {
         n_movements
     }
 
-    pub fn rollback(&mut self, solution: &Solution, ots: Option<&OTSnapshot>) {
-        self.master_prob.restore_to_solution(solution);
+    pub fn rollback(&mut self, sol: &Solution, ots: Option<&OTSnapshot>) {
+        assert_eq!(strip_width(sol), self.master_prob.strip_width());
+        self.master_prob.restore_to_solution(sol);
 
         match ots {
             Some(ots) => {

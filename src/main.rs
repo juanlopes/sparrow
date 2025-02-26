@@ -17,13 +17,14 @@ use rand::SeedableRng;
 use rand::prelude::SmallRng;
 use std::path::Path;
 use std::time::{Duration, Instant};
-use gls_strip_packing::opt::post_optimizer::post;
+use ordered_float::OrderedFloat;
+use gls_strip_packing::opt::post_optimizer::compact;
 
-const INPUT_FILE: &str = "libs/jagua-rs/assets/swim.json";
+const INPUT_FILE: &str = "libs/jagua-rs/assets/trousers.json";
 
-const GLS_TIME_LIMIT_S: u64 = 18 * 60;
+const GLS_TIME_LIMIT_S: u64 = 3 * 60;
 
-const POST_LIMIT_S: u64 = 2 * 60;
+const POST_TIME_LIMIT_S: u64 = 2 * 60;
 
 const RNG_SEED: Option<usize> = None;
 
@@ -80,14 +81,19 @@ fn main() {
 
     let mut gls_opt = GLSOrchestrator::new(constr_builder.prob, sp_instance, constr_builder.rng, SVG_OUTPUT_DIR.to_string());
 
-    let solution = gls_opt.solve(Duration::from_secs(GLS_TIME_LIMIT_S));
+    let mut solutions = gls_opt.solve(Duration::from_secs(GLS_TIME_LIMIT_S));
 
-    let post_solution = post(gls_opt, solution.clone(), Instant::now().add(Duration::from_secs(POST_LIMIT_S)));
+    //do post optimization for the last 2 solutions
+    for sol in solutions.iter_mut().rev().take(2) {
+        let compacted_sol = compact(&mut gls_opt, &sol, Instant::now().add(Duration::from_secs(POST_TIME_LIMIT_S / 2)));
+        info!("[POST] from {:.3}% to {:.3}%", sol.usage * 100.0, compacted_sol.usage * 100.0);
+        *sol = compacted_sol;
+    }
 
-    info!("[POST] from {:.3}% to {:.3}%", solution.usage * 100.0, post_solution.usage * 100.0);
+    let final_solution = solutions.iter().max_by_key(|s| OrderedFloat(s.usage)).unwrap();
 
     io::write_svg(
-        &s_layout_to_svg(&post_solution.layout_snapshots[0], &instance, DRAW_OPTIONS),
+        &s_layout_to_svg(&final_solution.layout_snapshots[0], &instance, DRAW_OPTIONS),
         Path::new(format!("{}/{}.svg", SVG_OUTPUT_DIR, "final").as_str()),
     );
 }
