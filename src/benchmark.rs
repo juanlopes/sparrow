@@ -21,7 +21,7 @@ use gls_strip_packing::util::io::layout_to_svg::s_layout_to_svg;
 
 const RNG_SEED: Option<usize> = None;
 
-const GLS_TIME_LIMIT_S: u64 = 18 * 60;
+const GLS_TIME_LIMIT_S: u64 = 2 * 60;
 
 const POST_TIME_LIMIT_S: u64 = 2 * 60;
 
