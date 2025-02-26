@@ -85,7 +85,7 @@ fn main() {
     let sol = solutions.last().expect("no solutions found");
 
     let compacted_sol = compact(&mut gls_opt, &sol, Instant::now().add(Duration::from_secs(POST_TIME_LIMIT_S)));
-    info!("[POST] from {:.3}% to {:.3}% (+{:.3}%)", sol.usage * 100.0, compacted_sol.usage * 100.0, (compacted_sol.usage - sol.usage) * 100.0);
+    println!("[POST] from {:.3}% to {:.3}% (+{:.3}%)", sol.usage * 100.0, compacted_sol.usage * 100.0, (compacted_sol.usage - sol.usage) * 100.0);
 
     io::write_svg(
         &s_layout_to_svg(&compacted_sol.layout_snapshots[0], &instance, DRAW_OPTIONS),

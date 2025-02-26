@@ -107,7 +107,7 @@ fn main() {
                     let sol = solutions.last().expect("no solutions found");
 
                     let compacted_sol = compact(&mut gls_opt, &sol, Instant::now().add(Duration::from_secs(POST_TIME_LIMIT_S)));
-                    info!("[POST] from {:.3}% to {:.3}% (+{:.3}%)", sol.usage * 100.0, compacted_sol.usage * 100.0, (compacted_sol.usage - sol.usage) * 100.0);
+                    println!("[POST] from {:.3}% to {:.3}% (+{:.3}%)", sol.usage * 100.0, compacted_sol.usage * 100.0, (compacted_sol.usage - sol.usage) * 100.0);
 
                     *sol_slice = Some(compacted_sol);
                 })
