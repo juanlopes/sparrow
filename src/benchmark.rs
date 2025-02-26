@@ -16,7 +16,7 @@ use rand::prelude::SmallRng;
 use rand::{Rng, SeedableRng};
 use std::path::Path;
 use std::time::{Duration, Instant};
-use gls_strip_packing::opt::post_optimizer::post;
+use gls_strip_packing::opt::post_optimizer::compact;
 use gls_strip_packing::util::io::layout_to_svg::s_layout_to_svg;
 
 const RNG_SEED: Option<usize> = None;
@@ -102,12 +102,18 @@ fn main() {
 
                     let mut gls_opt = GLSOrchestrator::new(problem, instance, rng, svg_output_dir);
 
-                    let solution = gls_opt.solve(Duration::from_secs(GLS_TIME_LIMIT_S));
+                    let mut solutions = gls_opt.solve(Duration::from_secs(GLS_TIME_LIMIT_S));
 
-                    let post_solution = post(gls_opt, solution.clone(), Instant::now().add(Duration::from_secs(POST_TIME_LIMIT_S)));
+                    //do post optimization for the last 2 solutions
+                    for sol in solutions.iter_mut().rev().take(2) {
+                        let compacted_sol = compact(&mut gls_opt, &sol, Instant::now().add(Duration::from_secs(POST_TIME_LIMIT_S / 2)));
+                        println!("[POST] from {:.3}% to {:.3}%", sol.usage * 100.0, compacted_sol.usage * 100.0);
+                        *sol = compacted_sol;
+                    }
 
-                    println!("[POST] from {:.3}% to {:.3}% (-{:.3}%)", solution.usage * 100.0, post_solution.usage * 100.0, (solution.usage - post_solution.usage) * 100.0);
-                    *solution_slice = Some(post_solution);
+                    let final_solution = solutions.into_iter().max_by_key(|s| OrderedFloat(s.usage)).unwrap();
+
+                    *solution_slice = Some(final_solution);
                 })
             }
         });

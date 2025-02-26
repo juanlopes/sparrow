@@ -12,7 +12,7 @@ use jagua_rs::entities::instances::strip_packing::SPInstance;
 use jagua_rs::entities::placed_item::PItemKey;
 use jagua_rs::entities::placing_option::PlacingOption;
 use jagua_rs::entities::problems::problem_generic::{ProblemGeneric, STRIP_LAYOUT_IDX};
-use jagua_rs::entities::problems::strip_packing::SPProblem;
+use jagua_rs::entities::problems::strip_packing::{strip_width, SPProblem};
 use jagua_rs::entities::solution::Solution;
 use jagua_rs::fsize;
 use jagua_rs::geometry::d_transformation::DTransformation;
@@ -32,6 +32,7 @@ pub struct GLSWorker {
 
 impl GLSWorker {
     pub fn load(&mut self, sol: &Solution, ot: &OverlapTracker) {
+        assert_eq!(strip_width(sol), self.prob.strip_width());
         self.prob.restore_to_solution(sol);
         self.ot = ot.clone();
     }
