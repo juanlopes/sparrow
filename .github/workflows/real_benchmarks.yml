@@ -48,4 +48,4 @@ jobs:
         with:
           name: ${{ matrix.instance }}-results
           path: ${{ matrix.instance }}_output.tar.gz
-          retention-days: 7
+          retention-days: 14
