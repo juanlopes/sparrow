@@ -42,8 +42,8 @@ pub const R_SHRINK: fsize = 0.005;
 
 pub const N_BIN_SAMPLES: usize = 50;
 
-pub const N_FOCUSSED_SAMPLES: usize = 50;
-pub const N_COORD_DESCENTS: usize = 2;
+pub const N_FOCUSSED_SAMPLES: usize = 25;
+pub const N_COORD_DESCENTS: usize = 3;
 pub const TABU_SIZE: usize = 10_000;
 pub const JUMP_COOLDOWN: usize = 5;
 pub const N_WORKERS: usize = 2;

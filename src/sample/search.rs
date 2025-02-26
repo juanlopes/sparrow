@@ -21,7 +21,7 @@ pub struct SearchConfig {
 pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, mut evaluator: impl SampleEvaluator, search_config: SearchConfig, rng: &mut impl Rng) -> (DTransformation, SampleEval) {
     let item_min_dim = fsize::min(item.shape.bbox().width(), item.shape.bbox().height());
 
-    let mut best_samples = BestSamples::new(search_config.n_coord_descents, item_min_dim * 0.05);
+    let mut best_samples = BestSamples::new(search_config.n_coord_descents, item_min_dim * 0.1);
 
     let focussed_sampler = match ref_pk {
         Some(ref_pk) => {
