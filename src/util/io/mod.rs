@@ -26,7 +26,7 @@ pub fn read_json_instance(path: &Path) -> JsonInstance {
 pub fn write_svg(document: &Document, path: &Path) {
     svg::save(path, document).expect("failed to write svg file");
     info!(
-        "Solution SVG written to file://{}",
+        "[IO] solution SVG written to file://{}",
         fs::canonicalize(&path)
             .expect("could not canonicalize path")
             .to_str()
@@ -60,7 +60,7 @@ pub fn init_logger(level_filter: LevelFilter) {
                 thread_name,
             );
 
-            out.finish(format_args!("{:<27}{}", prefix, message))
+            out.finish(format_args!("{:<25}{}", prefix, message))
         })
         // Add blanket level filter -
         .level(level_filter)
@@ -70,7 +70,7 @@ pub fn init_logger(level_filter: LevelFilter) {
         .expect("could not initialize logger");
     log!(
         Level::Info,
-        "Epoch: {}",
+        "[EPOCH]: {}",
         humantime::format_rfc3339_seconds(std::time::SystemTime::now())
     );
 }

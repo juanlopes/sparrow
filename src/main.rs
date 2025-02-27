@@ -17,6 +17,7 @@ use rand::SeedableRng;
 use rand::prelude::SmallRng;
 use std::path::Path;
 use std::time::{Duration, Instant};
+use chrono::Local;
 use ordered_float::OrderedFloat;
 use gls_strip_packing::config::{CDE_CONFIG, CONSTR_SEARCH_CONFIG, DRAW_OPTIONS, LOG_LEVEL_DEBUG, LOG_LEVEL_RELEASE, OUTPUT_DIR, RNG_SEED};
 use gls_strip_packing::opt::post_optimizer::post_optimize;
@@ -31,18 +32,6 @@ fn main() {
         false => io::init_logger(LOG_LEVEL_RELEASE),
     }
 
-    let json_instance = io::read_json_instance(Path::new(&input_file_path));
-
-    let parser = Parser::new(PolySimplConfig::Disabled, CDE_CONFIG, true);
-    let instance = parser.parse(&json_instance);
-
-    let sp_instance = match instance.clone() {
-        Instance::SP(spi) => spi,
-        _ => panic!("expected strip packing instance"),
-    };
-
-    info!("[MAIN] loaded instance {} with #{} items", json_instance.name, instance.total_item_qty());
-
     let rng = match RNG_SEED {
         Some(seed) => {
             info!("[MAIN] using seed: {}", seed);
@@ -55,6 +44,20 @@ fn main() {
         }
     };
 
+    info!("[MAIN] system time: {}", Local::now());
+
+    let json_instance = io::read_json_instance(Path::new(&input_file_path));
+
+    let parser = Parser::new(PolySimplConfig::Disabled, CDE_CONFIG, true);
+    let instance = parser.parse(&json_instance);
+
+    let sp_instance = match instance.clone() {
+        Instance::SP(spi) => spi,
+        _ => panic!("expected strip packing instance"),
+    };
+
+    info!("[MAIN] loaded instance {} with #{} items", json_instance.name, instance.total_item_qty());
+
     let constr_builder = ConstructiveBuilder::new(sp_instance.clone(), CDE_CONFIG, rng, CONSTR_SEARCH_CONFIG);
 
     let mut gls_opt = GLSOrchestrator::from_builder(constr_builder, format!("{OUTPUT_DIR}/sols_{}",json_instance.name));
@@ -62,8 +65,8 @@ fn main() {
     let solutions = gls_opt.solve(Duration::from_secs(time_limit));
     let final_gls_sol = solutions.last().expect("no solutions found");
 
+    gls_opt.log_level = log::Level::Debug;
     let compacted_sol = post_optimize(&mut gls_opt, &final_gls_sol);
-    println!("[POST] from {:.3}% to {:.3}% (+{:.3}%)", final_gls_sol.usage * 100.0, compacted_sol.usage * 100.0, (compacted_sol.usage - final_gls_sol.usage) * 100.0);
 
     io::write_svg(
         &s_layout_to_svg(&compacted_sol.layout_snapshots[0], &instance, DRAW_OPTIONS),

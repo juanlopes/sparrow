@@ -17,6 +17,7 @@ use rand::prelude::SmallRng;
 use rand::{Rng, SeedableRng};
 use std::path::Path;
 use std::time::Duration;
+use chrono::Local;
 
 fn main() {
     //the input file is the first argument
@@ -29,8 +30,22 @@ fn main() {
     let n_runs_per_iter = (num_cpus::get_physical() / N_WORKERS).min(n_runs_total);
     let n_iterations = (n_runs_total as fsize / n_runs_per_iter as fsize).ceil() as usize;
 
+    let mut rng = match RNG_SEED {
+        Some(seed) => {
+            println!("[BENCH] using provided seed: {}", seed);
+            SmallRng::seed_from_u64(seed as u64)
+        }
+        None => {
+            let seed = rand::random();
+            println!("[BENCH] no seed provided, using: {}", seed);
+            SmallRng::seed_from_u64(seed)
+        }
+    };
+
+    println!("[BENCH] system time: {}", Local::now());
+
     println!(
-        "Starting benchmark for {} ({}x{} runs across {} cores, {:?} timelimit)",
+        "[BENCH] Starting benchmark for {} ({}x{} runs across {} cores, {:?} timelimit)",
         json_instance.name, n_iterations, n_runs_per_iter, num_cpus::get_physical(), time_limit
     );
 
@@ -53,18 +68,6 @@ fn main() {
         _ => panic!("Expected SPInstance"),
     };
 
-    let mut rng = match RNG_SEED {
-        Some(seed) => {
-            println!("Using seed: {}", seed);
-            SmallRng::seed_from_u64(seed as u64)
-        }
-        None => {
-            let seed = rand::random();
-            println!("No seed provided, using: {}", seed);
-            SmallRng::seed_from_u64(seed)
-        }
-    };
-
     let constr_search_config = SearchConfig {
         n_bin_samples: 1000,
         n_focussed_samples: 0,
@@ -74,7 +77,7 @@ fn main() {
     let mut final_solutions = vec![];
 
     for i in 0..n_iterations {
-        println!("[BENCH] Starting iter {}/{}", i + 1, n_iterations);
+        println!("[BENCH] starting iter {}/{}", i + 1, n_iterations);
         let mut iter_solutions = vec![None; n_runs_per_iter];
         rayon::scope(|s| {
             for (j, sol_slice) in iter_solutions.iter_mut().enumerate() {
@@ -92,8 +95,9 @@ fn main() {
                     let mut solutions = gls_opt.solve(time_limit);
                     let final_gls_sol = solutions.last().expect("no solutions found");
 
+                    let start_post = Instant::now();
                     let compacted_sol = post_optimize(&mut gls_opt, &final_gls_sol);
-                    println!("[BENCH] [id: {bench_idx}] finished, (gls: {:.3}%, post: {:.3}%, +{:.3}%)", final_gls_sol.usage * 100.0, compacted_sol.usage * 100.0, (compacted_sol.usage - final_gls_sol.usage) * 100.0);
+                    println!("[BENCH] [id:{bench_idx}] finished, (gls: {:.3}%, post: {:.3}%, +{:.3}%, {:?})", final_gls_sol.usage * 100.0, compacted_sol.usage * 100.0, (compacted_sol.usage - final_gls_sol.usage) * 100.0, start_post.elapsed());
 
                     *sol_slice = Some(compacted_sol);
                 })

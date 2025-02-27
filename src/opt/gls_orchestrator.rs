@@ -1,10 +1,12 @@
+use crate::config::{DRAW_OPTIONS, LARGE_ITEM_CH_AREA_CUTOFF_RATIO, N_ITER_NO_IMPROVEMENT, N_STRIKES, N_WORKERS, R_SHRINK, STDDEV_SPREAD};
+use crate::opt::constr_builder::ConstructiveBuilder;
 use crate::opt::gls_worker::GLSWorker;
 use crate::overlap::tracker::{OTSnapshot, OverlapTracker};
 use crate::sample::eval::SampleEval;
 use crate::util::assertions::tracker_matches_layout;
 use crate::util::io;
 use crate::util::io::layout_to_svg::{layout_to_svg, s_layout_to_svg};
-use crate::{FMT};
+use crate::FMT;
 use itertools::Itertools;
 use jagua_rs::entities::bin::Bin;
 use jagua_rs::entities::instances::instance_generic::InstanceGeneric;
@@ -20,7 +22,7 @@ use jagua_rs::geometry::geo_enums::GeoRelation;
 use jagua_rs::geometry::geo_traits::{Shape, Transformable};
 use jagua_rs::geometry::primitives::aa_rectangle::AARectangle;
 use jagua_rs::util::fpa::FPA;
-use log::{debug, info};
+use log::{debug, info, log};
 use ordered_float::OrderedFloat;
 use rand::prelude::IteratorRandom;
 use rand::rngs::SmallRng;
@@ -31,8 +33,6 @@ use rayon::iter::IntoParallelRefMutIterator;
 use rayon::iter::ParallelIterator;
 use std::path::Path;
 use std::time::{Duration, Instant};
-use crate::config::{DRAW_OPTIONS, LARGE_ITEM_CH_AREA_CUTOFF_RATIO, N_ITER_NO_IMPROVEMENT, N_STRIKES, N_WORKERS, R_SHRINK, STDDEV_SPREAD};
-use crate::opt::constr_builder::ConstructiveBuilder;
 
 pub struct GLSOrchestrator {
     pub instance: SPInstance,
@@ -43,6 +43,7 @@ pub struct GLSOrchestrator {
     pub output_folder: String,
     pub svg_counter: usize,
     pub large_area_ch_area_cutoff: fsize,
+    pub log_level: log::Level,
 }
 
 impl GLSOrchestrator {
@@ -51,7 +52,7 @@ impl GLSOrchestrator {
         output_folder: String,
     ) -> Self {
         init_builder.construct();
-        let ConstructiveBuilder { instance, mut prob, mut rng,..} = init_builder;
+        let ConstructiveBuilder { instance, mut prob, mut rng, .. } = init_builder;
 
         let overlap_tracker = OverlapTracker::new(&prob.layout);
         let large_area_ch_area_cutoff = instance.items().iter()
@@ -77,20 +78,21 @@ impl GLSOrchestrator {
             svg_counter: 0,
             output_folder,
             large_area_ch_area_cutoff,
+            log_level: log::Level::Info,
         }
     }
 
     pub fn solve(&mut self, time_out: Duration) -> Vec<Solution> {
         let mut current_width = self.prob.occupied_width();
-        let mut best_width= current_width;
+        let mut best_width = current_width;
 
         let mut feasible_solutions = vec![self.prob.create_solution(None)];
 
         self.write_to_disk(None, "init", true);
-        info!("[GLS] starting optimization with initial width: {:.3} ({:.3}%)",current_width,self.prob.usage() * 100.0);
+        log!(self.log_level,"[GLS] starting optimization with initial width: {:.3} ({:.3}%)",current_width,self.prob.usage() * 100.0);
 
         let end_time = Instant::now() + time_out;
-        let mut local_bests: Vec<(Solution, fsize)> = vec![];
+        let mut solution_pool: Vec<(Solution, fsize)> = vec![];
 
         while Instant::now() < end_time {
             let local_best = self.separate_layout(Some(end_time));
@@ -99,34 +101,34 @@ impl GLSOrchestrator {
             if total_overlap == 0.0 {
                 //layout is successfully separated
                 if current_width < best_width {
-                    info!("[GLS] new best width at : {:.3} ({:.3}%)",current_width,self.prob.usage() * 100.0);
+                    log!(self.log_level,"[GLS] new best at width: {:.3} ({:.3}%)",current_width,self.prob.usage() * 100.0);
                     best_width = current_width;
                     feasible_solutions.push(local_best.0.clone());
                     self.write_to_disk(Some(local_best.0.clone()), "f", true);
                 }
                 let next_width = current_width * (1.0 - R_SHRINK);
-                info!("[GLS] shrinking width from {:.3} to {:.3}",current_width, next_width);
+                log!(self.log_level,"[GLS] shrinking width by {}%: {:.3} -> {:.3}", R_SHRINK * 100.0, current_width, next_width);
                 self.change_strip_width(next_width, None);
                 current_width = next_width;
-                local_bests.clear();
+                solution_pool.clear();
             } else {
-                info!("[GLS] layout separation unsuccessful, local best overlap: {}", FMT.fmt2(total_overlap));
+                log!(self.log_level,"[GLS] layout separation unsuccessful, best overlap: {}", FMT.fmt2(total_overlap));
                 self.write_to_disk(Some(local_best.0.clone()), "o", true);
 
                 //layout was not successfully separated, add to local bests
-                match local_bests.binary_search_by(|(_, o)| o.partial_cmp(&total_overlap).unwrap()) {
-                    Ok(idx) | Err(idx) => local_bests.insert(idx, (local_best.0.clone(), total_overlap)),
+                match solution_pool.binary_search_by(|(_, o)| o.partial_cmp(&total_overlap).unwrap()) {
+                    Ok(idx) | Err(idx) => solution_pool.insert(idx, (local_best.0.clone(), total_overlap)),
                 }
 
                 //make sure it is sorted correctly
-                assert!(local_bests.is_sorted_by(|(_, o1), (_, o2)| o1 <= o2));
+                assert!(solution_pool.is_sorted_by(|(_, o1), (_, o2)| o1 <= o2));
 
                 //restore to a random solution from the tabu list, better solutions have more chance to be selected
                 let selected_sol = {
-                    let distr = Normal::new(0.0 as fsize, local_bests.len() as fsize / STDDEV_SPREAD).unwrap();
-                    let selected_idx = (distr.sample(&mut self.rng).abs().floor() as usize).min(local_bests.len() - 1);
-                    let selected = local_bests.get(selected_idx).unwrap();
-                    info!("[GLS] selected starting solution {}/{} from local bests (o: {})", selected_idx, local_bests.len(), FMT.fmt2(selected.1));
+                    let distr = Normal::new(0.0 as fsize, solution_pool.len() as fsize / STDDEV_SPREAD).unwrap();
+                    let selected_idx = (distr.sample(&mut self.rng).abs().floor() as usize).min(solution_pool.len() - 1);
+                    let selected = solution_pool.get(selected_idx).unwrap();
+                    log!(self.log_level,"[GLS] selected starting solution {}/{} from solution pool (o: {})", selected_idx, solution_pool.len(), FMT.fmt2(selected.1));
                     selected.0.clone()
                 };
 
@@ -136,14 +138,15 @@ impl GLSOrchestrator {
             }
         }
 
-        info!("[GLS] time limit reached, best solution found: {:.3} ({:.3}%)",best_width,feasible_solutions.last().unwrap().usage * 100.0);
+        log!(self.log_level,"[GLS] time limit reached, best solution found: {:.3} ({:.3}%)",best_width,feasible_solutions.last().unwrap().usage * 100.0);
 
         feasible_solutions
     }
 
     pub fn separate_layout(&mut self, time_out: Option<Instant>) -> (Solution, OTSnapshot) {
-        let mut min_overlap = fsize::INFINITY;
         let mut min_overlap_sol: (Solution, OTSnapshot) = (self.prob.create_solution(None), self.ot.create_snapshot());
+        let mut min_overlap = self.ot.get_total_overlap();
+        log!(self.log_level,"[SEP] separating at width: {:.3} and overlap: {} ", self.prob.strip_width(), FMT.fmt2(min_overlap));
 
         let mut n_strikes = 0;
         let mut n_iter = 0;
@@ -154,7 +157,7 @@ impl GLSOrchestrator {
             let mut n_iter_no_improvement = 0;
 
             let initial_strike_overlap = self.ot.get_total_overlap();
-            info!("[s:{n_strikes}] initial overlap: {}",FMT.fmt2(initial_strike_overlap));
+            log!(self.log_level,"[SEP] [s:{n_strikes}] init_o: {}",FMT.fmt2(initial_strike_overlap));
 
             while n_iter_no_improvement < N_ITER_NO_IMPROVEMENT {
                 let (overlap_before, w_overlap_before) = (
@@ -167,19 +170,19 @@ impl GLSOrchestrator {
                     self.ot.get_total_weighted_overlap(),
                 );
 
-                debug!("[s:{n_strikes}, i:{n_iter}]    w_o: {} -> {}, o: {} -> {}, n_mov: {}, (min o: {})",FMT.fmt2(w_overlap_before),FMT.fmt2(w_overlap),FMT.fmt2(overlap_before),FMT.fmt2(overlap),n_moves,FMT.fmt2(min_overlap));
+                debug!("[SEP] [s:{n_strikes},i:{n_iter}] ( ) o: {} -> {}, w_o: {} -> {}, #mv: {}, (min o: {})",FMT.fmt2(overlap_before),FMT.fmt2(overlap),FMT.fmt2(w_overlap_before),FMT.fmt2(w_overlap),n_moves,FMT.fmt2(min_overlap));
                 debug_assert!(FPA(w_overlap) <= FPA(w_overlap_before), "weighted overlap increased: {} -> {}", FMT.fmt2(w_overlap_before), FMT.fmt2(w_overlap));
 
                 if overlap == 0.0 {
                     //layout is successfully separated
-                    info!("[s:{n_strikes}, i:{n_iter}] (S) w_o: {} -> {}, o: {} -> {}, n_mov: {}, (min o: {})",FMT.fmt2(w_overlap_before),FMT.fmt2(w_overlap),FMT.fmt2(overlap_before),FMT.fmt2(overlap),n_moves,FMT.fmt2(min_overlap));
+                    log!(self.log_level,"[SEP] [s:{n_strikes},i:{n_iter}] (S)  min_o: {}",FMT.fmt2(overlap));
                     return (self.prob.create_solution(None), self.ot.create_snapshot());
                 } else if overlap < min_overlap {
                     //layout is not separated, but absolute overlap is better than before
                     let sol = self.prob.create_solution(None);
-                    info!("[s:{n_strikes}, i:{n_iter}] (*) w_o: {} -> {}, o: {} -> {}, n_mov: {}, (min o: {})",FMT.fmt2(w_overlap_before),FMT.fmt2(w_overlap),FMT.fmt2(overlap_before),FMT.fmt2(overlap),n_moves,FMT.fmt2(min_overlap));
-                    min_overlap = overlap;
                     min_overlap_sol = (sol, self.ot.create_snapshot());
+                    min_overlap = overlap;
+                    log!(self.log_level,"[SEP] [s:{n_strikes},i:{n_iter}] (*) min_o: {}",FMT.fmt2(overlap));
                     n_iter_no_improvement = 0;
                 } else {
                     n_iter_no_improvement += 1;
@@ -191,18 +194,14 @@ impl GLSOrchestrator {
             }
             self.write_to_disk(None, "strike", false);
 
-            info!("[s:{n_strikes}, i: {n_iter}] {} iter no improvement, min overlap: {}",n_iter_no_improvement,FMT.fmt2(min_overlap));
             if initial_strike_overlap * 0.98 <= min_overlap {
-                info!("[s:{n_strikes}, i: {n_iter}] no substantial improvement, adding strike");
                 n_strikes += 1;
             } else {
-                info!("[s:{n_strikes}, i: {n_iter}] improvement, resetting strikes");
                 n_strikes = 0;
             }
-            info!("[s:{n_strikes}] Rolling back to min overlap");
             self.rollback(&min_overlap_sol.0, Some(&min_overlap_sol.1));
         }
-        info!("[GLS] strike limit reached ({}), moves/s: {}, iter/s: {}, time: {}ms",n_strikes,(n_items_moved as f64 / start.elapsed().as_secs_f64()) as usize,(n_iter as f64 / start.elapsed().as_secs_f64()) as usize,start.elapsed().as_millis());
+        log!(self.log_level,"[SEP] strike limit reached ({}), moves/s: {}, iter/s: {}, time: {}ms",n_strikes,(n_items_moved as f64 / start.elapsed().as_secs_f64()) as usize,(n_iter as f64 / start.elapsed().as_secs_f64()) as usize,start.elapsed().as_millis());
 
         (min_overlap_sol.0, min_overlap_sol.1)
     }
@@ -220,7 +219,7 @@ impl GLSOrchestrator {
             })
             .sum();
 
-        debug!("optimizers w_o's: {:?}",self.workers.iter().map(|opt| opt.ot.get_total_weighted_overlap()).collect_vec());
+        debug!("[MOD] optimizers w_o's: {:?}",self.workers.iter().map(|opt| opt.ot.get_total_weighted_overlap()).collect_vec());
 
         // Check which worker has the lowest total weighted overlap
         let best_opt = self.workers.iter_mut()
@@ -252,7 +251,6 @@ impl GLSOrchestrator {
     }
 
     pub fn swap_large_pair_of_items(&mut self) {
-        info!("[GLS] Swapping two large items");
         let layout = &self.prob.layout;
         let (pk1, pi1) = layout.placed_items.iter()
             .filter(|(_, pi)| pi.shape.surrogate().convex_hull_area > self.large_area_ch_area_cutoff)
@@ -267,6 +265,8 @@ impl GLSOrchestrator {
 
         let dt1 = pi1.d_transf;
         let dt2 = pi2.d_transf;
+
+        log!(self.log_level,"[GLS] swapped two large items (id: {} <-> {})", pi1.item_id, pi2.item_id);
 
         self.move_item(pk1, dt2, None);
         self.move_item(pk2, dt1, None);
@@ -310,8 +310,6 @@ impl GLSOrchestrator {
             new_pik
         };
 
-        //info!("moving item {} from {:?} to {:?} ({:?}->{:?})", item.id, old_p_opt.d_transf, new_p_opt.d_transf, pik, new_pik);
-
         self.ot
             .register_item_move(&self.prob.layout, pik, new_pk);
 
@@ -326,7 +324,7 @@ impl GLSOrchestrator {
             self.ot.register_jump(new_pk);
         }
 
-        debug!("Moved item {} from from o: {}, wo: {} to o+1: {}, w_o+1: {} (jump: {})",item.id,FMT.fmt2(old_overlap),FMT.fmt2(old_weighted_overlap),FMT.fmt2(new_overlap),FMT.fmt2(new_weighted_overlap),jumped);
+        debug!("[MV] moved item {} from from o: {}, wo: {} to o+1: {}, w_o+1: {} (jump: {})",item.id,FMT.fmt2(old_overlap),FMT.fmt2(old_weighted_overlap),FMT.fmt2(new_overlap),FMT.fmt2(new_weighted_overlap),jumped);
 
         debug_assert!(tracker_matches_layout(&self.ot, &self.prob.layout));
 
@@ -367,8 +365,7 @@ impl GLSOrchestrator {
                 large_area_ch_area_cutoff: self.large_area_ch_area_cutoff,
             };
         });
-
-        info!("changed strip width to {}", new_width);
+        debug!("[GLS] changed strip width to {:.3}", new_width);
     }
 
     pub fn write_to_disk(&mut self, solution: Option<Solution>, suffix: &str, force: bool) {
