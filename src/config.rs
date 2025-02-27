@@ -1,7 +1,7 @@
-use jagua_rs::fsize;
-use jagua_rs::util::config::{CDEConfig, SPSurrogateConfig};
 use crate::sample::search::SearchConfig;
 use crate::util::io::svg_util::{SvgDrawOptions, SvgLayoutTheme};
+use jagua_rs::fsize;
+use jagua_rs::util::config::{CDEConfig, SPSurrogateConfig};
 
 pub const OUTPUT_DIR: &str = "output";
 
@@ -50,5 +50,5 @@ pub const PROXY_EPSILON_DIAM_FRAC: fsize = 0.01;
 pub const STDDEV_SPREAD: fsize = 4.0;
 pub const LARGE_ITEM_CH_AREA_CUTOFF_RATIO: fsize = 0.5;
 pub const R_SHRINK: fsize = 0.005;
-pub const POST_R_SHRINKS: [fsize;2] = [0.0005, 0.0001];
-pub const POST_N_STRIKES: usize = 10;
+pub const POST_R_SHRINKS: [fsize; 2] = [0.0005, 0.0001];
+pub const POST_N_STRIKES: [usize; 2] = [10, 10];

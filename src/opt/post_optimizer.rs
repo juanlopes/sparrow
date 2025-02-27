@@ -12,10 +12,10 @@ use crate::opt::gls_orchestrator::GLSOrchestrator;
 
 pub fn post_optimize(gls: &mut GLSOrchestrator, init: &Solution) -> Solution {
     let mut best = init.clone();
-    for r_shrink in POST_R_SHRINKS {
+    for (i, &r_shrink) in POST_R_SHRINKS.iter().enumerate() {
         let mut n_strikes = 0;
         info!("[POST] attempting to reduce width by {}%", r_shrink * 100.0);
-        while n_strikes < POST_N_STRIKES {
+        while n_strikes < POST_N_STRIKES[i] {
             match compact(gls, &best, r_shrink){
                 Some(compacted_sol) => {
                     assert!(compacted_sol.usage > best.usage);
@@ -26,7 +26,7 @@ pub fn post_optimize(gls: &mut GLSOrchestrator, init: &Solution) -> Solution {
                 }
                 None => {
                     n_strikes += 1;
-                    info!("[POST] strike: {n_strikes}/{POST_N_STRIKES}");
+                    info!("[POST] strike: {}/{}", n_strikes, POST_N_STRIKES[i]);
                 }
             }
         }
