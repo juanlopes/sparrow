@@ -1,4 +1,3 @@
-use std::ffi::OsStr;
 use crate::config::{DRAW_OPTIONS, LARGE_ITEM_CH_AREA_CUTOFF_RATIO, N_ITER_NO_IMPROVEMENT, N_STRIKES, N_WORKERS, OUTPUT_DIR, R_SHRINK, STDDEV_SPREAD};
 use crate::opt::constr_builder::ConstructiveBuilder;
 use crate::opt::gls_worker::GLSWorker;

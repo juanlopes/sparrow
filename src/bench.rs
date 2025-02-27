@@ -124,7 +124,7 @@ fn main() {
     let best_final_solution = final_solutions.iter().max_by_key(|s| OrderedFloat(s.usage)).unwrap();
 
     io::write_svg(
-        &s_layout_to_svg(&best_final_solution.layout_snapshots[0], &instance, DRAW_OPTIONS),
+        &s_layout_to_svg(&best_final_solution.layout_snapshots[0], &instance, DRAW_OPTIONS, "best_final"),
         Path::new(format!("{OUTPUT_DIR}/final_best_{}.svg", json_instance.name).as_str()),
         log::Level::Info,
     );

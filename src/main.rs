@@ -8,15 +8,13 @@ use gls_strip_packing::util::io::layout_to_svg::s_layout_to_svg;
 use jagua_rs::entities::instances::instance::Instance;
 use jagua_rs::entities::instances::instance_generic::InstanceGeneric;
 use jagua_rs::io::parser::Parser;
-use jagua_rs::util::config::CDEConfig;
 use jagua_rs::util::polygon_simplification::PolySimplConfig;
 use log::{info, warn, Level};
 use rand::SeedableRng;
 use rand::prelude::SmallRng;
 use std::path::Path;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use chrono::Local;
-use ordered_float::OrderedFloat;
 use gls_strip_packing::config::{CDE_CONFIG, CONSTR_SEARCH_CONFIG, DRAW_OPTIONS, LOG_LEVEL_DEBUG, LOG_LEVEL_RELEASE, OUTPUT_DIR, RNG_SEED};
 use gls_strip_packing::opt::post_optimizer::post_optimize;
 

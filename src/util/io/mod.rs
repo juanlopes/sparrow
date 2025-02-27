@@ -1,7 +1,6 @@
-use log::{info, log, Level, LevelFilter};
+use log::{log, Level, LevelFilter};
 use std::fs;
 use std::fs::File;
-use std::io::Write;
 use std::io::BufReader;
 use std::path::Path;
 use svg::Document;
