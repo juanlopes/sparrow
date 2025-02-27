@@ -1,5 +1,6 @@
 extern crate core;
 
+use chrono::Local;
 use gls_strip_packing::config::{DRAW_OPTIONS, N_WORKERS, OUTPUT_DIR, RNG_SEED};
 use gls_strip_packing::opt::constr_builder::ConstructiveBuilder;
 use gls_strip_packing::opt::gls_orchestrator::GLSOrchestrator;
@@ -17,7 +18,6 @@ use rand::prelude::SmallRng;
 use rand::{Rng, SeedableRng};
 use std::path::Path;
 use std::time::{Duration, Instant};
-use chrono::Local;
 
 fn main() {
     //the input file is the first argument
@@ -43,11 +43,11 @@ fn main() {
     };
 
     let n_runs_per_iter = (num_cpus::get_physical() / N_WORKERS).min(n_runs_total);
-    let n_iterations = (n_runs_total as fsize / n_runs_per_iter as fsize).ceil() as usize;
+    let n_batches = (n_runs_total as fsize / n_runs_per_iter as fsize).ceil() as usize;
 
     println!(
         "[BENCH] starting bench for {} ({}x{} runs across {} cores, {:?} timelimit)",
-        json_instance.name, n_iterations, n_runs_per_iter, num_cpus::get_physical(), time_limit
+        json_instance.name, n_batches, n_runs_per_iter, num_cpus::get_physical(), time_limit
     );
 
     let cde_config = CDEConfig {
@@ -77,8 +77,8 @@ fn main() {
 
     let mut final_solutions = vec![];
 
-    for i in 0..n_iterations {
-        println!("[BENCH] starting iter {}/{}", i + 1, n_iterations);
+    for i in 0..n_batches {
+        println!("[BENCH] batch {}/{}", i + 1, n_batches);
         let mut iter_solutions = vec![None; n_runs_per_iter];
         rayon::scope(|s| {
             for (j, sol_slice) in iter_solutions.iter_mut().enumerate() {
@@ -95,10 +95,11 @@ fn main() {
                     let mut gls_opt = GLSOrchestrator::from_builder(constr_builder, sols_output_dir);
                     let solutions = gls_opt.solve(time_limit);
                     let final_gls_sol = solutions.last().expect("no solutions found");
+                    println!("[BENCH] [id:{bench_idx}] ph1 done: {:.3}% ({}s)", final_gls_sol.usage * 100.0, time_limit.as_secs());
 
                     let start_post = Instant::now();
                     let compacted_sol = post_optimize(&mut gls_opt, &final_gls_sol);
-                    println!("[BENCH] [id:{bench_idx}] done, gls: {:.3}%, post: {:.3}% (+{:.3}%) in  {:?}ms)", final_gls_sol.usage * 100.0, compacted_sol.usage * 100.0, (compacted_sol.usage - final_gls_sol.usage) * 100.0, start_post.elapsed().as_millis());
+                    println!("[BENCH] [id:{bench_idx}] ph2 done: {:.3}% (+{:.3}%) ({}s)", compacted_sol.usage * 100.0, (compacted_sol.usage - final_gls_sol.usage) * 100.0, start_post.elapsed().as_secs());
 
                     *sol_slice = Some(compacted_sol);
                 })
@@ -126,25 +127,25 @@ fn main() {
 
     println!("==== BENCH FINISHED ====");
 
-    println!("Widths:\n{:?}", &final_widths);
-    println!("Usages:\n{:?}", &final_usages);
+    println!("widths:\n{:?}", &final_widths);
+    println!("usages:\n{:?}", &final_usages);
 
     println!("---- WIDTH STATS ----");
-    println!("Worst:  {:.3}",final_widths.iter().max_by_key(|&x| OrderedFloat(*x)).unwrap());
-    println!("25per:  {:.3}", calculate_percentile(&final_widths, 0.75));
-    println!("Med:    {:.3}", calculate_median(&final_widths));
-    println!("75per:  {:.3}", calculate_percentile(&final_widths, 0.25));
-    println!("Best:   {:.3}", final_widths.iter().min_by_key(|&x| OrderedFloat(*x)).unwrap());
-    println!("Avg:    {:.3}", calculate_average(&final_widths));
-    println!("Stddev: {:.3}", calculate_stddev(&final_widths));
+    println!("worst:  {:.3}", final_widths.iter().max_by_key(|&x| OrderedFloat(*x)).unwrap());
+    println!("25%:    {:.3}", calculate_percentile(&final_widths, 0.75));
+    println!("med:    {:.3}", calculate_median(&final_widths));
+    println!("75%:    {:.3}", calculate_percentile(&final_widths, 0.25));
+    println!("best:   {:.3}", final_widths.iter().min_by_key(|&x| OrderedFloat(*x)).unwrap());
+    println!("avg:    {:.3}", calculate_average(&final_widths));
+    println!("stddev: {:.3}", calculate_stddev(&final_widths));
     println!("---- USAGE STATS ----");
-    println!("Worst:  {:.3}", final_usages.iter().min_by_key(|&x| OrderedFloat(*x)).unwrap());
-    println!("25per:  {:.3}", calculate_percentile(&final_usages, 0.25));
-    println!("Median: {:.3}", calculate_median(&final_usages));
-    println!("75per:  {:.3}", calculate_percentile(&final_usages, 0.75));
-    println!("Best:   {:.3}", final_usages.iter().max_by_key(|&x| OrderedFloat(*x)).unwrap());
-    println!("Avg:    {:.3}", calculate_average(&final_usages));
-    println!("Stddev: {:.3}", calculate_stddev(&final_usages));
+    println!("worst:  {:.3}", final_usages.iter().min_by_key(|&x| OrderedFloat(*x)).unwrap());
+    println!("25%:    {:.3}", calculate_percentile(&final_usages, 0.25));
+    println!("median: {:.3}", calculate_median(&final_usages));
+    println!("75%:    {:.3}", calculate_percentile(&final_usages, 0.75));
+    println!("best:   {:.3}", final_usages.iter().max_by_key(|&x| OrderedFloat(*x)).unwrap());
+    println!("avg:    {:.3}", calculate_average(&final_usages));
+    println!("stddev: {:.3}", calculate_stddev(&final_usages));
     println!("======================");
 }
 
