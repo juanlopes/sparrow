@@ -1,12 +1,12 @@
 extern crate core;
 
+use std::env::args;
 use std::ops::Add;
 use gls_strip_packing::opt::constr_builder::ConstructiveBuilder;
 use gls_strip_packing::opt::gls_orchestrator::GLSOrchestrator;
 use gls_strip_packing::sample::search::SearchConfig;
 use gls_strip_packing::util::io;
 use gls_strip_packing::util::io::layout_to_svg::s_layout_to_svg;
-use gls_strip_packing::{DRAW_OPTIONS, SVG_OUTPUT_DIR};
 use jagua_rs::entities::instances::instance::Instance;
 use jagua_rs::entities::instances::instance_generic::InstanceGeneric;
 use jagua_rs::io::parser::Parser;
@@ -17,37 +17,23 @@ use rand::SeedableRng;
 use rand::prelude::SmallRng;
 use std::path::Path;
 use std::time::{Duration, Instant};
-use gls_strip_packing::opt::post_optimizer::compact;
-
-const INPUT_FILE: &str = "libs/jagua-rs/assets/swim.json";
-
-const GLS_TIME_LIMIT_S: u64 = 18 * 60;
-
-const POST_TIME_LIMIT_S: u64 = 2 * 60;
-
-const RNG_SEED: Option<usize> = None;
+use ordered_float::OrderedFloat;
+use gls_strip_packing::config::{CDE_CONFIG, CONSTR_SEARCH_CONFIG, DRAW_OPTIONS, LOG_LEVEL_DEBUG, LOG_LEVEL_RELEASE, OUTPUT_DIR, RNG_SEED};
+use gls_strip_packing::opt::post_optimizer::post_optimize;
 
 fn main() {
-    if cfg!(debug_assertions) {
-        io::init_logger(log::LevelFilter::Debug);
-    } else {
-        io::init_logger(log::LevelFilter::Info);
+    let input_file_path = args().nth(1).expect("first argument must be the input file");
+    let time_limit: u64 = args().nth(2).unwrap().parse()
+        .expect("second argument must be the time limit in seconds");
+
+    match cfg!(debug_assertions) {
+        true => io::init_logger(LOG_LEVEL_DEBUG),
+        false => io::init_logger(LOG_LEVEL_RELEASE),
     }
 
-    let json_instance = io::read_json_instance(Path::new(&INPUT_FILE));
+    let json_instance = io::read_json_instance(Path::new(&input_file_path));
 
-    let cde_config = CDEConfig {
-        quadtree_depth: 3,
-        hpg_n_cells: 0,
-        item_surrogate_config: SPSurrogateConfig {
-            pole_coverage_goal: 0.95,
-            max_poles: 20,
-            n_ff_poles: 4,
-            n_ff_piers: 0,
-        },
-    };
-
-    let parser = Parser::new(PolySimplConfig::Disabled, cde_config, true);
+    let parser = Parser::new(PolySimplConfig::Disabled, CDE_CONFIG, true);
     let instance = parser.parse(&json_instance);
 
     let sp_instance = match instance.clone() {
@@ -69,25 +55,18 @@ fn main() {
         }
     };
 
-    let constr_search_config = SearchConfig {
-        n_bin_samples: 1000,
-        n_focussed_samples: 0,
-        n_coord_descents: 3,
-    };
+    let constr_builder = ConstructiveBuilder::new(sp_instance.clone(), CDE_CONFIG, rng, CONSTR_SEARCH_CONFIG);
 
-    let mut constr_builder = ConstructiveBuilder::new(sp_instance.clone(), cde_config, rng, constr_search_config);
-    constr_builder.build();
+    let mut gls_opt = GLSOrchestrator::from_builder(constr_builder, format!("{OUTPUT_DIR}/sols_{}",json_instance.name));
 
-    let mut gls_opt = GLSOrchestrator::new(constr_builder.prob, sp_instance, constr_builder.rng, SVG_OUTPUT_DIR.to_string());
+    let solutions = gls_opt.solve(Duration::from_secs(time_limit));
+    let final_gls_sol = solutions.last().expect("no solutions found");
 
-    let solutions = gls_opt.solve(Duration::from_secs(GLS_TIME_LIMIT_S));
-    let sol = solutions.last().expect("no solutions found");
-
-    let compacted_sol = compact(&mut gls_opt, &sol, Instant::now().add(Duration::from_secs(POST_TIME_LIMIT_S)));
-    println!("[POST] from {:.3}% to {:.3}% (+{:.3}%)", sol.usage * 100.0, compacted_sol.usage * 100.0, (compacted_sol.usage - sol.usage) * 100.0);
+    let compacted_sol = post_optimize(&mut gls_opt, &final_gls_sol);
+    println!("[POST] from {:.3}% to {:.3}% (+{:.3}%)", final_gls_sol.usage * 100.0, compacted_sol.usage * 100.0, (compacted_sol.usage - final_gls_sol.usage) * 100.0);
 
     io::write_svg(
         &s_layout_to_svg(&compacted_sol.layout_snapshots[0], &instance, DRAW_OPTIONS),
-        Path::new(format!("{}/{}.svg", SVG_OUTPUT_DIR, "final").as_str()),
+        Path::new(format!("{OUTPUT_DIR}/final_{}.svg", json_instance.name).as_str()),
     );
 }

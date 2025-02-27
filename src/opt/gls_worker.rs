@@ -1,4 +1,4 @@
-use crate::FMT;
+use crate::{config, FMT};
 use crate::opt::gls_orchestrator;
 use crate::overlap::tracker::OverlapTracker;
 use crate::sample::eval::SampleEval;
@@ -132,14 +132,14 @@ pub fn generate_search_config(ot: &OverlapTracker, pk: PItemKey) -> SearchConfig
     let on_jump_cooldown = ot.is_on_jump_cooldown(pk);
     match on_jump_cooldown {
         false => SearchConfig {
-            n_bin_samples: gls_orchestrator::N_BIN_SAMPLES,
-            n_focussed_samples: gls_orchestrator::N_FOCUSSED_SAMPLES,
-            n_coord_descents: gls_orchestrator::N_COORD_DESCENTS,
+            n_bin_samples: config::N_BIN_SAMPLES,
+            n_focussed_samples: config::N_FOCUSSED_SAMPLES,
+            n_coord_descents: config::N_COORD_DESCENTS,
         },
         true => SearchConfig {
             n_bin_samples: 0,
-            n_focussed_samples: gls_orchestrator::N_FOCUSSED_SAMPLES,
-            n_coord_descents: gls_orchestrator::N_COORD_DESCENTS,
+            n_focussed_samples: config::N_FOCUSSED_SAMPLES,
+            n_coord_descents: config::N_COORD_DESCENTS,
         },
     }
 }

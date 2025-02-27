@@ -1,11 +1,12 @@
 extern crate core;
 
-use std::ops::Add;
-use gls_strip_packing::{DRAW_OPTIONS, SVG_OUTPUT_DIR};
+use gls_strip_packing::config::{DRAW_OPTIONS, N_WORKERS, OUTPUT_DIR, RNG_SEED};
 use gls_strip_packing::opt::constr_builder::ConstructiveBuilder;
-use gls_strip_packing::opt::gls_orchestrator::{GLSOrchestrator, N_WORKERS};
+use gls_strip_packing::opt::gls_orchestrator::GLSOrchestrator;
+use gls_strip_packing::opt::post_optimizer::post_optimize;
 use gls_strip_packing::sample::search::SearchConfig;
 use gls_strip_packing::util::io;
+use gls_strip_packing::util::io::layout_to_svg::s_layout_to_svg;
 use jagua_rs::entities::instances::instance::Instance;
 use jagua_rs::fsize;
 use jagua_rs::io::parser::Parser;
@@ -15,29 +16,22 @@ use ordered_float::OrderedFloat;
 use rand::prelude::SmallRng;
 use rand::{Rng, SeedableRng};
 use std::path::Path;
-use std::time::{Duration, Instant};
-use log::info;
-use gls_strip_packing::opt::post_optimizer::compact;
-use gls_strip_packing::util::io::layout_to_svg::s_layout_to_svg;
-
-const RNG_SEED: Option<usize> = None;
-
-const GLS_TIME_LIMIT_S: u64 = 18 * 60;
-
-const POST_TIME_LIMIT_S: u64 = 2 * 60;
+use std::time::Duration;
 
 fn main() {
     //the input file is the first argument
     let args: Vec<String> = std::env::args().collect();
     let n_runs_total = args[1].parse::<usize>().unwrap();
     let json_instance = io::read_json_instance(Path::new(&args[2]));
+    let time_limit: u64 = args[3].parse().expect("third argument must be the time limit in seconds");
+    let time_limit = Duration::from_secs(time_limit);
 
-    let n_runs_per_iter = num_cpus::get_physical() / N_WORKERS;
+    let n_runs_per_iter = (num_cpus::get_physical() / N_WORKERS).max(n_runs_total);
     let n_iterations = (n_runs_total as fsize / n_runs_per_iter as fsize).ceil() as usize;
 
     println!(
-        "Starting benchmark for {} ({}x{} runs across {} cores, {}s timelimit)",
-        json_instance.name, n_iterations, n_runs_per_iter, num_cpus::get_physical(), GLS_TIME_LIMIT_S + POST_TIME_LIMIT_S
+        "Starting benchmark for {} ({}x{} runs across {} cores, {:?} timelimit)",
+        json_instance.name, n_iterations, n_runs_per_iter, num_cpus::get_physical(), time_limit
     );
 
     let cde_config = CDEConfig {
@@ -80,34 +74,26 @@ fn main() {
     let mut final_solutions = vec![];
 
     for i in 0..n_iterations {
-        println!("Starting iter {}/{}", i + 1, n_iterations);
+        println!("[BENCH] Starting iter {}/{}", i + 1, n_iterations);
         let mut iter_solutions = vec![None; n_runs_per_iter];
         rayon::scope(|s| {
             for (j, sol_slice) in iter_solutions.iter_mut().enumerate() {
-                let thread_rng = SmallRng::seed_from_u64(rng.random());
-                let svg_output_dir = format!("{}_{}_{}", SVG_OUTPUT_DIR, json_instance.name, i * n_runs_per_iter + j);
-                let instance = sp_instance.clone();
+                let bench_idx = i * n_runs_per_iter + j;
+                let sols_output_dir = format!("{OUTPUT_DIR}/bench_{}_sols_{}", bench_idx, json_instance.name);
+                let mut constr_builder = ConstructiveBuilder::new(
+                    sp_instance.clone(),
+                    cde_config,
+                    SmallRng::seed_from_u64(rng.random()),
+                    constr_search_config,
+                );
 
-                s.spawn(|_| {
-                    let mut constr_builder = ConstructiveBuilder::new(
-                        instance,
-                        cde_config,
-                        thread_rng,
-                        constr_search_config,
-                    );
-                    constr_builder.build();
+                s.spawn(move |_| {
+                    let mut gls_opt = GLSOrchestrator::from_builder(constr_builder, sols_output_dir);
+                    let mut solutions = gls_opt.solve(time_limit);
+                    let final_gls_sol = solutions.last().expect("no solutions found");
 
-                    let instance = constr_builder.instance;
-                    let problem = constr_builder.prob;
-                    let rng = constr_builder.rng;
-
-                    let mut gls_opt = GLSOrchestrator::new(problem, instance, rng, svg_output_dir);
-
-                    let mut solutions = gls_opt.solve(Duration::from_secs(GLS_TIME_LIMIT_S));
-                    let sol = solutions.last().expect("no solutions found");
-
-                    let compacted_sol = compact(&mut gls_opt, &sol, Instant::now().add(Duration::from_secs(POST_TIME_LIMIT_S)));
-                    println!("[POST] from {:.3}% to {:.3}% (+{:.3}%)", sol.usage * 100.0, compacted_sol.usage * 100.0, (compacted_sol.usage - sol.usage) * 100.0);
+                    let compacted_sol = post_optimize(&mut gls_opt, &final_gls_sol);
+                    println!("[BENCH] [id: {bench_idx}] finished, (gls: {:.3}%, post: {:.3}%, +{:.3}%)", final_gls_sol.usage * 100.0, compacted_sol.usage * 100.0, (compacted_sol.usage - final_gls_sol.usage) * 100.0);
 
                     *sol_slice = Some(compacted_sol);
                 })
@@ -118,7 +104,7 @@ fn main() {
 
     //print statistics about the solutions, print best, worst, median and average
     let (final_widths, final_usages): (Vec<fsize>, Vec<fsize>) = final_solutions
-        .into_iter()
+        .iter()
         .map(|s| {
             let width = s.layout_snapshots[0].bin.bbox().width();
             let usage = s.layout_snapshots[0].usage;
@@ -126,50 +112,35 @@ fn main() {
         })
         .unzip();
 
-    println!("final widths: {:?}", &final_widths);
-    println!("final usages: {:?}", &final_usages);
+    let best_final_solution = final_solutions.iter().max_by_key(|s| OrderedFloat(s.usage)).unwrap();
 
-    println!("----------------- WIDTH -----------------");
-    println!(
-        "Worst: {}",
-        final_widths
-            .iter()
-            .max_by_key(|&x| OrderedFloat(*x))
-            .unwrap()
+    io::write_svg(
+        &s_layout_to_svg(&best_final_solution.layout_snapshots[0], &instance, DRAW_OPTIONS),
+        Path::new(format!("{OUTPUT_DIR}/final_best_{}.svg", json_instance.name).as_str()),
     );
-    println!("25per: {}", calculate_percentile(&final_widths, 0.75));
-    println!("Med: {}", calculate_median(&final_widths));
-    println!("75per: {}", calculate_percentile(&final_widths, 0.25));
-    println!(
-        "Best: {}",
-        final_widths
-            .iter()
-            .min_by_key(|&x| OrderedFloat(*x))
-            .unwrap()
-    );
-    println!("Avg: {}", calculate_average(&final_widths));
-    println!("Stddev: {}", calculate_stddev(&final_widths));
-    println!();
-    println!("----------------- USAGE -----------------");
-    println!(
-        "Worst: {}",
-        final_usages
-            .iter()
-            .min_by_key(|&x| OrderedFloat(*x))
-            .unwrap()
-    );
-    println!("25per: {}", calculate_percentile(&final_usages, 0.25));
-    println!("Median: {}", calculate_median(&final_usages));
-    println!("75per: {}", calculate_percentile(&final_usages, 0.75));
-    println!(
-        "Best: {}",
-        final_usages
-            .iter()
-            .max_by_key(|&x| OrderedFloat(*x))
-            .unwrap()
-    );
-    println!("Avg: {}", calculate_average(&final_usages));
-    println!("Stddev: {}", calculate_stddev(&final_usages));
+
+    println!("==== BENCH FINISHED ====");
+
+    println!("Widths\n: {:?}", &final_widths);
+    println!("Usages\n: {:?}", &final_usages);
+
+    println!("---- WIDTH STATS ----");
+    println!("Worst:  {:.3}",final_widths.iter().max_by_key(|&x| OrderedFloat(*x)).unwrap());
+    println!("25per:  {:.3}", calculate_percentile(&final_widths, 0.75));
+    println!("Med:    {:.3}", calculate_median(&final_widths));
+    println!("75per:  {:.3}", calculate_percentile(&final_widths, 0.25));
+    println!("Best:   {:.3}", final_widths.iter().min_by_key(|&x| OrderedFloat(*x)).unwrap());
+    println!("Avg:    {:.3}", calculate_average(&final_widths));
+    println!("Stddev: {:.3}", calculate_stddev(&final_widths));
+    println!("---- USAGE STATS ----");
+    println!("Worst:  {:.3}", final_usages.iter().min_by_key(|&x| OrderedFloat(*x)).unwrap());
+    println!("25per:  {:.3}", calculate_percentile(&final_usages, 0.25));
+    println!("Median: {:.3}", calculate_median(&final_usages));
+    println!("75per:  {:.3}", calculate_percentile(&final_usages, 0.75));
+    println!("Best:   {:.3}", final_usages.iter().max_by_key(|&x| OrderedFloat(*x)).unwrap());
+    println!("Avg:    {:.3}", calculate_average(&final_usages));
+    println!("Stddev: {:.3}", calculate_stddev(&final_usages));
+    println!("======================");
 }
 
 //mimics Excel's percentile function

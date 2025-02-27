@@ -8,6 +8,11 @@ on:
         default: 16
         required: true
         type: number
+      run_time_s:
+        description: 'Time per run in seconds'
+        default: 1200
+        required: true
+        type: number
 
 jobs:
   benchmark:
@@ -27,7 +32,7 @@ jobs:
 
       - name: Run bench for ${{ matrix.instance }}
         run: |
-          output=$(cargo run --profile release-ultimate --bin benchmark -- ${{ github.event.inputs.n_runs }} libs/jagua-rs/assets/${{ matrix.instance }}.json | tee /dev/stderr)
+          output=$(cargo run --profile release-ultimate --bin bench -- ${{ github.event.inputs.n_runs }} libs/jagua-rs/assets/${{ matrix.instance }}.json ${{ matrix.run_time_s}} | tee /dev/stderr)
           
           # Write to log file
           echo "$output" > "output/${{ matrix.instance }}_bench_stdout.log"
@@ -41,7 +46,8 @@ jobs:
 
       - name: Compress output folder for ${{ matrix.instance }}
         run: |
-          tar -czf ${{ matrix.instance }}_output.tar.gz output/
+          move output/ output_${{ matrix.instance }}
+          tar -czf ${{ matrix.instance }}_output.tar.gz output_${{ matrix.instance }}
       
       - name: Upload artifact for ${{ matrix.instance }}
         uses: actions/upload-artifact@v4

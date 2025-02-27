@@ -8,7 +8,9 @@ use svg::Document;
 
 use jagua_rs::io::json_instance::JsonInstance;
 
-use crate::{EPOCH, OUTPUT_DIR};
+use crate::config::OUTPUT_DIR;
+use crate::EPOCH;
+
 pub mod layout_to_svg;
 pub mod svg_export;
 pub mod svg_util;

@@ -41,7 +41,7 @@ impl ConstructiveBuilder {
         }
     }
 
-    pub fn build(&mut self) -> Solution {
+    pub fn construct(&mut self) {
         let start = Instant::now();
         let n_items = self.instance.items().len();
         let sorted_item_indices = (0..n_items)
@@ -58,14 +58,14 @@ impl ConstructiveBuilder {
             .flatten()
             .collect_vec();
 
+        debug!("[CONSTR] placing items in order: {:?}",sorted_item_indices);
+
         for item_id in sorted_item_indices {
             self.place_item(item_id);
         }
 
         self.prob.fit_strip();
-        debug!("[CONSTR] built solution in {:?}, width: {:?}",start.elapsed(),self.prob.strip_width());
-
-        self.prob.create_solution(None)
+        debug!("[CONSTR] placed all items in width: {:.3} (in {:?})",self.prob.strip_width(), start.elapsed());
     }
 
     fn place_item(&mut self, item_id: usize) {
@@ -75,7 +75,7 @@ impl ConstructiveBuilder {
                 debug!("[CONSTR] placing item {}/{} with id {} at [{}]",self.prob.placed_item_qtys().sum::<usize>(),self.instance.total_item_qty(),p_opt.item_id,p_opt.d_transf);
             }
             None => {
-                debug!("[CONSTR] failed to place item with id {}, increasing strip width",item_id);
+                debug!("[CONSTR] failed to place item with id {}, expanding strip width",item_id);
                 self.prob.modify_strip_in_back(self.prob.strip_width() * 1.2);
                 self.place_item(item_id);
             }
@@ -84,32 +84,22 @@ impl ConstructiveBuilder {
 
     fn find_placement(&mut self, item_id: usize) -> Option<PlacingOption> {
         let layout = &self.prob.layout;
-        //search for a place
         let item = self.instance.item(item_id);
         let evaluator = ConstructiveEvaluator::new(layout, item);
 
-        let (d_transf, eval) = search_placement(
-            layout,
-            item,
-            None,
-            evaluator,
-            self.search_config,
-            &mut self.rng,
-        );
+        let (d_transf, eval) = search_placement(layout, item, None, evaluator, self.search_config, &mut self.rng, );
 
-        //if found add it and go to next iteration, if not, remove item type from the list
-        match eval {
-            SampleEval::Valid(_) => {
-                let p_opt = PlacingOption {
+        if let SampleEval::Valid(_) = eval {
+            Some(
+                PlacingOption {
                     layout_idx: STRIP_LAYOUT_IDX,
                     item_id,
                     d_transf,
-                };
-                Some(p_opt)
-            }
-            _ => {
-                None
-            }
+                }
+            )
+        }
+        else {
+            None
         }
     }
 }
