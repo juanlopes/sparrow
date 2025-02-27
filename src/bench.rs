@@ -121,8 +121,8 @@ fn main() {
 
     println!("==== BENCH FINISHED ====");
 
-    println!("Widths\n: {:?}", &final_widths);
-    println!("Usages\n: {:?}", &final_usages);
+    println!("Widths:\n{:?}", &final_widths);
+    println!("Usages:\n{:?}", &final_usages);
 
     println!("---- WIDTH STATS ----");
     println!("Worst:  {:.3}",final_widths.iter().max_by_key(|&x| OrderedFloat(*x)).unwrap());
