@@ -11,8 +11,8 @@ use jagua_rs::geometry::transformation::Transformation;
 use jagua_rs::io::parser;
 use log::warn;
 use std::hash::{DefaultHasher, Hash, Hasher};
+use svg::node::element::{Definitions, Group, Text, Title, Use};
 use svg::Document;
-use svg::node::element::{Definitions, Group, Title, Use, Text};
 
 pub fn s_layout_to_svg(
     s_layout: &LayoutSnapshot,

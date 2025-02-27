@@ -66,7 +66,7 @@ pub fn init_logger(level_filter: LevelFilter) {
 pub fn write_svg(document: &Document, path: &Path, log_lvl: Level) {
     svg::save(path, document).expect("failed to write svg file");
     log!(log_lvl,
-        "[IO] solution SVG written to file://{}",
+        "[IO] svg exported to file://{}",
         fs::canonicalize(&path)
             .expect("could not canonicalize path")
             .to_str()

@@ -1,12 +1,12 @@
+use crate::config::OVERLAP_PROXY_EPSILON_DIAM_RATIO;
 use jagua_rs::fsize;
 use jagua_rs::geometry::geo_traits::Shape;
 use jagua_rs::geometry::primitives::aa_rectangle::AARectangle;
 use jagua_rs::geometry::primitives::circle::Circle;
 use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
-use crate::config::PROXY_EPSILON_DIAM_FRAC;
 
 pub fn poly_overlap_proxy(s1: &SimplePolygon, s2: &SimplePolygon) -> fsize {
-    let normalizer = fsize::max(s1.diameter(), s2.diameter()) * PROXY_EPSILON_DIAM_FRAC;
+    let normalizer = fsize::max(s1.diameter(), s2.diameter()) * OVERLAP_PROXY_EPSILON_DIAM_RATIO;
 
     let deficit = poles_overlap_proxy(
         s1.surrogate().poles.iter(),

@@ -1,10 +1,10 @@
 extern crate core;
 
 use chrono::Local;
-use gls_strip_packing::config::{DRAW_OPTIONS, N_WORKERS, OUTPUT_DIR, RNG_SEED};
-use gls_strip_packing::opt::constr_builder::ConstructiveBuilder;
-use gls_strip_packing::opt::gls_orchestrator::GLSOrchestrator;
-use gls_strip_packing::opt::post_optimizer::post_optimize;
+use gls_strip_packing::config::{DRAW_OPTIONS, OUTPUT_DIR, RNG_SEED, SEP_N_WORKERS};
+use gls_strip_packing::optimizer::builder::LBFBuilder;
+use gls_strip_packing::optimizer::{compress, explore};
+use gls_strip_packing::optimizer::separator::Separator;
 use gls_strip_packing::sample::search::SearchConfig;
 use gls_strip_packing::util::io;
 use gls_strip_packing::util::io::layout_to_svg::s_layout_to_svg;
@@ -22,9 +22,9 @@ use std::time::{Duration, Instant};
 fn main() {
     //the input file is the first argument
     let input_file_path = std::env::args().nth(1).expect("first argument must be the input file");
-    let time_limit: u64 = std::env::args().nth(2).unwrap().parse()
+    let explore_time_limit: u64 = std::env::args().nth(2).unwrap().parse()
         .expect("second argument must be the time limit in seconds");
-    let time_limit = Duration::from_secs(time_limit);
+    let explore_time_limit = Duration::from_secs(explore_time_limit);
     let n_runs_total = std::env::args().nth(3).expect("third argument must be the number of runs")
         .parse().expect("third argument must be the number of runs");
 
@@ -45,12 +45,12 @@ fn main() {
         }
     };
 
-    let n_runs_per_iter = (num_cpus::get_physical() / N_WORKERS).min(n_runs_total);
+    let n_runs_per_iter = (num_cpus::get_physical() / SEP_N_WORKERS).min(n_runs_total);
     let n_batches = (n_runs_total as fsize / n_runs_per_iter as fsize).ceil() as usize;
 
     println!(
-        "[BENCH] starting bench for {} ({}x{} runs across {} cores, {:?} timelimit)",
-        json_instance.name, n_batches, n_runs_per_iter, num_cpus::get_physical(), time_limit
+        "[BENCH] starting bench for {} ({}x{} runs across {} cores, {:?} explore timelimit)",
+        json_instance.name, n_batches, n_runs_per_iter, num_cpus::get_physical(), explore_time_limit
     );
 
     let cde_config = CDEConfig {
@@ -87,7 +87,7 @@ fn main() {
             for (j, sol_slice) in iter_solutions.iter_mut().enumerate() {
                 let bench_idx = i * n_runs_per_iter + j;
                 let sols_output_dir = format!("{OUTPUT_DIR}/bench_{}_sols_{}", bench_idx, json_instance.name);
-                let constr_builder = ConstructiveBuilder::new(
+                let builder = LBFBuilder::new(
                     sp_instance.clone(),
                     cde_config,
                     SmallRng::seed_from_u64(rng.random()),
@@ -95,16 +95,21 @@ fn main() {
                 );
 
                 s.spawn(move |_| {
-                    let mut gls_opt = GLSOrchestrator::from_builder(constr_builder, sols_output_dir);
-                    let solutions = gls_opt.solve(time_limit);
-                    let final_gls_sol = solutions.last().expect("no solutions found");
-                    println!("[BENCH] [id:{:>3}] ph1 done: {:.3}% ({}s)",bench_idx, final_gls_sol.usage * 100.0, time_limit.as_secs());
+                    let mut separator = Separator::new(builder, sols_output_dir);
 
-                    let start_post = Instant::now();
-                    let compacted_sol = post_optimize(&mut gls_opt, &final_gls_sol);
-                    println!("[BENCH] [id:{:>3}] ph2 done: {:.3}% (+{:.3}%) ({}s)", bench_idx, compacted_sol.usage * 100.0, (compacted_sol.usage - final_gls_sol.usage) * 100.0, start_post.elapsed().as_secs());
+                    let solutions = explore(&mut separator, explore_time_limit);
+                    let final_explore_sol = solutions.last().expect("no solutions found during exploration");
 
-                    *sol_slice = Some(compacted_sol);
+                    let start_comp = Instant::now();
+                    let final_sol = compress(&mut separator, final_explore_sol);
+
+                    println!("[BENCH] [id:{:>3}] finished, expl: {:.3}% ({}s), cmpr: {:.3}% ({}s)",
+                             bench_idx,
+                             final_explore_sol.usage * 100.0, explore_time_limit.as_secs(),
+                             final_sol.usage * 100.0, start_comp.elapsed().as_secs()
+                    );
+
+                    *sol_slice = Some(final_sol);
                 })
             }
         });

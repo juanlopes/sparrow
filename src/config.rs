@@ -36,18 +36,18 @@ pub const CONSTR_SEARCH_CONFIG: SearchConfig = SearchConfig {
     n_coord_descents: 3,
 };
 
-pub const N_ITER_NO_IMPROVEMENT: usize = 50;
-pub const N_STRIKES: usize = 5;
-pub const N_BIN_SAMPLES: usize = 50;
-pub const N_FOCUSSED_SAMPLES: usize = 25;
-pub const N_COORD_DESCENTS: usize = 3;
-pub const JUMP_COOLDOWN: usize = 5;
-pub const N_WORKERS: usize = 2;
-pub const OT_MAX_INCREASE: fsize = 2.0;
-pub const OT_MIN_INCREASE: fsize = 1.2;
-pub const OT_DECAY: fsize = 0.95;
-pub const PROXY_EPSILON_DIAM_FRAC: fsize = 0.01;
-pub const STDDEV_SPREAD: fsize = 4.0;
+pub const SEP_N_ITER_NO_IMPROVEMENT: usize = 50;
+pub const SEP_N_STRIKES: usize = 5;
+pub const SEARCH_N_BIN_SAMPLES: usize = 50;
+pub const SEARCH_N_FOCUSSED_SAMPLES: usize = 25;
+pub const SEARCH_N_COORD_DESCENTS: usize = 3;
+pub const SEP_JUMP_COOLDOWN: usize = 5;
+pub const SEP_N_WORKERS: usize = 2;
+pub const WEIGHT_MAX_INC_RATIO: fsize = 2.0;
+pub const WEIGHT_MIN_INC_RATIO: fsize = 1.2;
+pub const WEIGHT_OVERLAP_DECAY: fsize = 0.95;
+pub const OVERLAP_PROXY_EPSILON_DIAM_RATIO: fsize = 0.01;
+pub const GLS_SOL_DISTR_STDDEV: fsize = 0.25;
 pub const LARGE_ITEM_CH_AREA_CUTOFF_RATIO: fsize = 0.5;
 pub const R_SHRINK: fsize = 0.005;
 pub const POST_R_SHRINKS: [fsize; 2] = [0.0005, 0.0001];

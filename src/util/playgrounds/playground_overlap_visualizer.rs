@@ -1,3 +1,5 @@
+use gls_strip_packing::util::io;
+use gls_strip_packing::util::io::svg_export;
 use itertools::Itertools;
 use jagua_rs::collision_detection::hazard::HazardEntity;
 use jagua_rs::entities::bin::Bin;
@@ -20,10 +22,8 @@ use plotly::common::{ColorScale, ColorScaleElement};
 use plotly::layout::{AspectMode, AspectRatio, LayoutScene};
 use plotly::{Plot, Surface};
 use std::path::Path;
-use svg::Document;
 use svg::node::element::Group;
-use gls_strip_packing::util::io;
-use gls_strip_packing::util::io::svg_export;
+use svg::Document;
 
 const INSTANCE_PATH: &str = "libs/jagua-rs/assets/swim.json";
 const ITEM_ID_TO_SAMPLE: usize = 7;

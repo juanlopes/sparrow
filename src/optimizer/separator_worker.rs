@@ -1,10 +1,10 @@
-use crate::{config, FMT};
 use crate::overlap::tracker::OverlapTracker;
-use crate::sample::eval::SampleEval;
 use crate::sample::eval::overlapping_evaluator::OverlappingSampleEvaluator;
+use crate::sample::eval::SampleEval;
 use crate::sample::search;
 use crate::sample::search::SearchConfig;
 use crate::util::assertions::tracker_matches_layout;
+use crate::{config, FMT};
 use itertools::Itertools;
 use jagua_rs::entities::instances::instance_generic::InstanceGeneric;
 use jagua_rs::entities::instances::strip_packing::SPInstance;
@@ -21,7 +21,7 @@ use log::debug;
 use rand::prelude::{SliceRandom, SmallRng};
 use tap::Tap;
 
-pub struct GLSWorker {
+pub struct SeparatorWorker {
     pub instance: SPInstance,
     pub prob: SPProblem,
     pub ot: OverlapTracker,
@@ -29,7 +29,7 @@ pub struct GLSWorker {
     pub large_area_ch_area_cutoff: fsize,
 }
 
-impl GLSWorker {
+impl SeparatorWorker {
     pub fn load(&mut self, sol: &Solution, ot: &OverlapTracker) {
         assert_eq!(strip_width(sol), self.prob.strip_width());
         self.prob.restore_to_solution(sol);
@@ -131,14 +131,14 @@ pub fn generate_search_config(ot: &OverlapTracker, pk: PItemKey) -> SearchConfig
     let on_jump_cooldown = ot.is_on_jump_cooldown(pk);
     match on_jump_cooldown {
         false => SearchConfig {
-            n_bin_samples: config::N_BIN_SAMPLES,
-            n_focussed_samples: config::N_FOCUSSED_SAMPLES,
-            n_coord_descents: config::N_COORD_DESCENTS,
+            n_bin_samples: config::SEARCH_N_BIN_SAMPLES,
+            n_focussed_samples: config::SEARCH_N_FOCUSSED_SAMPLES,
+            n_coord_descents: config::SEARCH_N_COORD_DESCENTS,
         },
         true => SearchConfig {
             n_bin_samples: 0,
-            n_focussed_samples: config::N_FOCUSSED_SAMPLES,
-            n_coord_descents: config::N_COORD_DESCENTS,
+            n_focussed_samples: config::SEARCH_N_FOCUSSED_SAMPLES,
+            n_coord_descents: config::SEARCH_N_COORD_DESCENTS,
         },
     }
 }

@@ -1,6 +1,6 @@
-use crate::sample::eval::SampleEval;
 use crate::sample::eval::constructive_evaluator::ConstructiveEvaluator;
-use crate::sample::search::{SearchConfig, search_placement};
+use crate::sample::eval::SampleEval;
+use crate::sample::search::{search_placement, SearchConfig};
 use itertools::Itertools;
 use jagua_rs::entities::instances::instance_generic::InstanceGeneric;
 use jagua_rs::entities::instances::strip_packing::SPInstance;
@@ -10,27 +10,27 @@ use jagua_rs::entities::problems::strip_packing::SPProblem;
 use jagua_rs::util::config::CDEConfig;
 use log::debug;
 use ordered_float::OrderedFloat;
-use rand::prelude::{SmallRng};
+use rand::prelude::SmallRng;
 use std::cmp::Reverse;
 use std::iter;
 use std::time::Instant;
 
-pub struct ConstructiveBuilder {
+pub struct LBFBuilder {
     pub instance: SPInstance,
     pub prob: SPProblem,
     pub rng: SmallRng,
     pub search_config: SearchConfig,
 }
 
-impl ConstructiveBuilder {
+impl LBFBuilder {
     pub fn new(
         instance: SPInstance,
         cde_config: CDEConfig,
         rng: SmallRng,
         search_config: SearchConfig,
     ) -> Self {
-        let strip_width_init = instance.item_area / instance.strip_height; //100% utilization
-        let prob = SPProblem::new(instance.clone(), strip_width_init, cde_config);
+        let init_strip_width = instance.item_area / instance.strip_height; //100% utilization
+        let prob = SPProblem::new(instance.clone(), init_strip_width, cde_config);
 
         Self {
             instance,
@@ -40,7 +40,7 @@ impl ConstructiveBuilder {
         }
     }
 
-    pub fn construct(&mut self) {
+    pub fn construct(mut self) -> (SPInstance, SPProblem, SmallRng) {
         let start = Instant::now();
         let n_items = self.instance.items().len();
         let sorted_item_indices = (0..n_items)
@@ -65,6 +65,7 @@ impl ConstructiveBuilder {
 
         self.prob.fit_strip();
         debug!("[CONSTR] placed all items in width: {:.3} (in {:?})",self.prob.strip_width(), start.elapsed());
+        (self.instance, self.prob, self.rng)
     }
 
     fn place_item(&mut self, item_id: usize) {

@@ -6,7 +6,7 @@ use jagua_rs::geometry::d_transformation::DTransformation;
 use jagua_rs::util::fpa::FPA;
 use std::cmp::Ordering;
 
-use SampleEval::{Invalid, Valid, Colliding};
+use SampleEval::{Colliding, Invalid, Valid};
 
 #[derive(Clone, Debug, PartialEq, Copy)]
 pub enum SampleEval {

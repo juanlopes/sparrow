@@ -1,4 +1,4 @@
-use crate::config::{JUMP_COOLDOWN, OT_DECAY, OT_MAX_INCREASE, OT_MIN_INCREASE};
+use crate::config::{SEP_JUMP_COOLDOWN, WEIGHT_MAX_INC_RATIO, WEIGHT_MIN_INC_RATIO, WEIGHT_OVERLAP_DECAY};
 use crate::overlap::overlap_proxy;
 use crate::overlap::pair_matrix::PairMatrix;
 use crate::util::assertions::tracker_matches_layout;
@@ -6,7 +6,7 @@ use jagua_rs::collision_detection::hazard::HazardEntity;
 use jagua_rs::entities::layout::Layout;
 use jagua_rs::entities::placed_item::PItemKey;
 use jagua_rs::fsize;
-use log::{trace};
+use log::trace;
 use ordered_float::Float;
 use slotmap::SecondaryMap;
 
@@ -57,7 +57,7 @@ impl OverlapTracker {
             pair_overlap: PairMatrix::new(size),
             bin_overlap: vec![OTEntry::default(); size],
             last_jump_iter: vec![0; size],
-            current_iter: JUMP_COOLDOWN,
+            current_iter: SEP_JUMP_COOLDOWN,
         }
         .init(l)
     }
@@ -125,7 +125,7 @@ impl OverlapTracker {
             .iter_mut()
             .zip(ots.bin_overlap.iter())
             .for_each(|(a, b)| a.overlap = b.overlap);
-        self.current_iter += JUMP_COOLDOWN; //fast-forward the weight iteration to the current iteration
+        self.current_iter += SEP_JUMP_COOLDOWN; //fast-forward the weight iteration to the current iteration
         debug_assert!(tracker_matches_layout(self, layout));
     }
 
@@ -158,9 +158,9 @@ impl OverlapTracker {
 
         for e in self.pair_overlap.data.iter_mut() {
             let multiplier = match e.overlap == 0.0 {
-                true => OT_DECAY, // no overlap
+                true => WEIGHT_OVERLAP_DECAY, // no overlap
                 false => {
-                    OT_MIN_INCREASE + (OT_MAX_INCREASE - OT_MIN_INCREASE) * (e.overlap / max_o)
+                    WEIGHT_MIN_INC_RATIO + (WEIGHT_MAX_INC_RATIO - WEIGHT_MIN_INC_RATIO) * (e.overlap / max_o)
                 }
             };
             let new_w = (e.weight * multiplier).max(1.0);
@@ -169,8 +169,8 @@ impl OverlapTracker {
 
         for e in self.bin_overlap.iter_mut() {
             let multiplier = match e.overlap == 0.0 {
-                true => OT_DECAY, // no overlap
-                false => OT_MAX_INCREASE,
+                true => WEIGHT_OVERLAP_DECAY, // no overlap
+                false => WEIGHT_MAX_INC_RATIO,
             };
 
             let new_w = (e.weight * multiplier).max(1.0);
@@ -261,6 +261,6 @@ impl OverlapTracker {
 
     pub fn is_on_jump_cooldown(&self, pk: PItemKey) -> bool {
         let idx = self.pk_idx_map[pk];
-        self.current_iter - self.last_jump_iter[idx] < JUMP_COOLDOWN
+        self.current_iter - self.last_jump_iter[idx] < SEP_JUMP_COOLDOWN
     }
 }
