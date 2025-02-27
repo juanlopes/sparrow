@@ -42,7 +42,7 @@ jobs:
 
       - name: Compress output folder for ${{ matrix.instance }}
         run: |
-          move output/ output_${{ matrix.instance }}
+          mv output/ output_${{ matrix.instance }}
           tar -czf ${{ matrix.instance }}_output.tar.gz output_${{ matrix.instance }}
 
       - name: Upload artifact for ${{ matrix.instance }}
