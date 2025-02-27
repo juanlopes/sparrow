@@ -2,11 +2,10 @@
     General idea: during the last 20% of time, take very small steps to reduce the bin size. Aggressively restoring from previous solutions.
     Run this on top of gls_orchestrator.rs, do a random split position
  */
-use std::time::Instant;
 use jagua_rs::entities::problems::strip_packing::strip_width;
 use jagua_rs::entities::solution::Solution;
 use jagua_rs::fsize;
-use log::{debug, info};
+use log::{info};
 use rand::Rng;
 use crate::config::{POST_N_STRIKES, POST_R_SHRINKS};
 use crate::opt::gls_orchestrator::GLSOrchestrator;

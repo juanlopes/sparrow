@@ -16,7 +16,7 @@ use ordered_float::OrderedFloat;
 use rand::prelude::SmallRng;
 use rand::{Rng, SeedableRng};
 use std::path::Path;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use chrono::Local;
 
 fn main() {
@@ -45,7 +45,7 @@ fn main() {
     println!("[BENCH] system time: {}", Local::now());
 
     println!(
-        "[BENCH] Starting benchmark for {} ({}x{} runs across {} cores, {:?} timelimit)",
+        "[BENCH] starting bench for {} ({}x{} runs across {} cores, {:?} timelimit)",
         json_instance.name, n_iterations, n_runs_per_iter, num_cpus::get_physical(), time_limit
     );
 
@@ -83,7 +83,7 @@ fn main() {
             for (j, sol_slice) in iter_solutions.iter_mut().enumerate() {
                 let bench_idx = i * n_runs_per_iter + j;
                 let sols_output_dir = format!("{OUTPUT_DIR}/bench_{}_sols_{}", bench_idx, json_instance.name);
-                let mut constr_builder = ConstructiveBuilder::new(
+                let constr_builder = ConstructiveBuilder::new(
                     sp_instance.clone(),
                     cde_config,
                     SmallRng::seed_from_u64(rng.random()),
@@ -92,12 +92,12 @@ fn main() {
 
                 s.spawn(move |_| {
                     let mut gls_opt = GLSOrchestrator::from_builder(constr_builder, sols_output_dir);
-                    let mut solutions = gls_opt.solve(time_limit);
+                    let solutions = gls_opt.solve(time_limit);
                     let final_gls_sol = solutions.last().expect("no solutions found");
 
                     let start_post = Instant::now();
                     let compacted_sol = post_optimize(&mut gls_opt, &final_gls_sol);
-                    println!("[BENCH] [id:{bench_idx}] finished, (gls: {:.3}%, post: {:.3}%, +{:.3}%, {:?})", final_gls_sol.usage * 100.0, compacted_sol.usage * 100.0, (compacted_sol.usage - final_gls_sol.usage) * 100.0, start_post.elapsed());
+                    println!("[BENCH] [id:{bench_idx}] done, gls: {:.3}%, post: {:.3}% (+{:.3}%) in  {:?}ms)", final_gls_sol.usage * 100.0, compacted_sol.usage * 100.0, (compacted_sol.usage - final_gls_sol.usage) * 100.0, start_post.elapsed().as_millis());
 
                     *sol_slice = Some(compacted_sol);
                 })

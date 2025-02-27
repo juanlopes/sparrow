@@ -7,7 +7,6 @@ use jagua_rs::entities::instances::strip_packing::SPInstance;
 use jagua_rs::entities::placing_option::PlacingOption;
 use jagua_rs::entities::problems::problem_generic::{ProblemGeneric, STRIP_LAYOUT_IDX};
 use jagua_rs::entities::problems::strip_packing::SPProblem;
-use jagua_rs::entities::solution::Solution;
 use jagua_rs::util::config::CDEConfig;
 use log::debug;
 use ordered_float::OrderedFloat;

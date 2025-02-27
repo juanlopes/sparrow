@@ -1,5 +1,4 @@
 use crate::{config, FMT};
-use crate::opt::gls_orchestrator;
 use crate::overlap::tracker::OverlapTracker;
 use crate::sample::eval::SampleEval;
 use crate::sample::eval::overlapping_evaluator::OverlappingSampleEvaluator;

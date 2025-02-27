@@ -22,7 +22,7 @@ use jagua_rs::geometry::geo_enums::GeoRelation;
 use jagua_rs::geometry::geo_traits::{Shape, Transformable};
 use jagua_rs::geometry::primitives::aa_rectangle::AARectangle;
 use jagua_rs::util::fpa::FPA;
-use log::{debug, info, log};
+use log::{debug, log};
 use ordered_float::OrderedFloat;
 use rand::prelude::IteratorRandom;
 use rand::rngs::SmallRng;
@@ -52,7 +52,7 @@ impl GLSOrchestrator {
         output_folder: String,
     ) -> Self {
         init_builder.construct();
-        let ConstructiveBuilder { instance, mut prob, mut rng, .. } = init_builder;
+        let ConstructiveBuilder { instance, prob, mut rng, .. } = init_builder;
 
         let overlap_tracker = OverlapTracker::new(&prob.layout);
         let large_area_ch_area_cutoff = instance.items().iter()
@@ -391,7 +391,7 @@ impl GLSOrchestrator {
             None => {
                 let filename = format!("{}/{}_{:.2}_{suffix}.svg", &self.output_folder, self.svg_counter, self.prob.layout.bin.bbox().x_max);
                 io::write_svg(
-                    &layout_to_svg(&self.prob.layout, &self.instance, DRAW_OPTIONS),
+                    & layout_to_svg(&self.prob.layout, &self.instance, DRAW_OPTIONS),
                     Path::new(&filename),
                 );
             }
