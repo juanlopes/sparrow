@@ -26,7 +26,7 @@ fn main() {
     let time_limit: u64 = args[3].parse().expect("third argument must be the time limit in seconds");
     let time_limit = Duration::from_secs(time_limit);
 
-    let n_runs_per_iter = (num_cpus::get_physical() / N_WORKERS).max(n_runs_total);
+    let n_runs_per_iter = (num_cpus::get_physical() / N_WORKERS).min(n_runs_total);
     let n_iterations = (n_runs_total as fsize / n_runs_per_iter as fsize).ceil() as usize;
 
     println!(
