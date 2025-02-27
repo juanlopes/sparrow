@@ -1,15 +1,14 @@
+use log::{info, log, Level, LevelFilter};
 use std::fs;
 use std::fs::File;
+use std::io::Write;
 use std::io::BufReader;
 use std::path::Path;
-
-use log::{Level, LevelFilter, info, log};
 use svg::Document;
-
-use jagua_rs::io::json_instance::JsonInstance;
 
 use crate::config::OUTPUT_DIR;
 use crate::EPOCH;
+use jagua_rs::io::json_instance::JsonInstance;
 
 pub mod layout_to_svg;
 pub mod svg_export;
@@ -21,17 +20,6 @@ pub fn read_json_instance(path: &Path) -> JsonInstance {
     let reader = BufReader::new(file);
     serde_json::from_reader(reader)
         .unwrap_or_else(|err| panic!("could not parse instance file: {}, {}", path.display(), err))
-}
-
-pub fn write_svg(document: &Document, path: &Path) {
-    svg::save(path, document).expect("failed to write svg file");
-    info!(
-        "[IO] solution SVG written to file://{}",
-        fs::canonicalize(&path)
-            .expect("could not canonicalize path")
-            .to_str()
-            .unwrap()
-    );
 }
 
 pub fn init_logger(level_filter: LevelFilter) {
@@ -72,5 +60,17 @@ pub fn init_logger(level_filter: LevelFilter) {
         Level::Info,
         "[EPOCH]: {}",
         humantime::format_rfc3339_seconds(std::time::SystemTime::now())
+    );
+}
+
+
+pub fn write_svg(document: &Document, path: &Path, log_lvl: Level) {
+    svg::save(path, document).expect("failed to write svg file");
+    log!(log_lvl,
+        "[IO] solution SVG written to file://{}",
+        fs::canonicalize(&path)
+            .expect("could not canonicalize path")
+            .to_str()
+            .unwrap()
     );
 }

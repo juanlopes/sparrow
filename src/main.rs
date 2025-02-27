@@ -1,18 +1,16 @@
 extern crate core;
 
 use std::env::args;
-use std::ops::Add;
 use gls_strip_packing::opt::constr_builder::ConstructiveBuilder;
 use gls_strip_packing::opt::gls_orchestrator::GLSOrchestrator;
-use gls_strip_packing::sample::search::SearchConfig;
 use gls_strip_packing::util::io;
 use gls_strip_packing::util::io::layout_to_svg::s_layout_to_svg;
 use jagua_rs::entities::instances::instance::Instance;
 use jagua_rs::entities::instances::instance_generic::InstanceGeneric;
 use jagua_rs::io::parser::Parser;
-use jagua_rs::util::config::{CDEConfig, SPSurrogateConfig};
+use jagua_rs::util::config::CDEConfig;
 use jagua_rs::util::polygon_simplification::PolySimplConfig;
-use log::{info, warn};
+use log::{info, warn, Level};
 use rand::SeedableRng;
 use rand::prelude::SmallRng;
 use std::path::Path;
@@ -66,11 +64,12 @@ fn main() {
     let solutions = gls_opt.solve(time_limit);
     let final_gls_sol = solutions.last().expect("no solutions found");
 
-    gls_opt.log_level = log::Level::Debug;
+    gls_opt.log_level = Level::Debug; //switch to debug level for the final phase
     let compacted_sol = post_optimize(&mut gls_opt, &final_gls_sol);
 
     io::write_svg(
-        &s_layout_to_svg(&compacted_sol.layout_snapshots[0], &instance, DRAW_OPTIONS),
+        &s_layout_to_svg(&compacted_sol.layout_snapshots[0], &instance, DRAW_OPTIONS, "final"),
         Path::new(format!("{OUTPUT_DIR}/final_{}.svg", json_instance.name).as_str()),
+        Level::Info,
     );
 }

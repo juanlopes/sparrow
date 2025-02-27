@@ -222,6 +222,7 @@ pub fn main() {
     io::write_svg(
         &doc,
         &*Path::new(OUTPUT_FOLDER).join("overlap_visualizer.svg"),
+        log::Level::Info,
     );
 
     {

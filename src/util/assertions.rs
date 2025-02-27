@@ -80,7 +80,7 @@ pub fn tracker_matches_layout(ot: &OverlapTracker, l: &Layout) -> bool {
                                 let mut svg_draw_options = SvgDrawOptions::default();
                                 svg_draw_options.quadtree = true;
                                 let svg = layout_to_svg_2(l, svg_draw_options);
-                                io::write_svg(&svg, &*Path::new("debug.svg"));
+                                io::write_svg(&svg, &*Path::new("debug.svg"), log::Level::Warn);
                                 panic!("overlap tracker error");
                             }
                         }

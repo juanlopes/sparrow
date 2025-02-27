@@ -126,6 +126,7 @@ fn main() {
     io::write_svg(
         &s_layout_to_svg(&best_final_solution.layout_snapshots[0], &instance, DRAW_OPTIONS),
         Path::new(format!("{OUTPUT_DIR}/final_best_{}.svg", json_instance.name).as_str()),
+        log::Level::Info,
     );
 
     println!("==== BENCH FINISHED ====");

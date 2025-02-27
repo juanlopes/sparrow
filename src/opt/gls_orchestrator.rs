@@ -1,4 +1,5 @@
-use crate::config::{DRAW_OPTIONS, LARGE_ITEM_CH_AREA_CUTOFF_RATIO, N_ITER_NO_IMPROVEMENT, N_STRIKES, N_WORKERS, R_SHRINK, STDDEV_SPREAD};
+use std::ffi::OsStr;
+use crate::config::{DRAW_OPTIONS, LARGE_ITEM_CH_AREA_CUTOFF_RATIO, N_ITER_NO_IMPROVEMENT, N_STRIKES, N_WORKERS, OUTPUT_DIR, R_SHRINK, STDDEV_SPREAD};
 use crate::opt::constr_builder::ConstructiveBuilder;
 use crate::opt::gls_worker::GLSWorker;
 use crate::overlap::tracker::{OTSnapshot, OverlapTracker};
@@ -22,7 +23,7 @@ use jagua_rs::geometry::geo_enums::GeoRelation;
 use jagua_rs::geometry::geo_traits::{Shape, Transformable};
 use jagua_rs::geometry::primitives::aa_rectangle::AARectangle;
 use jagua_rs::util::fpa::FPA;
-use log::{debug, log};
+use log::{debug, log, Level};
 use ordered_float::OrderedFloat;
 use rand::prelude::IteratorRandom;
 use rand::rngs::SmallRng;
@@ -382,18 +383,20 @@ impl GLSOrchestrator {
 
         match solution {
             Some(sol) => {
-                let filename = format!("{}/{}_{:.2}_{suffix}.svg", &self.output_folder, self.svg_counter, sol.layout_snapshots[0].bin.bbox().x_max);
-                io::write_svg(
-                    &s_layout_to_svg(&sol.layout_snapshots[0], &self.instance, DRAW_OPTIONS),
-                    Path::new(&filename),
-                );
+                let file_name = format!("{}/{}_{:.2}_{suffix}.svg", &self.output_folder, self.svg_counter, strip_width(&sol));
+                let file_path = Path::new(&file_name);
+                let title = file_path.file_stem().unwrap().to_str().unwrap();
+                let svg = s_layout_to_svg(&sol.layout_snapshots[0], &self.instance, DRAW_OPTIONS, title);
+                io::write_svg(&svg, file_path, self.log_level);
+                io::write_svg(&svg, Path::new(&format!("{}/live_solution.svg", OUTPUT_DIR)), Level::Trace);
             }
             None => {
-                let filename = format!("{}/{}_{:.2}_{suffix}.svg", &self.output_folder, self.svg_counter, self.prob.layout.bin.bbox().x_max);
-                io::write_svg(
-                    & layout_to_svg(&self.prob.layout, &self.instance, DRAW_OPTIONS),
-                    Path::new(&filename),
-                );
+                let file_name = format!("{}/{}_{:.2}_{suffix}.svg", &self.output_folder, self.svg_counter, self.prob.strip_width());
+                let file_path = Path::new(&file_name);
+                let title = file_path.file_stem().unwrap().to_str().unwrap();
+                let svg = layout_to_svg(&self.prob.layout, &self.instance, DRAW_OPTIONS, title);
+                io::write_svg(&svg, file_path, self.log_level);
+                io::write_svg(&svg, Path::new(&format!("{}/live_solution.svg", OUTPUT_DIR)), Level::Trace);
             }
         }
 

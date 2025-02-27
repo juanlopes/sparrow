@@ -18,15 +18,17 @@ pub fn s_layout_to_svg(
     s_layout: &LayoutSnapshot,
     instance: &impl InstanceGeneric,
     options: SvgDrawOptions,
+    title: &str,
 ) -> Document {
     let layout = Layout::from_snapshot(s_layout);
-    layout_to_svg(&layout, instance, options)
+    layout_to_svg(&layout, instance, options, title)
 }
 
 pub fn layout_to_svg(
     layout: &Layout,
     instance: &impl InstanceGeneric,
     options: SvgDrawOptions,
+    title: &str,
 ) -> Document {
     let internal_bin = &layout.bin;
     let inv_bin_transf = internal_bin.pretransform.clone().inverse();
@@ -42,10 +44,11 @@ pub fn layout_to_svg(
     let label = {
         //print some information on above the left top of the bin
         let label_content = format!(
-            "height: {:.3} | width: {:.3} | usage: {:.3}%",
+            "height: {:.3} | width: {:.3} | usage: {:.3}% | {}",
             layout.bin.bbox().height(),
             layout.bin.bbox().width(),
-            layout.usage() * 100.0
+            layout.usage() * 100.0,
+            title,
         );
         Text::new(label_content)
             .set("x", bin.bbox().x_min)
