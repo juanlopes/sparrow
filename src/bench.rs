@@ -27,8 +27,8 @@ fn main() {
     let time_limit: u64 = args[3].parse().expect("third argument must be the time limit in seconds");
     let time_limit = Duration::from_secs(time_limit);
 
-    let n_runs_per_iter = (num_cpus::get_physical() / N_WORKERS).min(n_runs_total);
-    let n_iterations = (n_runs_total as fsize / n_runs_per_iter as fsize).ceil() as usize;
+    println!("[BENCH] git commit hash: {}", get_git_commit_hash());
+    println!("[BENCH] system time: {}", Local::now());
 
     let mut rng = match RNG_SEED {
         Some(seed) => {
@@ -42,7 +42,8 @@ fn main() {
         }
     };
 
-    println!("[BENCH] system time: {}", Local::now());
+    let n_runs_per_iter = (num_cpus::get_physical() / N_WORKERS).min(n_runs_total);
+    let n_iterations = (n_runs_total as fsize / n_runs_per_iter as fsize).ceil() as usize;
 
     println!(
         "[BENCH] starting bench for {} ({}x{} runs across {} cores, {:?} timelimit)",
@@ -189,4 +190,16 @@ pub fn calculate_average(v: &[fsize]) -> fsize {
 pub fn calculate_stddev(v: &[fsize]) -> fsize {
     let avg = calculate_average(v);
     (v.iter().map(|x| (x - avg).powi(2)).sum::<fsize>() / v.len() as fsize).sqrt()
+}
+
+pub fn get_git_commit_hash() -> String {
+    let output = std::process::Command::new("git")
+        .args(&["rev-parse", "HEAD"])
+        .output()
+        .expect("Failed to execute git command");
+
+    match output.status.success() {
+        true => String::from_utf8_lossy(&output.stdout).trim().to_string(),
+        false => "unknown".to_string(),
+    }
 }
