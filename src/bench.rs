@@ -21,11 +21,14 @@ use std::time::{Duration, Instant};
 
 fn main() {
     //the input file is the first argument
-    let args: Vec<String> = std::env::args().collect();
-    let n_runs_total = args[1].parse::<usize>().unwrap();
-    let json_instance = io::read_json_instance(Path::new(&args[2]));
-    let time_limit: u64 = args[3].parse().expect("third argument must be the time limit in seconds");
+    let input_file_path = std::env::args().nth(1).expect("first argument must be the input file");
+    let time_limit: u64 = std::env::args().nth(2).unwrap().parse()
+        .expect("second argument must be the time limit in seconds");
     let time_limit = Duration::from_secs(time_limit);
+    let n_runs_total = std::env::args().nth(3).expect("third argument must be the number of runs")
+        .parse().expect("third argument must be the number of runs");
+
+    let json_instance = io::read_json_instance(Path::new(&input_file_path));
 
     println!("[BENCH] git commit hash: {}", get_git_commit_hash());
     println!("[BENCH] system time: {}", Local::now());
@@ -95,11 +98,11 @@ fn main() {
                     let mut gls_opt = GLSOrchestrator::from_builder(constr_builder, sols_output_dir);
                     let solutions = gls_opt.solve(time_limit);
                     let final_gls_sol = solutions.last().expect("no solutions found");
-                    println!("[BENCH] [id:{bench_idx}] ph1 done: {:.3}% ({}s)", final_gls_sol.usage * 100.0, time_limit.as_secs());
+                    println!("[BENCH] [id:{:>3}] ph1 done: {:.3}% ({}s)",bench_idx, final_gls_sol.usage * 100.0, time_limit.as_secs());
 
                     let start_post = Instant::now();
                     let compacted_sol = post_optimize(&mut gls_opt, &final_gls_sol);
-                    println!("[BENCH] [id:{bench_idx}] ph2 done: {:.3}% (+{:.3}%) ({}s)", compacted_sol.usage * 100.0, (compacted_sol.usage - final_gls_sol.usage) * 100.0, start_post.elapsed().as_secs());
+                    println!("[BENCH] [id:{:>3}] ph2 done: {:.3}% (+{:.3}%) ({}s)", bench_idx, compacted_sol.usage * 100.0, (compacted_sol.usage - final_gls_sol.usage) * 100.0, start_post.elapsed().as_secs());
 
                     *sol_slice = Some(compacted_sol);
                 })

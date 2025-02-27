@@ -26,6 +26,7 @@ fn main() {
     let input_file_path = args().nth(1).expect("first argument must be the input file");
     let time_limit: u64 = args().nth(2).unwrap().parse()
         .expect("second argument must be the time limit in seconds");
+    let time_limit = Duration::from_secs(time_limit);
 
     match cfg!(debug_assertions) {
         true => io::init_logger(LOG_LEVEL_DEBUG),
@@ -62,7 +63,7 @@ fn main() {
 
     let mut gls_opt = GLSOrchestrator::from_builder(constr_builder, format!("{OUTPUT_DIR}/sols_{}",json_instance.name));
 
-    let solutions = gls_opt.solve(Duration::from_secs(time_limit));
+    let solutions = gls_opt.solve(time_limit);
     let final_gls_sol = solutions.last().expect("no solutions found");
 
     gls_opt.log_level = log::Level::Debug;
