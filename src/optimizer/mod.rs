@@ -25,7 +25,7 @@ pub fn optimize(instance: SPInstance, rng: SmallRng, output_folder_path: String,
     let solutions = explore(&mut expl_separator, explore_time_limit);
     let final_explore_sol = solutions.last().expect("no solutions found during exploration");
 
-    let mut cmpr_separator = Separator::new(expl_separator.instance, expl_separator.prob, expl_separator.rng, output_folder_path.clone(), expl_separator.svg_counter, SEPARATOR_CONFIG_COMPRESS);
+    let mut cmpr_separator = Separator::new(expl_separator.instance, expl_separator.prob, expl_separator.rng, expl_separator.output_svg_folder, expl_separator.svg_counter, SEPARATOR_CONFIG_COMPRESS);
 
     let final_sol = compress(&mut cmpr_separator, final_explore_sol);
 
@@ -38,7 +38,7 @@ pub fn explore(sep: &mut Separator, time_out: Duration) -> Vec<Solution> {
 
     let mut feasible_solutions = vec![sep.prob.create_solution(None)];
 
-    sep.write_to_disk(Level::Info, None, "init", false);
+    sep.export_svg(None, "init", false);
     info!("[EXPL] starting optimization with initial width: {:.3} ({:.3}%)",current_width,sep.prob.usage() * 100.0);
 
     let end_time = Instant::now() + time_out;
@@ -54,7 +54,7 @@ pub fn explore(sep: &mut Separator, time_out: Duration) -> Vec<Solution> {
                 info!("[EXPL] new best at width: {:.3} ({:.3}%)",current_width,sep.prob.usage() * 100.0);
                 best_width = current_width;
                 feasible_solutions.push(local_best.0.clone());
-                sep.write_to_disk(Level::Info, Some(local_best.0.clone()), "f", false);
+                sep.export_svg(Some(local_best.0.clone()), "f", false);
             }
             let next_width = current_width * (1.0 - EXPLORE_R_SHRINK);
             info!("[EXPL] shrinking width by {}%: {:.3} -> {:.3}", EXPLORE_R_SHRINK * 100.0, current_width, next_width);
@@ -63,7 +63,7 @@ pub fn explore(sep: &mut Separator, time_out: Duration) -> Vec<Solution> {
             solution_pool.clear();
         } else {
             info!("[EXPL] layout separation unsuccessful, exporting min overlap solution");
-            sep.write_to_disk(Level::Info, Some(local_best.0.clone()), "o", false);
+            sep.export_svg(Some(local_best.0.clone()), "o", false);
 
             //layout was not successfully separated, add to local bests
             match solution_pool.binary_search_by(|(_, o)| o.partial_cmp(&total_overlap).unwrap()) {
@@ -103,7 +103,7 @@ pub fn compress(sep: &mut Separator, init: &Solution) -> Solution {
             match try_compress(sep, &best, r_shrink) {
                 Some(compacted_sol) => {
                     info!("[CMPR] compressed to {:.3} ({:.3}%)", strip_width(&compacted_sol), compacted_sol.usage * 100.0);
-                    sep.write_to_disk(Level::Info, Some(compacted_sol.clone()), "p", false);
+                    sep.export_svg(Some(compacted_sol.clone()), "p", false);
                     best = compacted_sol;
                     n_strikes = 0;
                 }

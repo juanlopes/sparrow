@@ -46,14 +46,14 @@ pub struct Separator {
     pub prob: SPProblem,
     pub ot: OverlapTracker,
     pub workers: Vec<SeparatorWorker>,
-    pub output_folder: String,
     pub svg_counter: usize,
+    pub output_svg_folder: String,
     pub config: SeparatorConfig,
     pub large_area_ch_area_cutoff: fsize,
 }
 
 impl Separator {
-    pub fn new(instance: SPInstance, prob: SPProblem, mut rng: SmallRng, output_folder: String, svg_counter: usize, config: SeparatorConfig) -> Self {
+    pub fn new(instance: SPInstance, prob: SPProblem, mut rng: SmallRng, output_svg_folder: String, svg_counter: usize, config: SeparatorConfig) -> Self {
         //use the builder to create an initial placement into the problem
 
         let overlap_tracker = OverlapTracker::new(&prob.layout, config.jump_cooldown);
@@ -77,7 +77,7 @@ impl Separator {
             ot: overlap_tracker,
             workers,
             svg_counter,
-            output_folder,
+            output_svg_folder,
             config,
             large_area_ch_area_cutoff,
         }
@@ -123,7 +123,7 @@ impl Separator {
                     min_overlap_sol = (sol, self.ot.create_snapshot());
                     min_overlap = overlap;
                     log!(self.config.log_level,"[SEP] [s:{n_strikes},i:{n_iter}] (*) min_o: {}",FMT.fmt2(overlap));
-                    self.write_to_disk(self.config.log_level, None, "i", true);
+                    self.export_svg(None, "i", true);
                     n_iter_no_improvement = 0;
                 } else {
                     n_iter_no_improvement += 1;
@@ -306,39 +306,29 @@ impl Separator {
         debug!("[GLS] changed strip width to {:.3}", new_width);
     }
 
-    pub fn write_to_disk(&mut self, level: Level, solution: Option<Solution>, suffix: &str, only_live: bool) {
-        if level < Level::Info && !log_enabled!(level) {
-            //ignore if log level is below info and this level is not enabled
-            return;
-        }
+    pub fn export_svg(&mut self, solution: Option<Solution>, suffix: &str, only_live: bool) {
 
         if self.svg_counter == 0 {
-            //remove all files from the output folder
-            let _ = std::fs::remove_dir_all(&self.output_folder);
-            std::fs::create_dir_all(&self.output_folder).unwrap();
+            std::fs::create_dir_all(&self.output_svg_folder).unwrap();
+            //remove all svg files from the directory. ONLY SVG FILES
+            for file in std::fs::read_dir(&self.output_svg_folder).unwrap().flatten() {
+                if file.path().extension().unwrap_or_default() == "svg" {
+                    std::fs::remove_file(file.path()).unwrap();
+                }
+            }
         }
 
-        match solution {
-            Some(sol) => {
-                let file_name = format!("{}/{}_{:.3}_{suffix}.svg", &self.output_folder, self.svg_counter, strip_width(&sol));
-                let file_path = Path::new(&file_name);
-                let title = file_path.file_stem().unwrap().to_str().unwrap();
-                let svg = s_layout_to_svg(&sol.layout_snapshots[0], &self.instance, DRAW_OPTIONS, title);
-                if !only_live {
-                    io::write_svg(&svg, file_path, self.config.log_level);
-                }
-                io::write_svg(&svg, Path::new(&format!("{}/.live_solution.svg", OUTPUT_DIR)), Level::Trace);
-            }
-            None => {
-                let file_name = format!("{}/{}_{:.3}_{suffix}.svg", &self.output_folder, self.svg_counter, self.prob.strip_width());
-                let file_path = Path::new(&file_name);
-                let title = file_path.file_stem().unwrap().to_str().unwrap();
-                let svg = layout_to_svg(&self.prob.layout, &self.instance, DRAW_OPTIONS, title);
-                if !only_live {
-                    io::write_svg(&svg, file_path, self.config.log_level);
-                }
-                io::write_svg(&svg, Path::new(&format!("{}/.live_solution.svg", OUTPUT_DIR)), Level::Trace);
-            }
+        let file_name = format!("{}_{:.3}_{suffix}", self.svg_counter, self.prob.strip_width());
+        let svg = match solution {
+            Some(sol) => s_layout_to_svg(&sol.layout_snapshots[0], &self.instance, DRAW_OPTIONS, file_name.as_str()),
+            None => layout_to_svg(&self.prob.layout, &self.instance, DRAW_OPTIONS, file_name.as_str()),
+        };
+
+        io::write_svg(&svg, Path::new(&*format!("{}/.live_solution.svg", OUTPUT_DIR)), Level::Trace);
+
+        if !only_live {
+            let file_path = &*format!("{}/{}.svg", &self.output_svg_folder, file_name);
+            io::write_svg(&svg, Path::new(file_path), self.config.log_level);
         }
 
         self.svg_counter += 1;
