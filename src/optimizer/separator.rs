@@ -1,4 +1,4 @@
-use crate::config::{DRAW_OPTIONS, OUTPUT_DIR};
+use crate::config::{DRAW_OPTIONS, EXPORT_LIVE_SVG, OUTPUT_DIR};
 use crate::optimizer::separator_worker::SeparatorWorker;
 use crate::overlap::tracker::{OTSnapshot, OverlapTracker};
 use crate::sample::eval::SampleEval;
@@ -21,7 +21,7 @@ use jagua_rs::geometry::geo_enums::GeoRelation;
 use jagua_rs::geometry::geo_traits::{Shape, Transformable};
 use jagua_rs::geometry::primitives::aa_rectangle::AARectangle;
 use jagua_rs::util::fpa::FPA;
-use log::{debug, log, log_enabled, Level};
+use log::{debug, log, Level};
 use ordered_float::OrderedFloat;
 use rand::prelude::IteratorRandom;
 use rand::rngs::SmallRng;
@@ -324,13 +324,14 @@ impl Separator {
             None => layout_to_svg(&self.prob.layout, &self.instance, DRAW_OPTIONS, file_name.as_str()),
         };
 
-        io::write_svg(&svg, Path::new(&*format!("{}/.live_solution.svg", OUTPUT_DIR)), Level::Trace);
+        if EXPORT_LIVE_SVG {
+            io::write_svg(&svg, Path::new(&*format!("{}/.live_solution.svg", OUTPUT_DIR)), Level::Trace);
+        }
 
         if !only_live {
             let file_path = &*format!("{}/{}.svg", &self.output_svg_folder, file_name);
             io::write_svg(&svg, Path::new(file_path), self.config.log_level);
+            self.svg_counter += 1;
         }
-
-        self.svg_counter += 1;
     }
 }

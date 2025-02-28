@@ -4,6 +4,13 @@ use jagua_rs::fsize;
 use jagua_rs::util::config::{CDEConfig, SPSurrogateConfig};
 use crate::optimizer::separator::SeparatorConfig;
 
+
+#[cfg(feature = "live_svg")]
+pub const EXPORT_LIVE_SVG: bool = true;
+
+#[cfg(not(feature = "live_svg"))]
+pub const EXPORT_LIVE_SVG: bool = false;
+
 pub const OUTPUT_DIR: &str = "output";
 
 pub const LOG_LEVEL_RELEASE: log::LevelFilter = log::LevelFilter::Info;

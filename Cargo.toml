@@ -4,9 +4,13 @@ version = "0.1.0"
 edition = "2024"
 default-run = "main"
 
+[features]
+live_svg = []
+
 [[bin]]
 name = "main"
 path = "src/main.rs"
+required-features = ["live_svg"]
 
 [[bin]]
 name = "bench"

@@ -2,7 +2,7 @@ extern crate core;
 
 use std::fs;
 use chrono::Local;
-use gls_strip_packing::config::{DRAW_OPTIONS, LOG_LEVEL_RELEASE, OUTPUT_DIR, RNG_SEED, SEPARATOR_CONFIG_COMPRESS, SEPARATOR_CONFIG_EXPLORE};
+use gls_strip_packing::config::{DRAW_OPTIONS, OUTPUT_DIR, RNG_SEED, SEPARATOR_CONFIG_COMPRESS, SEPARATOR_CONFIG_EXPLORE};
 use gls_strip_packing::optimizer::builder::LBFBuilder;
 use gls_strip_packing::optimizer::{compress, explore};
 use gls_strip_packing::optimizer::separator::Separator;

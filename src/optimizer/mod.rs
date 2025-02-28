@@ -4,7 +4,7 @@ use jagua_rs::entities::problems::problem_generic::ProblemGeneric;
 use jagua_rs::entities::problems::strip_packing::strip_width;
 use jagua_rs::entities::solution::Solution;
 use jagua_rs::fsize;
-use log::{info, Level};
+use log::{info};
 use rand::prelude::SmallRng;
 use rand::Rng;
 use rand_distr::Normal;
