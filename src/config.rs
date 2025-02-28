@@ -5,10 +5,10 @@ use jagua_rs::util::config::{CDEConfig, SPSurrogateConfig};
 use crate::optimizer::separator::SeparatorConfig;
 
 
-#[cfg(feature = "live_svg")]
+#[cfg(feature = "live_solutions")]
 pub const EXPORT_LIVE_SVG: bool = true;
 
-#[cfg(not(feature = "live_svg"))]
+#[cfg(not(feature = "live_solutions"))]
 pub const EXPORT_LIVE_SVG: bool = false;
 
 pub const OUTPUT_DIR: &str = "output";

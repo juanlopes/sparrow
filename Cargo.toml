@@ -5,7 +5,7 @@ edition = "2024"
 default-run = "main"
 
 [features]
-live_svg = []
+live_solutions = []
 
 [[bin]]
 name = "main"

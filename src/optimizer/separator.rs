@@ -120,11 +120,15 @@ impl Separator {
                 } else if overlap < min_overlap {
                     //layout is not separated, but absolute overlap is better than before
                     let sol = self.prob.create_solution(None);
-                    min_overlap_sol = (sol, self.ot.create_snapshot());
-                    min_overlap = overlap;
+
                     log!(self.config.log_level,"[SEP] [s:{n_strikes},i:{n_iter}] (*) min_o: {}",FMT.fmt2(overlap));
                     self.export_svg(None, "i", true);
-                    n_iter_no_improvement = 0;
+                    if overlap < min_overlap * 0.98 {
+                        //only reset the iter_no_improvement counter if the overlap improved significantly
+                        n_iter_no_improvement = 0;
+                    }
+                    min_overlap_sol = (sol, self.ot.create_snapshot());
+                    min_overlap = overlap;
                 } else {
                     n_iter_no_improvement += 1;
                 }
@@ -206,7 +210,7 @@ impl Separator {
         let dt1 = pi1.d_transf;
         let dt2 = pi2.d_transf;
 
-        log!(self.config.log_level,"[GLS] swapped two large items (id: {} <-> {})", pi1.item_id, pi2.item_id);
+        log!(self.config.log_level,"[GLS] swapped two large items (ids: {} <-> {})", pi1.item_id, pi2.item_id);
 
         self.move_item(pk1, dt2, None);
         self.move_item(pk2, dt1, None);
@@ -307,7 +311,6 @@ impl Separator {
     }
 
     pub fn export_svg(&mut self, solution: Option<Solution>, suffix: &str, only_live: bool) {
-
         if self.svg_counter == 0 {
             std::fs::create_dir_all(&self.output_svg_folder).unwrap();
             //remove all svg files from the directory. ONLY SVG FILES
