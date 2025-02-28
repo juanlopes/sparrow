@@ -1,4 +1,3 @@
-use std::convert::Into;
 use std::fmt::{Display, Formatter};
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -50,56 +49,33 @@ pub struct SvgLayoutTheme {
 
 impl Default for SvgLayoutTheme {
     fn default() -> Self {
-        Self::gray()
+        SvgLayoutTheme::GRAY_THEME
     }
 }
 
-impl SvgLayoutTheme {
-    pub fn earth_tones() -> Self {
-        SvgLayoutTheme {
-            stroke_width_multiplier: 2.0,
-            bin_fill: "#CC824A".into(),
-            item_fill: "#FFC879".into(),
-            hole_fill: "#2D2D2D".into(),
-            qz_fill: [
-                "#000000".into(), //BLACK
-                "#FF0000".into(), //RED
-                "#FF5E00".into(), //ORANGE
-                "#FFA500".into(), //LIGHT ORANGE
-                "#C7A900".into(), //DARK YELLOW
-                "#FFFF00".into(), //YELLOW
-                "#CBFF00".into(), //GREEN
-                "#CBFF00".into(), //GREEN
-                "#CBFF00".into(), //GREEN
-                "#CBFF00".into(), //GREEN
-            ],
-            qz_stroke_opac: 0.5,
-            overlap_highlight_color: "#00FF00".into(), //LIME
-        }
-    }
+impl SvgLayoutTheme{
 
-    pub fn gray() -> Self {
-        SvgLayoutTheme {
-            stroke_width_multiplier: 2.5,
-            bin_fill: "#D6D6D6".into(),
-            item_fill: "#8F8F8F".into(),
-            hole_fill: "#FFFFFF".into(),
-            qz_fill: [
-                "#636363".into(), //GRAY
-                "#636363".into(), //GRAY
-                "#636363".into(), //GRAY
-                "#636363".into(), //GRAY
-                "#636363".into(), //GRAY
-                "#636363".into(), //GRAY
-                "#636363".into(), //GRAY
-                "#636363".into(), //GRAY
-                "#636363".into(), //GRAY
-                "#636363".into(), //GRAY
-            ],
-            qz_stroke_opac: 0.9,
-            overlap_highlight_color: "#00FF00".into(), //LIME
-        }
-    }
+    #[allow(dead_code)]
+    pub(crate) const EARTH_TONES: SvgLayoutTheme = SvgLayoutTheme {
+        stroke_width_multiplier: 2.0,
+        bin_fill: Color(0xCC, 0x82, 0x4A),
+        item_fill: Color(0xFF, 0xC8, 0x79),
+        hole_fill: Color(0x2D, 0x2D, 0x2D),
+        qz_fill: [
+            Color(0x00, 0x00, 0x00), // BLACK
+            Color(0xFF, 0x00, 0x00), // RED
+            Color(0xFF, 0x5E, 0x00), // ORANGE
+            Color(0xFF, 0xA5, 0x00), // LIGHT ORANGE
+            Color(0xC7, 0xA9, 0x00), // DARK YELLOW
+            Color(0xFF, 0xFF, 0x00), // YELLOW
+            Color(0xCB, 0xFF, 0x00), // GREEN
+            Color(0xCB, 0xFF, 0x00), // GREEN
+            Color(0xCB, 0xFF, 0x00), // GREEN
+            Color(0xCB, 0xFF, 0x00), // GREEN
+        ],
+        qz_stroke_opac: 0.5,
+        overlap_highlight_color: Color(0x00, 0xFF, 0x00), // LIME
+    };
 
     pub(crate) const GRAY_THEME: SvgLayoutTheme = SvgLayoutTheme {
         stroke_width_multiplier: 2.5,

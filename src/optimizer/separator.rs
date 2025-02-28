@@ -318,7 +318,7 @@ impl Separator {
                 let title = file_path.file_stem().unwrap().to_str().unwrap();
                 let svg = s_layout_to_svg(&sol.layout_snapshots[0], &self.instance, DRAW_OPTIONS, title);
                 io::write_svg(&svg, file_path, self.log_level);
-                io::write_svg(&svg, Path::new(&format!("{}/live_solution.svg", OUTPUT_DIR)), Level::Trace);
+                io::write_svg(&svg, Path::new(&format!("{}/.live_solution.svg", OUTPUT_DIR)), Level::Trace);
             }
             None => {
                 let file_name = format!("{}/{}_{:.2}_{suffix}.svg", &self.output_folder, self.svg_counter, self.prob.strip_width());
@@ -326,7 +326,7 @@ impl Separator {
                 let title = file_path.file_stem().unwrap().to_str().unwrap();
                 let svg = layout_to_svg(&self.prob.layout, &self.instance, DRAW_OPTIONS, title);
                 io::write_svg(&svg, file_path, self.log_level);
-                io::write_svg(&svg, Path::new(&format!("{}/live_solution.svg", OUTPUT_DIR)), Level::Trace);
+                io::write_svg(&svg, Path::new(&format!("{}/.live_solution.svg", OUTPUT_DIR)), Level::Trace);
             }
         }
 

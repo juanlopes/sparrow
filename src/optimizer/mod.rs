@@ -118,6 +118,7 @@ pub fn compress(sep: &mut Separator, init: &Solution) -> Solution {
 }
 
 
+//TODO: refine separator for this purpose (more greedy, more restores)
 fn try_compress(sep: &mut Separator, init: &Solution, r_shrink: fsize) -> Option<Solution> {
     //restore to the initial solution and width
     sep.change_strip_width(strip_width(&init), None);
