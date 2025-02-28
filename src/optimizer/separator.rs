@@ -307,8 +307,8 @@ impl Separator {
     }
 
     pub fn write_to_disk(&mut self, level: Level, solution: Option<Solution>, suffix: &str, only_live: bool) {
-        //ignore if log level is not enabled
-        if !log_enabled!(level) {
+        if level < Level::Info && !log_enabled!(level) {
+            //ignore if log level is below info and this level is not enabled
             return;
         }
 

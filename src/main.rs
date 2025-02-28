@@ -13,6 +13,7 @@ use log::{info, warn, Level};
 use rand::prelude::SmallRng;
 use rand::SeedableRng;
 use std::env::args;
+use std::fs;
 use std::path::Path;
 use std::time::Duration;
 
@@ -21,6 +22,8 @@ fn main() {
     let explore_time_limit: u64 = args().nth(2).unwrap().parse()
         .expect("second argument must be the time limit for the first phase [s]");
     let explore_time_limit = Duration::from_secs(explore_time_limit);
+
+    fs::create_dir_all(OUTPUT_DIR).expect("could not create output directory");
 
     match cfg!(debug_assertions) {
         true => io::init_logger(LOG_LEVEL_DEBUG),
@@ -60,6 +63,6 @@ fn main() {
     {
         let svg = s_layout_to_svg(&solution.layout_snapshots[0], &instance, DRAW_OPTIONS, "final");
         io::write_svg(&svg, Path::new(format!("{OUTPUT_DIR}/final_{}.svg", json_instance.name).as_str()), Level::Info);
-        io::write_svg(&svg, Path::new(format!("{OUTPUT_DIR}/.live_solution{}.svg", json_instance.name).as_str()), Level::Trace);
+        io::write_svg(&svg, Path::new(format!("{OUTPUT_DIR}/.live_solution.svg").as_str()), Level::Trace);
     }
 }

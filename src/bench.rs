@@ -1,7 +1,8 @@
 extern crate core;
 
+use std::fs;
 use chrono::Local;
-use gls_strip_packing::config::{DRAW_OPTIONS, OUTPUT_DIR, RNG_SEED, SEPARATOR_CONFIG_COMPRESS, SEPARATOR_CONFIG_EXPLORE};
+use gls_strip_packing::config::{DRAW_OPTIONS, LOG_LEVEL_RELEASE, OUTPUT_DIR, RNG_SEED, SEPARATOR_CONFIG_COMPRESS, SEPARATOR_CONFIG_EXPLORE};
 use gls_strip_packing::optimizer::builder::LBFBuilder;
 use gls_strip_packing::optimizer::{compress, explore};
 use gls_strip_packing::optimizer::separator::Separator;
@@ -27,6 +28,8 @@ fn main() {
     let explore_time_limit = Duration::from_secs(explore_time_limit);
     let n_runs_total = std::env::args().nth(3).expect("third argument must be the number of runs")
         .parse().expect("third argument must be the number of runs");
+
+    fs::create_dir_all(OUTPUT_DIR).expect("could not create output directory");
 
     let json_instance = io::read_json_instance(Path::new(&input_file_path));
 
