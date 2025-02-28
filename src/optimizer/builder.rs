@@ -40,7 +40,7 @@ impl LBFBuilder {
         }
     }
 
-    pub fn construct(mut self) -> (SPInstance, SPProblem, SmallRng) {
+    pub fn construct(mut self) -> Self {
         let start = Instant::now();
         let n_items = self.instance.items().len();
         let sorted_item_indices = (0..n_items)
@@ -65,7 +65,7 @@ impl LBFBuilder {
 
         self.prob.fit_strip();
         debug!("[CONSTR] placed all items in width: {:.3} (in {:?})",self.prob.strip_width(), start.elapsed());
-        (self.instance, self.prob, self.rng)
+        self
     }
 
     fn place_item(&mut self, item_id: usize) {

@@ -1,7 +1,7 @@
 extern crate core;
 
 use chrono::Local;
-use gls_strip_packing::config::{DRAW_OPTIONS, OUTPUT_DIR, RNG_SEED, SEP_N_WORKERS};
+use gls_strip_packing::config::{DRAW_OPTIONS, OUTPUT_DIR, RNG_SEED, SEPARATOR_CONFIG_COMPRESS, SEPARATOR_CONFIG_EXPLORE, SEP_N_WORKERS};
 use gls_strip_packing::optimizer::builder::LBFBuilder;
 use gls_strip_packing::optimizer::{compress, explore};
 use gls_strip_packing::optimizer::separator::Separator;
@@ -45,7 +45,7 @@ fn main() {
         }
     };
 
-    let n_runs_per_iter = (num_cpus::get_physical() / SEP_N_WORKERS).min(n_runs_total);
+    let n_runs_per_iter = (num_cpus::get_physical() / SEPARATOR_CONFIG_EXPLORE.n_workers).min(n_runs_total);
     let n_batches = (n_runs_total as fsize / n_runs_per_iter as fsize).ceil() as usize;
 
     println!(
@@ -95,13 +95,16 @@ fn main() {
                 );
 
                 s.spawn(move |_| {
-                    let mut separator = Separator::new(builder, sols_output_dir);
+                    let builder = builder.construct();
+                    let mut expl_separator = Separator::new(builder.instance, builder.prob, builder.rng, sols_output_dir.clone(), SEPARATOR_CONFIG_EXPLORE);
 
-                    let solutions = explore(&mut separator, explore_time_limit);
+                    let solutions = explore(&mut expl_separator, explore_time_limit);
                     let final_explore_sol = solutions.last().expect("no solutions found during exploration");
 
                     let start_comp = Instant::now();
-                    let final_sol = compress(&mut separator, final_explore_sol);
+
+                    let mut cmpr_separator = Separator::new(expl_separator.instance, expl_separator.prob, expl_separator.rng, sols_output_dir.clone(), SEPARATOR_CONFIG_COMPRESS);
+                    let final_sol = compress(&mut cmpr_separator, final_explore_sol);
 
                     println!("[BENCH] [id:{:>3}] finished, expl: {:.3}% ({}s), cmpr: {:.3}% ({}s)",
                              bench_idx,

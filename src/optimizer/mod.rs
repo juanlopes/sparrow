@@ -4,12 +4,12 @@ use jagua_rs::entities::problems::problem_generic::ProblemGeneric;
 use jagua_rs::entities::problems::strip_packing::strip_width;
 use jagua_rs::entities::solution::Solution;
 use jagua_rs::fsize;
-use log::{info, Level};
+use log::info;
 use rand::prelude::SmallRng;
 use rand::Rng;
 use rand_distr::Normal;
 use rand_distr::Distribution;
-use crate::config::{CDE_CONFIG, CONSTR_SEARCH_CONFIG, GLS_SOL_DISTR_STDDEV, POST_N_STRIKES, POST_R_SHRINKS, R_SHRINK};
+use crate::config::{CDE_CONFIG, CONSTR_SEARCH_CONFIG, EXPLORE_SOL_DISTR_STDDEV, COMPRESS_N_STRIKES, COMPRESS_R_SHRINKS, EXPLORE_R_SHRINK, SEPARATOR_CONFIG_COMPRESS, SEPARATOR_CONFIG_EXPLORE};
 use crate::FMT;
 use crate::optimizer::builder::LBFBuilder;
 use crate::optimizer::separator::Separator;
@@ -19,13 +19,15 @@ mod separator_worker;
 
 // All high-level heuristic logic
 pub fn optimize(instance: SPInstance, rng: SmallRng, output_folder_path: String, explore_time_limit: Duration) -> Solution {
-    let builder = LBFBuilder::new(instance, CDE_CONFIG, rng, CONSTR_SEARCH_CONFIG);
-    let mut separator = Separator::new(builder, output_folder_path);
+    let builder = LBFBuilder::new(instance, CDE_CONFIG, rng, CONSTR_SEARCH_CONFIG).construct();
+    let mut expl_separator = Separator::new(builder.instance, builder.prob, builder.rng, output_folder_path.clone(), SEPARATOR_CONFIG_EXPLORE);
 
-    let solutions = explore(&mut separator, explore_time_limit);
+    let solutions = explore(&mut expl_separator, explore_time_limit);
     let final_explore_sol = solutions.last().expect("no solutions found during exploration");
 
-    let final_sol = compress(&mut separator, final_explore_sol);
+    let mut cmpr_separator = Separator::new(expl_separator.instance, expl_separator.prob, expl_separator.rng, output_folder_path.clone(), SEPARATOR_CONFIG_COMPRESS);
+
+    let final_sol = compress(&mut cmpr_separator, final_explore_sol);
 
     final_sol
 }
@@ -54,8 +56,8 @@ pub fn explore(sep: &mut Separator, time_out: Duration) -> Vec<Solution> {
                 feasible_solutions.push(local_best.0.clone());
                 sep.write_to_disk(Some(local_best.0.clone()), "f", true);
             }
-            let next_width = current_width * (1.0 - R_SHRINK);
-            info!("[EXPL] shrinking width by {}%: {:.3} -> {:.3}", R_SHRINK * 100.0, current_width, next_width);
+            let next_width = current_width * (1.0 - EXPLORE_R_SHRINK);
+            info!("[EXPL] shrinking width by {}%: {:.3} -> {:.3}", EXPLORE_R_SHRINK * 100.0, current_width, next_width);
             sep.change_strip_width(next_width, None);
             current_width = next_width;
             solution_pool.clear();
@@ -71,7 +73,7 @@ pub fn explore(sep: &mut Separator, time_out: Duration) -> Vec<Solution> {
             //restore to a random solution from the tabu list, better solutions have more chance to be selected
             let selected_sol = {
                 //sample a value in range [0.0, 1.0[ from a normal distribution
-                let distr = Normal::new(0.0, GLS_SOL_DISTR_STDDEV).unwrap();
+                let distr = Normal::new(0.0, EXPLORE_SOL_DISTR_STDDEV).unwrap();
                 let sample = distr.sample(&mut sep.rng).abs().min(0.999);
                 //map it to the range of the solution pool
                 let selected_idx = (sample * solution_pool.len() as fsize) as usize;
@@ -93,12 +95,11 @@ pub fn explore(sep: &mut Separator, time_out: Duration) -> Vec<Solution> {
 }
 
 pub fn compress(sep: &mut Separator, init: &Solution) -> Solution {
-    sep.log_level = Level::Debug; //to avoid cluttering the logs
     let mut best = init.clone();
-    for (i, &r_shrink) in POST_R_SHRINKS.iter().enumerate() {
+    for (i, &r_shrink) in COMPRESS_R_SHRINKS.iter().enumerate() {
         let mut n_strikes = 0;
         info!("[CMPR] attempting to compress in steps of {}%", r_shrink * 100.0);
-        while n_strikes < POST_N_STRIKES[i] {
+        while n_strikes < COMPRESS_N_STRIKES[i] {
             match try_compress(sep, &best, r_shrink) {
                 Some(compacted_sol) => {
                     info!("[CMPR] compressed to {:.3} ({:.3}%)", strip_width(&compacted_sol), compacted_sol.usage * 100.0);
@@ -108,7 +109,7 @@ pub fn compress(sep: &mut Separator, init: &Solution) -> Solution {
                 }
                 None => {
                     n_strikes += 1;
-                    info!("[CMPR] strike {}/{}", n_strikes, POST_N_STRIKES[i]);
+                    info!("[CMPR] strike {}/{}", n_strikes, COMPRESS_N_STRIKES[i]);
                 }
             }
         }

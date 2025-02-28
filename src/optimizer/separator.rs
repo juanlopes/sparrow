@@ -1,5 +1,4 @@
-use crate::config::{DRAW_OPTIONS, LARGE_ITEM_CH_AREA_CUTOFF_RATIO, OUTPUT_DIR, SEP_N_ITER_NO_IMPROVEMENT, SEP_N_STRIKES, SEP_N_WORKERS};
-use crate::optimizer::builder::LBFBuilder;
+use crate::config::{DRAW_OPTIONS, OUTPUT_DIR};
 use crate::optimizer::separator_worker::SeparatorWorker;
 use crate::overlap::tracker::{OTSnapshot, OverlapTracker};
 use crate::sample::eval::SampleEval;
@@ -32,6 +31,15 @@ use rayon::iter::ParallelIterator;
 use std::path::Path;
 use std::time::Instant;
 
+pub struct SeparatorConfig {
+    pub iter_no_imprv_limit: usize,
+    pub strike_limit: usize,
+    pub n_workers: usize,
+    pub log_level: Level,
+    pub jump_cooldown: usize,
+    pub large_area_ch_area_cutoff_ratio: fsize,
+}
+
 pub struct Separator {
     pub instance: SPInstance,
     pub rng: SmallRng,
@@ -40,21 +48,20 @@ pub struct Separator {
     pub workers: Vec<SeparatorWorker>,
     pub output_folder: String,
     pub svg_counter: usize,
+    pub config: SeparatorConfig,
     pub large_area_ch_area_cutoff: fsize,
-    pub log_level: Level,
 }
 
 impl Separator {
-    pub fn new(builder: LBFBuilder, output_folder: String) -> Self {
+    pub fn new(instance: SPInstance, prob: SPProblem, mut rng: SmallRng, output_folder: String, config: SeparatorConfig) -> Self {
         //use the builder to create an initial placement into the problem
-        let (instance, prob, mut rng) = builder.construct();
 
-        let overlap_tracker = OverlapTracker::new(&prob.layout);
+        let overlap_tracker = OverlapTracker::new(&prob.layout, config.jump_cooldown);
         let large_area_ch_area_cutoff = instance.items().iter()
             .map(|(item, _)| item.shape.surrogate().convex_hull_area)
             .max_by_key(|&x| OrderedFloat(x))
-            .unwrap() * LARGE_ITEM_CH_AREA_CUTOFF_RATIO;
-        let workers = (0..SEP_N_WORKERS).map(|_|
+            .unwrap() * config.large_area_ch_area_cutoff_ratio;
+        let workers = (0..config.n_workers).map(|_|
             SeparatorWorker {
                 instance: instance.clone(),
                 prob: prob.clone(),
@@ -71,28 +78,28 @@ impl Separator {
             workers,
             svg_counter: 0,
             output_folder,
-            large_area_ch_area_cutoff,
-            log_level: Level::Info,
+            config,
+            large_area_ch_area_cutoff
         }
     }
 
     pub fn separate_layout(&mut self, time_out: Option<Instant>) -> (Solution, OTSnapshot) {
         let mut min_overlap_sol: (Solution, OTSnapshot) = (self.prob.create_solution(None), self.ot.create_snapshot());
         let mut min_overlap = self.ot.get_total_overlap();
-        log!(self.log_level,"[SEP] separating at width: {:.3} and overlap: {} ", self.prob.strip_width(), FMT.fmt2(min_overlap));
+        log!(self.config.log_level,"[SEP] separating at width: {:.3} and overlap: {} ", self.prob.strip_width(), FMT.fmt2(min_overlap));
 
         let mut n_strikes = 0;
         let mut n_iter = 0;
         let mut n_items_moved = 0;
         let start = Instant::now();
 
-        while n_strikes < SEP_N_STRIKES && time_out.map_or(true, |t| Instant::now() < t) {
+        while n_strikes < self.config.strike_limit && time_out.map_or(true, |t| Instant::now() < t) {
             let mut n_iter_no_improvement = 0;
 
             let initial_strike_overlap = self.ot.get_total_overlap();
             debug!("[SEP] [s:{n_strikes},i:{n_iter}]     init_o: {}",FMT.fmt2(initial_strike_overlap));
 
-            while n_iter_no_improvement < SEP_N_ITER_NO_IMPROVEMENT {
+            while n_iter_no_improvement < self.config.iter_no_imprv_limit {
                 let (overlap_before, w_overlap_before) = (
                     self.ot.get_total_overlap(),
                     self.ot.get_total_weighted_overlap(),
@@ -108,14 +115,14 @@ impl Separator {
 
                 if overlap == 0.0 {
                     //layout is successfully separated
-                    log!(self.log_level,"[SEP] [s:{n_strikes},i:{n_iter}] (S)  min_o: {}",FMT.fmt2(overlap));
+                    log!(self.config.log_level,"[SEP] [s:{n_strikes},i:{n_iter}] (S)  min_o: {}",FMT.fmt2(overlap));
                     return (self.prob.create_solution(None), self.ot.create_snapshot());
                 } else if overlap < min_overlap {
                     //layout is not separated, but absolute overlap is better than before
                     let sol = self.prob.create_solution(None);
                     min_overlap_sol = (sol, self.ot.create_snapshot());
                     min_overlap = overlap;
-                    log!(self.log_level,"[SEP] [s:{n_strikes},i:{n_iter}] (*) min_o: {}",FMT.fmt2(overlap));
+                    log!(self.config.log_level,"[SEP] [s:{n_strikes},i:{n_iter}] (*) min_o: {}",FMT.fmt2(overlap));
                     n_iter_no_improvement = 0;
                 } else {
                     n_iter_no_improvement += 1;
@@ -134,12 +141,12 @@ impl Separator {
             }
             self.rollback(&min_overlap_sol.0, Some(&min_overlap_sol.1));
         }
-        log!(self.log_level,"[SEP] strike limit reached ({}), moves/s: {}, iter/s: {}, time: {}ms",n_strikes,(n_items_moved as f64 / start.elapsed().as_secs_f64()) as usize,(n_iter as f64 / start.elapsed().as_secs_f64()) as usize,start.elapsed().as_millis());
+        log!(self.config.log_level,"[SEP] strike limit reached ({}), moves/s: {}, iter/s: {}, time: {}ms",n_strikes,(n_items_moved as f64 / start.elapsed().as_secs_f64()) as usize,(n_iter as f64 / start.elapsed().as_secs_f64()) as usize,start.elapsed().as_millis());
 
         (min_overlap_sol.0, min_overlap_sol.1)
     }
 
-    pub fn modify(&mut self) -> usize {
+    fn modify(&mut self) -> usize {
         let master_sol = self.prob.create_solution(None);
 
         let n_movements = self.workers.par_iter_mut()
@@ -178,7 +185,7 @@ impl Separator {
             }
             None => {
                 //otherwise, rebuild it
-                self.ot = OverlapTracker::new(&self.prob.layout);
+                self.ot = OverlapTracker::new(&self.prob.layout, self.config.jump_cooldown);
             }
         }
     }
@@ -199,7 +206,7 @@ impl Separator {
         let dt1 = pi1.d_transf;
         let dt2 = pi2.d_transf;
 
-        log!(self.log_level,"[GLS] swapped two large items (id: {} <-> {})", pi1.item_id, pi2.item_id);
+        log!(self.config.log_level,"[GLS] swapped two large items (id: {} <-> {})", pi1.item_id, pi2.item_id);
 
         self.move_item(pk1, dt2, None);
         self.move_item(pk2, dt1, None);
@@ -285,7 +292,7 @@ impl Separator {
             self.prob.layout.bin.base_cde.config().clone(),
         );
         self.prob.layout.change_bin(new_bin);
-        self.ot = OverlapTracker::new(&self.prob.layout);
+        self.ot = OverlapTracker::new(&self.prob.layout, self.config.jump_cooldown);
 
         self.workers.iter_mut().for_each(|opt| {
             *opt = SeparatorWorker {
@@ -313,19 +320,19 @@ impl Separator {
 
         match solution {
             Some(sol) => {
-                let file_name = format!("{}/{}_{:.2}_{suffix}.svg", &self.output_folder, self.svg_counter, strip_width(&sol));
+                let file_name = format!("{}/{}_{:.3}_{suffix}.svg", &self.output_folder, self.svg_counter, strip_width(&sol));
                 let file_path = Path::new(&file_name);
                 let title = file_path.file_stem().unwrap().to_str().unwrap();
                 let svg = s_layout_to_svg(&sol.layout_snapshots[0], &self.instance, DRAW_OPTIONS, title);
-                io::write_svg(&svg, file_path, self.log_level);
+                io::write_svg(&svg, file_path, self.config.log_level);
                 io::write_svg(&svg, Path::new(&format!("{}/.live_solution.svg", OUTPUT_DIR)), Level::Trace);
             }
             None => {
-                let file_name = format!("{}/{}_{:.2}_{suffix}.svg", &self.output_folder, self.svg_counter, self.prob.strip_width());
+                let file_name = format!("{}/{}_{:.3}_{suffix}.svg", &self.output_folder, self.svg_counter, self.prob.strip_width());
                 let file_path = Path::new(&file_name);
                 let title = file_path.file_stem().unwrap().to_str().unwrap();
                 let svg = layout_to_svg(&self.prob.layout, &self.instance, DRAW_OPTIONS, title);
-                io::write_svg(&svg, file_path, self.log_level);
+                io::write_svg(&svg, file_path, self.config.log_level);
                 io::write_svg(&svg, Path::new(&format!("{}/.live_solution.svg", OUTPUT_DIR)), Level::Trace);
             }
         }
