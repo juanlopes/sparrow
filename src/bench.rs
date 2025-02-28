@@ -180,12 +180,12 @@ pub fn calculate_percentile(v: &[fsize], pct: fsize) -> fsize {
     let n = sorted.len();
     // Compute the rank using Excel's formula (1-indexed):
     // k = pct * (n - 1) + 1
-    let k = pct * ((n - 1) as f64) + 1.0;
+    let k = pct * (n - 1) as fsize + 1.0;
 
     // Determine the lower and upper indices (still 1-indexed)
     let lower_index = k.floor() as usize;
     let upper_index = k.ceil() as usize;
-    let fraction = k - (lower_index as f64);
+    let fraction = k - (lower_index as fsize);
 
     // Convert indices to 0-indexed by subtracting 1
     let lower_value = sorted[lower_index - 1];
