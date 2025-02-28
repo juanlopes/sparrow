@@ -4,13 +4,20 @@ use jagua_rs::fsize;
 use jagua_rs::util::config::{CDEConfig, SPSurrogateConfig};
 use crate::optimizer::separator::SeparatorConfig;
 
+
+#[cfg(feature = "live_svg")]
+pub const EXPORT_LIVE_SVG: bool = true;
+
+#[cfg(not(feature = "live_svg"))]
+pub const EXPORT_LIVE_SVG: bool = false;
+
 pub const OUTPUT_DIR: &str = "output";
 
 pub const LOG_LEVEL_RELEASE: log::LevelFilter = log::LevelFilter::Info;
 
 pub const LOG_LEVEL_DEBUG: log::LevelFilter = log::LevelFilter::Debug;
 
-pub const RNG_SEED: Option<usize> = Some(1);
+pub const RNG_SEED: Option<usize> = Some(0);
 
 pub const DRAW_OPTIONS: SvgDrawOptions = SvgDrawOptions {
     theme: SvgLayoutTheme::GRAY_THEME,
@@ -38,7 +45,7 @@ pub const CONSTR_SEARCH_CONFIG: SearchConfig = SearchConfig {
 };
 
 pub const SEPARATOR_CONFIG_EXPLORE: SeparatorConfig = SeparatorConfig {
-    iter_no_imprv_limit: 50,
+    iter_no_imprv_limit: 100,
     strike_limit: 5,
     jump_cooldown: 5,
     log_level: log::Level::Info,
@@ -59,7 +66,7 @@ pub const COMPRESS_R_SHRINKS: [fsize; 2] = [0.0005, 0.0001];
 pub const COMPRESS_N_STRIKES: [usize; 2] = [5, 5];
 
 pub const SEPARATOR_CONFIG_COMPRESS: SeparatorConfig = SeparatorConfig {
-    iter_no_imprv_limit: 50,
+    iter_no_imprv_limit: 100,
     strike_limit: 5,
     jump_cooldown: 5,
     log_level: log::Level::Debug,

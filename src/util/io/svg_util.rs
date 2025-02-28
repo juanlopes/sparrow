@@ -79,8 +79,8 @@ impl SvgLayoutTheme{
 
     pub(crate) const GRAY_THEME: SvgLayoutTheme = SvgLayoutTheme {
         stroke_width_multiplier: 2.5,
-        bin_fill: Color(0xD6, 0xD6, 0xD6),
-        item_fill: Color(0x8F, 0x8F, 0x8F),
+        bin_fill: Color(0xE0, 0xE0, 0xE0),
+        item_fill: Color(0x7A, 0x7A, 0x7A),
         hole_fill: Color(0xFF, 0xFF, 0xFF),
         qz_fill: [
             Color(0x63, 0x63, 0x63), //GRAY
@@ -95,7 +95,7 @@ impl SvgLayoutTheme{
             Color(0x63, 0x63, 0x63), //GRAY
         ],
         qz_stroke_opac: 0.9,
-        overlap_highlight_color: Color(0x00, 0xFF, 0x00), //LIME
+        overlap_highlight_color: Color(0xD0, 0x00, 0x00), //LIME
     };
 }
 

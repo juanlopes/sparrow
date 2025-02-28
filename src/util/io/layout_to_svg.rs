@@ -148,7 +148,7 @@ pub fn layout_to_svg(
                         ("stroke-width", &*format!("{}", stroke_width)),
                         ("fill-rule", "nonzero"),
                         ("stroke", "black"),
-                        ("opacity", "0.9"),
+                        ("fill-opacity", "0.5"),
                     ],
                 ),
             ));
@@ -343,6 +343,7 @@ pub fn layout_to_svg(
                                     svg_export::edge_data(&Edge { start, end }),
                                     &[
                                         ("stroke", &*format!("{}", theme.overlap_highlight_color)),
+                                        ("stroke-opacity", "0.75"),
                                         ("stroke-width", &*format!("{}", stroke_width * 4.0)),
                                         ("stroke-dasharray", &*format!("{} {}", 4.0 * stroke_width, 8.0 * stroke_width)),
                                         ("stroke-linecap", "round"),

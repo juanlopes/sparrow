@@ -1,7 +1,8 @@
 extern crate core;
 
+use std::fs;
 use chrono::Local;
-use gls_strip_packing::config::{DRAW_OPTIONS, OUTPUT_DIR, RNG_SEED, SEPARATOR_CONFIG_COMPRESS, SEPARATOR_CONFIG_EXPLORE, SEP_N_WORKERS};
+use gls_strip_packing::config::{DRAW_OPTIONS, OUTPUT_DIR, RNG_SEED, SEPARATOR_CONFIG_COMPRESS, SEPARATOR_CONFIG_EXPLORE};
 use gls_strip_packing::optimizer::builder::LBFBuilder;
 use gls_strip_packing::optimizer::{compress, explore};
 use gls_strip_packing::optimizer::separator::Separator;
@@ -27,6 +28,8 @@ fn main() {
     let explore_time_limit = Duration::from_secs(explore_time_limit);
     let n_runs_total = std::env::args().nth(3).expect("third argument must be the number of runs")
         .parse().expect("third argument must be the number of runs");
+
+    fs::create_dir_all(OUTPUT_DIR).expect("could not create output directory");
 
     let json_instance = io::read_json_instance(Path::new(&input_file_path));
 
@@ -96,14 +99,14 @@ fn main() {
 
                 s.spawn(move |_| {
                     let builder = builder.construct();
-                    let mut expl_separator = Separator::new(builder.instance, builder.prob, builder.rng, sols_output_dir.clone(), SEPARATOR_CONFIG_EXPLORE);
+                    let mut expl_separator = Separator::new(builder.instance, builder.prob, builder.rng, sols_output_dir.clone(), 0, SEPARATOR_CONFIG_EXPLORE);
 
                     let solutions = explore(&mut expl_separator, explore_time_limit);
                     let final_explore_sol = solutions.last().expect("no solutions found during exploration");
 
                     let start_comp = Instant::now();
 
-                    let mut cmpr_separator = Separator::new(expl_separator.instance, expl_separator.prob, expl_separator.rng, sols_output_dir.clone(), SEPARATOR_CONFIG_COMPRESS);
+                    let mut cmpr_separator = Separator::new(expl_separator.instance, expl_separator.prob, expl_separator.rng, sols_output_dir.clone(), expl_separator.svg_counter, SEPARATOR_CONFIG_COMPRESS);
                     let final_sol = compress(&mut cmpr_separator, final_explore_sol);
 
                     println!("[BENCH] [id:{:>3}] finished, expl: {:.3}% ({}s), cmpr: {:.3}% ({}s)",

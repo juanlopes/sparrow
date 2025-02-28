@@ -9,7 +9,6 @@ use jagua_rs::collision_detection::hazard::HazardEntity;
 use jagua_rs::entities::layout::Layout;
 use jagua_rs::fsize;
 use jagua_rs::util::assertions;
-use jagua_rs::util::fpa::FPA;
 use log::warn;
 use std::path::Path;
 
@@ -123,7 +122,7 @@ pub fn tracker_matches_layout(ot: &OverlapTracker, l: &Layout) -> bool {
         if collisions.contains(&HazardEntity::BinExterior) {
             let bin_overlap = ot.get_bin_overlap(pk1);
             let calc_overlap = overlap_proxy::bin_overlap_proxy(&pi1.shape, l.bin.bbox());
-            assert_approx_eq!(fsize, calc_overlap, bin_overlap, epsilon = FPA::tolerance());
+            assert_approx_eq!(fsize, calc_overlap, bin_overlap, ulps = 5);
         } else {
             assert_eq!(ot.get_bin_overlap(pk1), 0.0);
         }

@@ -8,7 +8,6 @@ pub mod optimizer;
 pub mod overlap;
 pub mod sample;
 pub mod util;
-
 pub mod config;
 
 #[global_allocator]

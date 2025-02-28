@@ -22,9 +22,6 @@ pub fn read_json_instance(path: &Path) -> JsonInstance {
 }
 
 pub fn init_logger(level_filter: LevelFilter) {
-    //make the output directory if it does not exist
-    fs::create_dir_all(OUTPUT_DIR).expect("could not create output directory");
-
     //remove old log file
     let _ = fs::remove_file(format!("{}/log.txt", OUTPUT_DIR));
     fern::Dispatch::new()
