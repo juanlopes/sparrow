@@ -38,7 +38,7 @@ pub const CONSTR_SEARCH_CONFIG: SearchConfig = SearchConfig {
 };
 
 pub const SEPARATOR_CONFIG_EXPLORE: SeparatorConfig = SeparatorConfig {
-    iter_no_imprv_limit: 50,
+    iter_no_imprv_limit: 100,
     strike_limit: 5,
     jump_cooldown: 5,
     log_level: log::Level::Info,
@@ -59,7 +59,7 @@ pub const COMPRESS_R_SHRINKS: [fsize; 2] = [0.0005, 0.0001];
 pub const COMPRESS_N_STRIKES: [usize; 2] = [5, 5];
 
 pub const SEPARATOR_CONFIG_COMPRESS: SeparatorConfig = SeparatorConfig {
-    iter_no_imprv_limit: 50,
+    iter_no_imprv_limit: 100,
     strike_limit: 5,
     jump_cooldown: 5,
     log_level: log::Level::Debug,
