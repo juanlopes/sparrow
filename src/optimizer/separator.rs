@@ -276,7 +276,7 @@ impl Separator {
 
         let split_position = split_position.unwrap_or(current_width / 2.0);
 
-        let shift_transf = DTransformation::new(0.0, (delta + FPA::tolerance(), 0.0));
+        let shift_transf = DTransformation::new(0.0, (delta, 0.0)); //add a small epsilon to avoid overlap with the bin
         let items_to_shift = self.prob.layout.placed_items().iter()
             .filter(|(_, pi)| pi.shape.centroid().0 > split_position)
             .map(|(k, pi)| (k, pi.d_transf))

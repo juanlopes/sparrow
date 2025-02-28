@@ -17,7 +17,7 @@ pub const LOG_LEVEL_RELEASE: log::LevelFilter = log::LevelFilter::Info;
 
 pub const LOG_LEVEL_DEBUG: log::LevelFilter = log::LevelFilter::Debug;
 
-pub const RNG_SEED: Option<usize> = None;
+pub const RNG_SEED: Option<usize> = Some(0);
 
 pub const DRAW_OPTIONS: SvgDrawOptions = SvgDrawOptions {
     theme: SvgLayoutTheme::GRAY_THEME,
