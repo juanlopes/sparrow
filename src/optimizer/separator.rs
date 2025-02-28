@@ -216,57 +216,43 @@ impl Separator {
         self.move_item(pk2, dt1, None);
     }
 
-    fn move_item(&mut self, pik: PItemKey, dt: DTransformation, eval: Option<SampleEval>) -> PItemKey {
-        debug_assert!(tracker_matches_layout(
-            &self.ot,
-            &self.prob.layout
-        ));
+    fn move_item(&mut self, pk: PItemKey, d_transf: DTransformation, eval: Option<SampleEval>) -> PItemKey {
+        debug_assert!(tracker_matches_layout(&self.ot, &self.prob.layout));
 
-        let old_overlap = self.ot.get_overlap(pik);
-        let old_weighted_overlap = self.ot.get_weighted_overlap(pik);
-        let old_bbox = self.prob.layout.placed_items()[pik].shape.bbox();
+        let item_id = self.prob.layout.placed_items()[pk].item_id;
+
+        let old_overlap = self.ot.get_overlap(pk);
+        let old_weighted_overlap = self.ot.get_weighted_overlap(pk);
+        let old_bbox = self.prob.layout.placed_items()[pk].shape.bbox();
 
         //Remove the item from the problem
-        let old_p_opt = self.prob.remove_item(STRIP_LAYOUT_IDX, pik, true);
-        let item = self.instance.item(old_p_opt.item_id);
+        self.prob.remove_item(STRIP_LAYOUT_IDX, pk, true);
 
-        //Compute the colliding entities after the move
-        let colliding_entities = {
-            let shape = item.shape.transform_clone(&dt.into());
-            self.prob
-                .layout
-                .cde()
-                .collect_poly_collisions(&shape, &[])
-        };
+        //Place the item again but with a new transformation
+        let (_, new_pk) = self.prob.place_item(PlacingOption {
+            d_transf,
+            layout_idx: STRIP_LAYOUT_IDX,
+            item_id,
+        });
 
-        assert!(
-            colliding_entities.is_empty() || !matches!(eval, Some(SampleEval::Valid(_))),
-            "colliding entities detected for valid placement"
-        );
-
-        let new_pk = {
-            let new_p_opt = PlacingOption {
-                d_transf: dt,
-                ..old_p_opt
-            };
-
-            let (_, new_pik) = self.prob.place_item(new_p_opt);
-            new_pik
-        };
-
-        self.ot.register_item_move(&self.prob.layout, pik, new_pk);
+        self.ot.register_item_move(&self.prob.layout, pk, new_pk);
 
         let new_overlap = self.ot.get_overlap(new_pk);
         let new_weighted_overlap = self.ot.get_weighted_overlap(new_pk);
         let new_bbox = self.prob.layout.placed_items()[new_pk].shape.bbox();
 
-        let jumped = old_bbox.relation_to(&new_bbox) == GeoRelation::Disjoint;
-        let item_big_enough = item.shape.surrogate().convex_hull_area > self.large_area_ch_area_cutoff;
-        if jumped && item_big_enough {
+        let jumped = {
+            let disjoint_bbox = old_bbox.relation_to(&new_bbox) == GeoRelation::Disjoint;
+            let item_ch_area = self.instance.item(item_id).shape.surrogate().convex_hull_area;
+            let big_enough = item_ch_area > self.large_area_ch_area_cutoff;
+            disjoint_bbox && big_enough
+        };
+
+        if jumped {
             self.ot.register_jump(new_pk);
         }
 
-        debug!("[MV] moved item {} from from o: {}, wo: {} to o+1: {}, w_o+1: {} (jump: {})",item.id,FMT.fmt2(old_overlap),FMT.fmt2(old_weighted_overlap),FMT.fmt2(new_overlap),FMT.fmt2(new_weighted_overlap),jumped);
+        debug!("[MV] moved item {} from from o: {}, wo: {} to o+1: {}, w_o+1: {} (jump: {})",item_id,FMT.fmt2(old_overlap),FMT.fmt2(old_weighted_overlap),FMT.fmt2(new_overlap),FMT.fmt2(new_weighted_overlap),jumped);
 
         debug_assert!(tracker_matches_layout(&self.ot, &self.prob.layout));
 
@@ -274,30 +260,33 @@ impl Separator {
     }
 
     pub fn change_strip_width(&mut self, new_width: fsize, split_position: Option<fsize>) {
-        let current_width = self.prob.strip_width();
-        let delta = new_width - current_width;
-        //shift all items right of the center of the strip
+        //if no split position is provided, use the center of the strip
+        let split_position = split_position.unwrap_or(self.prob.strip_width() / 2.0);
+        let delta = new_width - self.prob.strip_width();
 
-        let split_position = split_position.unwrap_or(current_width / 2.0);
-
-        let shift_transf = DTransformation::new(0.0, (delta, 0.0)); //add a small epsilon to avoid overlap with the bin
+        //shift all items right of the split position
         let items_to_shift = self.prob.layout.placed_items().iter()
             .filter(|(_, pi)| pi.shape.centroid().0 > split_position)
             .map(|(k, pi)| (k, pi.d_transf))
             .collect_vec();
 
         for (pik, dtransf) in items_to_shift {
-            let new_transf = dtransf.compose().translate(shift_transf.translation());
+            let existing_transf = dtransf.compose();
+            let new_transf = existing_transf.translate((delta, 0.0));
             self.move_item(pik, new_transf.decompose(), None);
         }
 
+        //swap the bin to one with the new width
         let new_bin = Bin::from_strip(
             AARectangle::new(0.0, 0.0, new_width, self.prob.strip_height()),
             self.prob.layout.bin.base_cde.config().clone(),
         );
         self.prob.layout.change_bin(new_bin);
+
+        //rebuild the overlap tracker
         self.ot = OverlapTracker::new(&self.prob.layout, self.config.jump_cooldown);
 
+        //rebuild the workers
         self.workers.iter_mut().for_each(|opt| {
             *opt = SeparatorWorker {
                 instance: self.instance.clone(),

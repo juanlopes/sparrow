@@ -1,3 +1,4 @@
+use jagua_rs::collision_detection::hazard_helpers::HazardDetector;
 use crate::config::{WEIGHT_MAX_INC_RATIO, WEIGHT_MIN_INC_RATIO, WEIGHT_OVERLAP_DECAY};
 use crate::overlap::overlap_proxy;
 use crate::overlap::pair_matrix::PairMatrix;
@@ -91,18 +92,17 @@ impl OverlapTracker {
         let shape = pi.shape.as_ref();
 
         // Detect which hazards are overlapping with the item
-        let overlapping = l.cde().collect_poly_collisions(shape, &[pi.into()]);
+        let overlapping = l.cde().collect_poly_collisions(shape, &[(pk,pi).into()]);
 
         // For each overlapping hazard, calculate the amount of overlap using the proxy functions
         // and store it in the overlap tracker
-        for haz in overlapping {
+        for haz in overlapping.iter() {
             match haz {
-                HazardEntity::PlacedItem { .. } => {
-                    let other_pk = l.hazard_to_p_item_key(&haz).unwrap();
-                    let other_shape = &l.placed_items[other_pk].shape;
+                HazardEntity::PlacedItem { pk: other_pk, .. } => {
+                    let other_shape = &l.placed_items[*other_pk].shape;
                     let overlap = overlap_proxy::poly_overlap_proxy(shape, other_shape);
 
-                    let other_idx = self.pk_idx_map[other_pk];
+                    let other_idx = self.pk_idx_map[*other_pk];
 
                     self.pair_overlap[(idx, other_idx)].overlap = overlap;
                 }

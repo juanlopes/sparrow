@@ -17,6 +17,7 @@ use jagua_rs::fsize;
 use jagua_rs::geometry::d_transformation::DTransformation;
 use jagua_rs::geometry::geo_enums::GeoRelation;
 use jagua_rs::geometry::geo_traits::{Shape, Transformable};
+use jagua_rs::collision_detection::hazard_helpers::HazardDetector;
 use log::debug;
 use rand::prelude::{SliceRandom, SmallRng};
 use tap::Tap;
@@ -96,7 +97,7 @@ impl SeparatorWorker {
             self.prob.layout.cde().collect_poly_collisions(&shape, &[])
         };
 
-        assert!(colliding_entities.is_empty() || !matches!(eval, Some(SampleEval::Valid(_))), "colliding entities detected for valid placement");
+        assert!(colliding_entities.len() == 0 || !matches!(eval, Some(SampleEval::Valid(_))), "colliding entities detected for valid placement");
 
         let new_pk = {
             let new_p_opt = PlacingOption {

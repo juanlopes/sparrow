@@ -17,7 +17,7 @@ pub const LOG_LEVEL_RELEASE: log::LevelFilter = log::LevelFilter::Info;
 
 pub const LOG_LEVEL_DEBUG: log::LevelFilter = log::LevelFilter::Debug;
 
-pub const RNG_SEED: Option<usize> = Some(0);
+pub const RNG_SEED: Option<usize> = None;
 
 pub const DRAW_OPTIONS: SvgDrawOptions = SvgDrawOptions {
     theme: SvgLayoutTheme::GRAY_THEME,
@@ -28,7 +28,7 @@ pub const DRAW_OPTIONS: SvgDrawOptions = SvgDrawOptions {
 };
 
 pub const CDE_CONFIG: CDEConfig = CDEConfig {
-    quadtree_depth: 3,
+    quadtree_depth: 4,
     hpg_n_cells: 0,
     item_surrogate_config: SPSurrogateConfig {
         pole_coverage_goal: 0.95,
