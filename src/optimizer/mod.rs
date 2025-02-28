@@ -4,7 +4,7 @@ use jagua_rs::entities::problems::problem_generic::ProblemGeneric;
 use jagua_rs::entities::problems::strip_packing::strip_width;
 use jagua_rs::entities::solution::Solution;
 use jagua_rs::fsize;
-use log::info;
+use log::{info, Level};
 use rand::prelude::SmallRng;
 use rand::Rng;
 use rand_distr::Normal;
@@ -20,12 +20,12 @@ mod separator_worker;
 // All high-level heuristic logic
 pub fn optimize(instance: SPInstance, rng: SmallRng, output_folder_path: String, explore_time_limit: Duration) -> Solution {
     let builder = LBFBuilder::new(instance, CDE_CONFIG, rng, CONSTR_SEARCH_CONFIG).construct();
-    let mut expl_separator = Separator::new(builder.instance, builder.prob, builder.rng, output_folder_path.clone(), SEPARATOR_CONFIG_EXPLORE);
+    let mut expl_separator = Separator::new(builder.instance, builder.prob, builder.rng, output_folder_path.clone(), 0, SEPARATOR_CONFIG_EXPLORE);
 
     let solutions = explore(&mut expl_separator, explore_time_limit);
     let final_explore_sol = solutions.last().expect("no solutions found during exploration");
 
-    let mut cmpr_separator = Separator::new(expl_separator.instance, expl_separator.prob, expl_separator.rng, output_folder_path.clone(), SEPARATOR_CONFIG_COMPRESS);
+    let mut cmpr_separator = Separator::new(expl_separator.instance, expl_separator.prob, expl_separator.rng, output_folder_path.clone(), expl_separator.svg_counter, SEPARATOR_CONFIG_COMPRESS);
 
     let final_sol = compress(&mut cmpr_separator, final_explore_sol);
 
@@ -38,7 +38,7 @@ pub fn explore(sep: &mut Separator, time_out: Duration) -> Vec<Solution> {
 
     let mut feasible_solutions = vec![sep.prob.create_solution(None)];
 
-    sep.write_to_disk(None, "init", true);
+    sep.write_to_disk(Level::Info, None, "init", false);
     info!("[EXPL] starting optimization with initial width: {:.3} ({:.3}%)",current_width,sep.prob.usage() * 100.0);
 
     let end_time = Instant::now() + time_out;
@@ -54,7 +54,7 @@ pub fn explore(sep: &mut Separator, time_out: Duration) -> Vec<Solution> {
                 info!("[EXPL] new best at width: {:.3} ({:.3}%)",current_width,sep.prob.usage() * 100.0);
                 best_width = current_width;
                 feasible_solutions.push(local_best.0.clone());
-                sep.write_to_disk(Some(local_best.0.clone()), "f", true);
+                sep.write_to_disk(Level::Info, Some(local_best.0.clone()), "f", false);
             }
             let next_width = current_width * (1.0 - EXPLORE_R_SHRINK);
             info!("[EXPL] shrinking width by {}%: {:.3} -> {:.3}", EXPLORE_R_SHRINK * 100.0, current_width, next_width);
@@ -63,7 +63,7 @@ pub fn explore(sep: &mut Separator, time_out: Duration) -> Vec<Solution> {
             solution_pool.clear();
         } else {
             info!("[EXPL] layout separation unsuccessful, exporting min overlap solution");
-            sep.write_to_disk(Some(local_best.0.clone()), "o", true);
+            sep.write_to_disk(Level::Info, Some(local_best.0.clone()), "o", false);
 
             //layout was not successfully separated, add to local bests
             match solution_pool.binary_search_by(|(_, o)| o.partial_cmp(&total_overlap).unwrap()) {
@@ -103,7 +103,7 @@ pub fn compress(sep: &mut Separator, init: &Solution) -> Solution {
             match try_compress(sep, &best, r_shrink) {
                 Some(compacted_sol) => {
                     info!("[CMPR] compressed to {:.3} ({:.3}%)", strip_width(&compacted_sol), compacted_sol.usage * 100.0);
-                    sep.write_to_disk(Some(compacted_sol.clone()), "p", true);
+                    sep.write_to_disk(Level::Info, Some(compacted_sol.clone()), "p", false);
                     best = compacted_sol;
                     n_strikes = 0;
                 }

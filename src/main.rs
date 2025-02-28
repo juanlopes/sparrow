@@ -57,9 +57,9 @@ fn main() {
 
     let solution = optimize(sp_instance, rng, output_folder_path, explore_time_limit);
 
-    io::write_svg(
-        &s_layout_to_svg(&solution.layout_snapshots[0], &instance, DRAW_OPTIONS, "final"),
-        Path::new(format!("{OUTPUT_DIR}/final_{}.svg", json_instance.name).as_str()),
-        Level::Info,
-    );
+    {
+        let svg = s_layout_to_svg(&solution.layout_snapshots[0], &instance, DRAW_OPTIONS, "final");
+        io::write_svg(&svg, Path::new(format!("{OUTPUT_DIR}/final_{}.svg", json_instance.name).as_str()), Level::Info);
+        io::write_svg(&svg, Path::new(format!("{OUTPUT_DIR}/.live_solution{}.svg", json_instance.name).as_str()), Level::Trace);
+    }
 }
