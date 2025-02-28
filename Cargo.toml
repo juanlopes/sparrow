@@ -20,7 +20,7 @@ name = "overlap_visualizer"
 path = "src/util/playgrounds/playground_overlap_visualizer.rs"
 
 [dependencies]
-jagua-rs = { path = "../jagua-rs/jagua-rs"}
+jagua-rs = { path = "libs/jagua-rs/jagua-rs"}
 rand = { version = "0.9.0", features = [ "small_rng" ] }
 rand_distr = "0.5.1"
 svg = "0.18.0"
