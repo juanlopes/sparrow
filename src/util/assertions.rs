@@ -11,17 +11,18 @@ use jagua_rs::fsize;
 use jagua_rs::util::assertions;
 use log::warn;
 use std::path::Path;
+use jagua_rs::collision_detection::hazard_helpers::HazardDetector;
 
 pub fn tracker_matches_layout(ot: &OverlapTracker, l: &Layout) -> bool {
     assert!(l.placed_items.keys().all(|k| ot.pk_idx_map.contains_key(k)));
     assert!(assertions::layout_qt_matches_fresh_qt(l));
 
     for (pk1, pi1) in l.placed_items.iter() {
-        let collisions = l.cde().collect_poly_collisions(&pi1.shape, &[pi1.into()]);
+        let collisions = l.cde().collect_poly_collisions(&pi1.shape, &[(pk1,pi1).into()]);
         assert_eq!(ot.get_pair_overlap(pk1, pk1), 0.0);
         for (pk2, pi2) in l.placed_items.iter().filter(|(k, _)| *k != pk1) {
             let stored_overlap = ot.get_pair_overlap(pk1, pk2);
-            match collisions.contains(&(pi2.into())) {
+            match collisions.iter().contains(&HazardEntity::from((pk2, pi2))) {
                 true => {
                     let calc_overlap = overlap_proxy::poly_overlap_proxy(&pi1.shape, &pi2.shape);
                     let calc_overlap2 = overlap_proxy::poly_overlap_proxy(&pi2.shape, &pi1.shape);
@@ -32,16 +33,16 @@ pub fn tracker_matches_layout(ot: &OverlapTracker, l: &Layout) -> bool {
                         epsilon = 0.001 * stored_overlap
                     ) {
                         let opposite_collisions =
-                            l.cde().collect_poly_collisions(&pi2.shape, &[pi2.into()]);
-                        if opposite_collisions.contains(&(pi1.into())) {
+                            l.cde().collect_poly_collisions(&pi2.shape, &[(pk2, pi2).into()]);
+                        if opposite_collisions.contains(&((pk1, pi1).into())) {
                             dbg!(&pi1.shape.points, &pi2.shape.points);
                             dbg!(
                                 stored_overlap,
                                 calc_overlap,
                                 calc_overlap2,
                                 opposite_collisions,
-                                HazardEntity::from(pi1),
-                                HazardEntity::from(pi2)
+                                HazardEntity::from((pk1, pi1)),
+                                HazardEntity::from((pk2, pi2))
                             );
                             panic!("overlap tracker error");
                         } else {
@@ -49,12 +50,12 @@ pub fn tracker_matches_layout(ot: &OverlapTracker, l: &Layout) -> bool {
                             warn!("inconsistent overlap");
                             warn!(
                                 "collisions: pi_1 {:?} -> {:?}",
-                                HazardEntity::from(pi1),
+                                HazardEntity::from((pk1, pi1)),
                                 collisions
                             );
                             warn!(
                                 "opposite collisions: pi_2 {:?} -> {:?}",
-                                HazardEntity::from(pi2),
+                                HazardEntity::from((pk2, pi2)),
                                 opposite_collisions
                             );
 
@@ -90,15 +91,15 @@ pub fn tracker_matches_layout(ot: &OverlapTracker, l: &Layout) -> bool {
                         let calc_overlap =
                             overlap_proxy::poly_overlap_proxy(&pi1.shape, &pi2.shape);
                         let opposite_collisions =
-                            l.cde().collect_poly_collisions(&pi2.shape, &[pi2.into()]);
-                        if !opposite_collisions.contains(&(pi1.into())) {
+                            l.cde().collect_poly_collisions(&pi2.shape, &[(pk2,pi2).into()]);
+                        if !opposite_collisions.contains(&((pk1, pi1).into())) {
                             dbg!(&pi1.shape.points, &pi2.shape.points);
                             dbg!(
                                 stored_overlap,
                                 calc_overlap,
                                 opposite_collisions,
-                                HazardEntity::from(pi1),
-                                HazardEntity::from(pi2)
+                                HazardEntity::from((pk1, pi1)),
+                                HazardEntity::from((pk2, pi2))
                             );
                             panic!("overlap tracker error");
                         } else {
@@ -106,12 +107,12 @@ pub fn tracker_matches_layout(ot: &OverlapTracker, l: &Layout) -> bool {
                             warn!("inconsistent overlap");
                             warn!(
                                 "collisions: {:?} -> {:?}",
-                                HazardEntity::from(pi1),
+                                HazardEntity::from((pk1, pi1)),
                                 collisions
                             );
                             warn!(
                                 "opposite collisions: {:?} -> {:?}",
-                                HazardEntity::from(pi2),
+                                HazardEntity::from((pk2, pi2)),
                                 opposite_collisions
                             );
                         }
