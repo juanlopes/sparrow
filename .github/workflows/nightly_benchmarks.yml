@@ -24,7 +24,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
 
       - name: set RUSTFLAGS
-        run: echo "RUSTFLAGS=\"-C target-cpu=native -Awarnings\"" >> $GITHUB_ENV
+        run: echo "RUSTFLAGS='-C target-cpu=native -Awarnings'" >> $GITHUB_ENV
 
       - name: Run bench for ${{ matrix.instance }}
         run: |
