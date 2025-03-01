@@ -12,16 +12,16 @@ use log::debug;
 use rand::Rng;
 
 #[derive(Debug, Clone, Copy)]
-pub struct SearchConfig {
+pub struct SampleConfig {
     pub n_bin_samples: usize,
     pub n_focussed_samples: usize,
     pub n_coord_descents: usize,
 }
 
-pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, mut evaluator: impl SampleEvaluator, search_config: SearchConfig, rng: &mut impl Rng) -> (DTransformation, SampleEval) {
+pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, mut evaluator: impl SampleEvaluator, sample_config: SampleConfig, rng: &mut impl Rng) -> (DTransformation, SampleEval) {
     let item_min_dim = fsize::min(item.shape.bbox().width(), item.shape.bbox().height());
 
-    let mut best_samples = BestSamples::new(search_config.n_coord_descents, item_min_dim * 0.1);
+    let mut best_samples = BestSamples::new(sample_config.n_coord_descents, item_min_dim * 0.1);
 
     let focussed_sampler = match ref_pk {
         Some(ref_pk) => {
@@ -43,14 +43,14 @@ pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, mut e
         item,
     );
 
-    for _ in 0..search_config.n_bin_samples {
+    for _ in 0..sample_config.n_bin_samples {
         let dt = bin_sampler.sample(rng).into();
         let eval = evaluator.eval(dt, Some(best_samples.worst().1));
         best_samples.report(dt, eval);
     }
 
     if let Some(focussed_sampler) = focussed_sampler {
-        for _ in 0..search_config.n_focussed_samples {
+        for _ in 0..sample_config.n_focussed_samples {
             let dt = focussed_sampler.sample(rng);
             let eval = evaluator.eval(dt, Some(best_samples.worst().1));
             best_samples.report(dt, eval);

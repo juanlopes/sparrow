@@ -6,7 +6,7 @@ use gls_strip_packing::config::{DRAW_OPTIONS, OUTPUT_DIR, RNG_SEED, SEPARATOR_CO
 use gls_strip_packing::optimizer::builder::LBFBuilder;
 use gls_strip_packing::optimizer::{compress, explore};
 use gls_strip_packing::optimizer::separator::Separator;
-use gls_strip_packing::sample::search::SearchConfig;
+use gls_strip_packing::sample::search::SampleConfig;
 use gls_strip_packing::util::io;
 use gls_strip_packing::util::io::layout_to_svg::s_layout_to_svg;
 use jagua_rs::entities::instances::instance::Instance;
@@ -75,7 +75,7 @@ fn main() {
         _ => panic!("Expected SPInstance"),
     };
 
-    let constr_search_config = SearchConfig {
+    let explore_sample_config = SampleConfig {
         n_bin_samples: 1000,
         n_focussed_samples: 0,
         n_coord_descents: 3,
@@ -94,7 +94,7 @@ fn main() {
                     sp_instance.clone(),
                     cde_config,
                     SmallRng::seed_from_u64(rng.random()),
-                    constr_search_config,
+                    explore_sample_config,
                 );
 
                 s.spawn(move |_| {

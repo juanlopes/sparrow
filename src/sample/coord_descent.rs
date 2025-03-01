@@ -6,19 +6,7 @@ use log::trace;
 use rand::Rng;
 use std::cmp::Ordering;
 use std::fmt::Debug;
-
-
-/// Step multiplier on success
-pub const K_SUCC: fsize = 1.1;
-
-/// Step multiplier on fail
-pub const K_FAIL: fsize = 0.5;
-
-/// Initial step size at 25% of the item's min dimension
-pub const STEP_INIT_RATIO: fsize = 0.25;
-
-/// Minimum step size at 0.1% of the item's min dimension
-pub const STEP_LIMIT_RATIO: fsize = 0.001;
+use crate::config::{CD_STEP_FAIL, CD_STEP_SUCCESS, CD_STEP_INIT_RATIO, CD_STEP_LIMIT_RATIO};
 
 pub fn coordinate_descent(
     (init_dt, init_eval): (DTransformation, SampleEval),
@@ -34,8 +22,8 @@ pub fn coordinate_descent(
         pos: init_pos,
         eval: init_eval,
         axis: AXES[rng.random_range(0..4)],
-        steps: (min_dim * STEP_INIT_RATIO, min_dim * STEP_INIT_RATIO),
-        step_limit: min_dim * STEP_LIMIT_RATIO,
+        steps: (min_dim * CD_STEP_INIT_RATIO, min_dim * CD_STEP_INIT_RATIO),
+        step_limit: min_dim * CD_STEP_LIMIT_RATIO,
     };
 
     while let Some([c0, c1]) = cd_state.gen_candidates() {
@@ -88,7 +76,7 @@ impl CDState {
     }
 
     fn adjust_steps_and_axis(&mut self, improved: bool) {
-        let m = if improved { K_SUCC } else { K_FAIL };
+        let m = if improved { CD_STEP_SUCCESS } else { CD_STEP_FAIL };
         let (sx, sy) = self.steps;
 
         self.steps = match self.axis {

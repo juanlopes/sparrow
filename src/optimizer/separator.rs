@@ -29,7 +29,7 @@ use rayon::iter::IntoParallelRefMutIterator;
 use rayon::iter::ParallelIterator;
 use std::path::Path;
 use std::time::Instant;
-use crate::sample::search::SearchConfig;
+use crate::sample::search::SampleConfig;
 
 pub struct SeparatorConfig {
     pub iter_no_imprv_limit: usize,
@@ -38,7 +38,7 @@ pub struct SeparatorConfig {
     pub log_level: Level,
     pub jump_cooldown: usize,
     pub large_area_ch_area_cutoff_ratio: fsize,
-    pub search_config: SearchConfig
+    pub sample_config: SampleConfig
 }
 
 pub struct Separator {
@@ -69,7 +69,7 @@ impl Separator {
                 ot: overlap_tracker.clone(),
                 rng: SmallRng::seed_from_u64(rng.random()),
                 large_area_ch_area_cutoff,
-                search_config: config.search_config.clone(),
+                sample_config: config.sample_config.clone(),
             }).collect();
 
         Self {
@@ -296,7 +296,7 @@ impl Separator {
                 ot: self.ot.clone(),
                 rng: SmallRng::seed_from_u64(self.rng.random()),
                 large_area_ch_area_cutoff: self.large_area_ch_area_cutoff,
-                search_config: self.config.search_config.clone(),
+                sample_config: self.config.sample_config.clone(),
             };
         });
         debug!("[GLS] changed strip width to {:.3}", new_width);

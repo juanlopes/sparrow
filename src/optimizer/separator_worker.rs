@@ -2,7 +2,7 @@ use crate::overlap::tracker::OverlapTracker;
 use crate::sample::eval::overlapping_evaluator::SeparationSampleEvaluator;
 use crate::sample::eval::SampleEval;
 use crate::sample::search;
-use crate::sample::search::SearchConfig;
+use crate::sample::search::SampleConfig;
 use crate::util::assertions::tracker_matches_layout;
 use crate::FMT;
 use itertools::Itertools;
@@ -28,7 +28,7 @@ pub struct SeparatorWorker {
     pub ot: OverlapTracker,
     pub rng: SmallRng,
     pub large_area_ch_area_cutoff: fsize,
-    pub search_config: SearchConfig,
+    pub sample_config: SampleConfig,
 }
 
 impl SeparatorWorker {
@@ -55,16 +55,16 @@ impl SeparatorWorker {
 
                 let evaluator = SeparationSampleEvaluator::new(&self.prob.layout, item, pk, &self.ot);
 
-                let search_config = match self.ot.is_on_jump_cooldown(pk) {
-                    false => self.search_config.clone(),
-                    true => SearchConfig {
+                let sample_config = match self.ot.is_on_jump_cooldown(pk) {
+                    false => self.sample_config.clone(),
+                    true => SampleConfig {
                         n_bin_samples : 0,
-                        ..self.search_config.clone()
+                        ..self.sample_config.clone()
                     }
                 };
 
                 let new_placement = search::search_placement(
-                    &self.prob.layout, item, Some(pk), evaluator, search_config, &mut self.rng
+                    &self.prob.layout, item, Some(pk), evaluator, sample_config, &mut self.rng
                 );
 
                 self.move_item(pk, new_placement.0, Some(new_placement.1));

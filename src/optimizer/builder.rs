@@ -1,6 +1,6 @@
 use crate::sample::eval::constructive_evaluator::ConstructiveEvaluator;
 use crate::sample::eval::SampleEval;
-use crate::sample::search::{search_placement, SearchConfig};
+use crate::sample::search::{search_placement, SampleConfig};
 use itertools::Itertools;
 use jagua_rs::entities::instances::instance_generic::InstanceGeneric;
 use jagua_rs::entities::instances::strip_packing::SPInstance;
@@ -19,7 +19,7 @@ pub struct LBFBuilder {
     pub instance: SPInstance,
     pub prob: SPProblem,
     pub rng: SmallRng,
-    pub search_config: SearchConfig,
+    pub sample_config: SampleConfig,
 }
 
 impl LBFBuilder {
@@ -27,7 +27,7 @@ impl LBFBuilder {
         instance: SPInstance,
         cde_config: CDEConfig,
         rng: SmallRng,
-        search_config: SearchConfig,
+        sample_config: SampleConfig,
     ) -> Self {
         let init_strip_width = instance.item_area / instance.strip_height; //100% utilization
         let prob = SPProblem::new(instance.clone(), init_strip_width, cde_config);
@@ -36,7 +36,7 @@ impl LBFBuilder {
             instance,
             prob,
             rng,
-            search_config,
+            sample_config,
         }
     }
 
@@ -87,7 +87,7 @@ impl LBFBuilder {
         let item = self.instance.item(item_id);
         let evaluator = ConstructiveEvaluator::new(layout, item);
 
-        let (d_transf, eval) = search_placement(layout, item, None, evaluator, self.search_config, &mut self.rng, );
+        let (d_transf, eval) = search_placement(layout, item, None, evaluator, self.sample_config, &mut self.rng);
 
         if let SampleEval::Valid(_) = eval {
             Some(
