@@ -109,10 +109,12 @@ fn main() {
                     let mut cmpr_separator = Separator::new(expl_separator.instance, expl_separator.prob, expl_separator.rng, sols_output_dir.clone(), expl_separator.svg_counter, SEPARATOR_CONFIG_COMPRESS);
                     let final_sol = compress(&mut cmpr_separator, final_explore_sol);
 
-                    println!("[BENCH] [id:{:>3}] finished, expl: {:.3}% ({}s), cmpr: {:.3}% ({}s)",
+                    println!("[BENCH] [id:{:>3}] finished, expl: {:.3}% ({}s), cmpr: {:.3}% (+{:.3}%) ({}s)",
                              bench_idx,
                              final_explore_sol.usage * 100.0, explore_time_limit.as_secs(),
-                             final_sol.usage * 100.0, start_comp.elapsed().as_secs()
+                             final_sol.usage * 100.0,
+                             final_sol.usage * 100.0 - final_explore_sol.usage * 100.0,
+                             start_comp.elapsed().as_secs()
                     );
 
                     *sol_slice = Some(final_sol);
