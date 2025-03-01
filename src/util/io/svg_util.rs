@@ -80,7 +80,7 @@ impl SvgLayoutTheme{
     pub(crate) const GRAY_THEME: SvgLayoutTheme = SvgLayoutTheme {
         stroke_width_multiplier: 2.5,
         bin_fill: Color(0xD3, 0xD3, 0xD3),
-        item_fill: Color(0x20, 0x20, 0x20),
+        item_fill: Color(0x7A, 0x7A, 0x7A),
         hole_fill: Color(0xFF, 0xFF, 0xFF),
         qz_fill: [
             Color(0x63, 0x63, 0x63), //GRAY

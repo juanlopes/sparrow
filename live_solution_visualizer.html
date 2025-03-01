@@ -50,8 +50,13 @@
                 const img = document.getElementById("solutionSVG");
                 img.src = "output/.live_solution.svg?t=" + new Date().getTime(); // append a timestamp to bypass cache and force a reload
 
-                // if the image actually exists, hide the placeholder
+                // if the image doesn't exist, hide the image
+                img.onerror = function() {
+                    img.style.display = "none";
+                };
+                // if the image actually exists and loads, show it and hide the placeholder
                 img.onload = function() {
+                    img.style.display = "block";
                     document.querySelector(".placeholder").style.display = "none";
                 };
             }
@@ -61,7 +66,7 @@
     <body>
         <div class="container">
             <span class="placeholder">live SVG solutions will appear here once the optimization starts</span>
-            <img id="solutionSVG">
+            <img id="solutionSVG" />
         </div>
     </body>
 </html>
