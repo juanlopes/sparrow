@@ -23,10 +23,9 @@ jobs:
           submodules: 'recursive'
       - uses: dtolnay/rust-toolchain@stable
 
-      - name: set RUSTFLAGS
-        run: echo "RUSTFLAGS='-C target-cpu=native -Awarnings'" >> $GITHUB_ENV
-
       - name: Run bench for ${{ matrix.instance }}
+        env:
+          RUSTFLAGS: '-C target-cpu=native -Awarnings'
         run: |
           output=$(cargo run --profile release-ultimate --bin bench -- libs/jagua-rs/assets/${{ matrix.instance }}.json ${{ matrix.run_time_s}} ${{ matrix.n_runs }} | tee /dev/stderr)
           
