@@ -9,7 +9,7 @@ use rand::prelude::SmallRng;
 use rand::Rng;
 use rand_distr::Normal;
 use rand_distr::Distribution;
-use crate::config::{CDE_CONFIG, CONSTR_SEARCH_CONFIG, EXPLORE_SOL_DISTR_STDDEV, COMPRESS_N_STRIKES, COMPRESS_R_SHRINKS, EXPLORE_R_SHRINK, SEPARATOR_CONFIG_COMPRESS, SEPARATOR_CONFIG_EXPLORE};
+use crate::config::{CDE_CONFIG, CONSTR_SEARCH_CONFIG, EXPLORE_SOL_DISTR_STDDEV, COMPRESS_N_STRIKES, COMPRESS_R_SHRINKS, EXPLORE_R_SHRINK, SEPARATOR_CONFIG_COMPRESS, SEP_CONFIG_EXPLORE};
 use crate::FMT;
 use crate::optimizer::builder::LBFBuilder;
 use crate::optimizer::separator::Separator;
@@ -20,7 +20,7 @@ mod separator_worker;
 // All high-level heuristic logic
 pub fn optimize(instance: SPInstance, rng: SmallRng, output_folder_path: String, explore_time_limit: Duration) -> Solution {
     let builder = LBFBuilder::new(instance, CDE_CONFIG, rng, CONSTR_SEARCH_CONFIG).construct();
-    let mut expl_separator = Separator::new(builder.instance, builder.prob, builder.rng, output_folder_path.clone(), 0, SEPARATOR_CONFIG_EXPLORE);
+    let mut expl_separator = Separator::new(builder.instance, builder.prob, builder.rng, output_folder_path.clone(), 0, SEP_CONFIG_EXPLORE);
 
     let solutions = explore(&mut expl_separator, explore_time_limit);
     let final_explore_sol = solutions.last().expect("no solutions found during exploration");

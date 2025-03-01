@@ -1,7 +1,6 @@
 use crate::config::{DRAW_OPTIONS, EXPORT_LIVE_SVG, OUTPUT_DIR};
 use crate::optimizer::separator_worker::SeparatorWorker;
 use crate::overlap::tracker::{OTSnapshot, OverlapTracker};
-use crate::sample::eval::SampleEval;
 use crate::util::assertions::tracker_matches_layout;
 use crate::util::io;
 use crate::util::io::layout_to_svg::{layout_to_svg, s_layout_to_svg};
@@ -18,7 +17,7 @@ use jagua_rs::entities::solution::Solution;
 use jagua_rs::fsize;
 use jagua_rs::geometry::d_transformation::DTransformation;
 use jagua_rs::geometry::geo_enums::GeoRelation;
-use jagua_rs::geometry::geo_traits::{Shape, Transformable};
+use jagua_rs::geometry::geo_traits::Shape;
 use jagua_rs::geometry::primitives::aa_rectangle::AARectangle;
 use jagua_rs::util::fpa::FPA;
 use log::{debug, log, Level};
@@ -30,6 +29,7 @@ use rayon::iter::IntoParallelRefMutIterator;
 use rayon::iter::ParallelIterator;
 use std::path::Path;
 use std::time::Instant;
+use crate::sample::search::SearchConfig;
 
 pub struct SeparatorConfig {
     pub iter_no_imprv_limit: usize,
@@ -38,6 +38,7 @@ pub struct SeparatorConfig {
     pub log_level: Level,
     pub jump_cooldown: usize,
     pub large_area_ch_area_cutoff_ratio: fsize,
+    pub search_config: SearchConfig
 }
 
 pub struct Separator {
@@ -68,6 +69,7 @@ impl Separator {
                 ot: overlap_tracker.clone(),
                 rng: SmallRng::seed_from_u64(rng.random()),
                 large_area_ch_area_cutoff,
+                search_config: config.search_config.clone(),
             }).collect();
 
         Self {
@@ -212,11 +214,11 @@ impl Separator {
 
         log!(self.config.log_level,"[GLS] swapped two large items (ids: {} <-> {})", pi1.item_id, pi2.item_id);
 
-        self.move_item(pk1, dt2, None);
-        self.move_item(pk2, dt1, None);
+        self.move_item(pk1, dt2);
+        self.move_item(pk2, dt1);
     }
 
-    fn move_item(&mut self, pk: PItemKey, d_transf: DTransformation, eval: Option<SampleEval>) -> PItemKey {
+    fn move_item(&mut self, pk: PItemKey, d_transf: DTransformation) -> PItemKey {
         debug_assert!(tracker_matches_layout(&self.ot, &self.prob.layout));
 
         let item_id = self.prob.layout.placed_items()[pk].item_id;
@@ -273,7 +275,7 @@ impl Separator {
         for (pik, dtransf) in items_to_shift {
             let existing_transf = dtransf.compose();
             let new_transf = existing_transf.translate((delta, 0.0));
-            self.move_item(pik, new_transf.decompose(), None);
+            self.move_item(pik, new_transf.decompose());
         }
 
         //swap the bin to one with the new width
@@ -294,6 +296,7 @@ impl Separator {
                 ot: self.ot.clone(),
                 rng: SmallRng::seed_from_u64(self.rng.random()),
                 large_area_ch_area_cutoff: self.large_area_ch_area_cutoff,
+                search_config: self.config.search_config.clone(),
             };
         });
         debug!("[GLS] changed strip width to {:.3}", new_width);

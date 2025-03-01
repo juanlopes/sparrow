@@ -1,10 +1,10 @@
 use crate::overlap::tracker::OverlapTracker;
-use crate::sample::eval::overlapping_evaluator::OverlappingSampleEvaluator;
+use crate::sample::eval::overlapping_evaluator::SeparationSampleEvaluator;
 use crate::sample::eval::SampleEval;
 use crate::sample::search;
 use crate::sample::search::SearchConfig;
 use crate::util::assertions::tracker_matches_layout;
-use crate::{config, FMT};
+use crate::FMT;
 use itertools::Itertools;
 use jagua_rs::entities::instances::instance_generic::InstanceGeneric;
 use jagua_rs::entities::instances::strip_packing::SPInstance;
@@ -28,6 +28,7 @@ pub struct SeparatorWorker {
     pub ot: OverlapTracker,
     pub rng: SmallRng,
     pub large_area_ch_area_cutoff: fsize,
+    pub search_config: SearchConfig,
 }
 
 impl SeparatorWorker {
@@ -38,34 +39,32 @@ impl SeparatorWorker {
     }
 
     pub fn separate(&mut self) -> usize {
-        let candidates = self
-            .prob
-            .layout
-            .placed_items()
-            .keys()
+        //Collect all overlapping items and shuffle them
+        let candidates = self.prob.layout.placed_items().keys()
             .filter(|pk| self.ot.get_overlap(*pk) > 0.0)
             .collect_vec()
             .tap_mut(|v| v.shuffle(&mut self.rng));
 
         let mut n_movements = 0;
 
+        //Give each item a chance to move to a better (less weighted overlapping) position
         for &pk in candidates.iter() {
-            let current_overlap = self.ot.get_overlap(pk);
-            if current_overlap > 0.0 {
-                let item = self
-                    .instance
-                    .item(self.prob.layout.placed_items()[pk].item_id);
+            if self.ot.get_overlap(pk) > 0.0 {
+                let item_id = self.prob.layout.placed_items()[pk].item_id;
+                let item = self.instance.item(item_id);
 
-                let evaluator =
-                    OverlappingSampleEvaluator::new(&self.prob.layout, item, pk, &self.ot);
+                let evaluator = SeparationSampleEvaluator::new(&self.prob.layout, item, pk, &self.ot);
+
+                let search_config = match self.ot.is_on_jump_cooldown(pk) {
+                    false => self.search_config.clone(),
+                    true => SearchConfig {
+                        n_bin_samples : 0,
+                        ..self.search_config.clone()
+                    }
+                };
 
                 let new_placement = search::search_placement(
-                    &self.prob.layout,
-                    item,
-                    Some(pk),
-                    evaluator,
-                    generate_search_config(&self.ot, pk),
-                    &mut self.rng,
+                    &self.prob.layout, item, Some(pk), evaluator, search_config, &mut self.rng
                 );
 
                 self.move_item(pk, new_placement.0, Some(new_placement.1));
@@ -75,12 +74,7 @@ impl SeparatorWorker {
         n_movements
     }
 
-    pub fn move_item(
-        &mut self,
-        pik: PItemKey,
-        d_transf: DTransformation,
-        eval: Option<SampleEval>,
-    ) -> PItemKey {
+    pub fn move_item(&mut self, pik: PItemKey, d_transf: DTransformation, eval: Option<SampleEval>) -> PItemKey {
         debug_assert!(tracker_matches_layout(&self.ot, &self.prob.layout));
 
         let old_overlap = self.ot.get_overlap(pik);
@@ -125,21 +119,5 @@ impl SeparatorWorker {
         debug_assert!(tracker_matches_layout(&self.ot, &self.prob.layout));
 
         new_pk
-    }
-}
-
-pub fn generate_search_config(ot: &OverlapTracker, pk: PItemKey) -> SearchConfig {
-    let on_jump_cooldown = ot.is_on_jump_cooldown(pk);
-    match on_jump_cooldown {
-        false => SearchConfig {
-            n_bin_samples: config::SEARCH_N_BIN_SAMPLES,
-            n_focussed_samples: config::SEARCH_N_FOCUSSED_SAMPLES,
-            n_coord_descents: config::SEARCH_N_COORD_DESCENTS,
-        },
-        true => SearchConfig {
-            n_bin_samples: 0,
-            n_focussed_samples: config::SEARCH_N_FOCUSSED_SAMPLES,
-            n_coord_descents: config::SEARCH_N_COORD_DESCENTS,
-        },
     }
 }

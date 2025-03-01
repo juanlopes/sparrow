@@ -22,6 +22,7 @@ use plotly::common::{ColorScale, ColorScaleElement};
 use plotly::layout::{AspectMode, AspectRatio, LayoutScene};
 use plotly::{Plot, Surface};
 use std::path::Path;
+use jagua_rs::collision_detection::hazard_helpers::HazardDetector;
 use svg::node::element::Group;
 use svg::Document;
 
@@ -310,14 +311,16 @@ fn eval(layout: &Layout, item: &Item, dt: DTransformation) -> Overlap {
         Overlap::Bin
     } else {
         let collisions = layout.cde().collect_poly_collisions(&t_shape, &[]);
-        if collisions.is_empty() {
+        if collisions.len() == 0 {
             Overlap::None
         } else if collisions.contains(&HazardEntity::BinExterior) {
             Overlap::Bin
         } else {
-            let o = collisions
-                .iter()
-                .map(|haz| layout.hazard_to_p_item_key(haz).unwrap())
+            let o = collisions.iter()
+                .filter_map(|haz| match haz {
+                    HazardEntity::PlacedItem { pk, .. } => Some(*pk),
+                    _ => None,
+                })
                 .map(|pik| layout.placed_items()[pik].shape.as_ref())
                 .map(|other_shape| poly_overlap_proxy(&t_shape, other_shape))
                 .sum();

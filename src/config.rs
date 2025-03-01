@@ -28,12 +28,12 @@ pub const DRAW_OPTIONS: SvgDrawOptions = SvgDrawOptions {
 };
 
 pub const CDE_CONFIG: CDEConfig = CDEConfig {
-    quadtree_depth: 4,
+    quadtree_depth: 3,
     hpg_n_cells: 0,
     item_surrogate_config: SPSurrogateConfig {
         pole_coverage_goal: 0.95,
         max_poles: 20,
-        n_ff_poles: 4,
+        n_ff_poles: 2,
         n_ff_piers: 0,
     },
 };
@@ -44,18 +44,20 @@ pub const CONSTR_SEARCH_CONFIG: SearchConfig = SearchConfig {
     n_coord_descents: 3,
 };
 
-pub const SEPARATOR_CONFIG_EXPLORE: SeparatorConfig = SeparatorConfig {
+pub const SEP_CONFIG_EXPLORE: SeparatorConfig = SeparatorConfig {
     iter_no_imprv_limit: 100,
     strike_limit: 5,
     jump_cooldown: 5,
     log_level: log::Level::Info,
     n_workers: 2,
     large_area_ch_area_cutoff_ratio: 0.5,
+    search_config: SearchConfig {
+        n_bin_samples: 50,
+        n_focussed_samples: 25,
+        n_coord_descents: 3,
+    }
 };
 
-pub const SEARCH_N_BIN_SAMPLES: usize = 50;
-pub const SEARCH_N_FOCUSSED_SAMPLES: usize = 25;
-pub const SEARCH_N_COORD_DESCENTS: usize = 3;
 pub const WEIGHT_MAX_INC_RATIO: fsize = 2.0;
 pub const WEIGHT_MIN_INC_RATIO: fsize = 1.2;
 pub const WEIGHT_OVERLAP_DECAY: fsize = 0.95;
@@ -72,4 +74,9 @@ pub const SEPARATOR_CONFIG_COMPRESS: SeparatorConfig = SeparatorConfig {
     log_level: log::Level::Debug,
     n_workers: 2,
     large_area_ch_area_cutoff_ratio: 0.5,
+    search_config: SearchConfig {
+        n_bin_samples: 50,
+        n_focussed_samples: 25,
+        n_coord_descents: 3,
+    },
 };

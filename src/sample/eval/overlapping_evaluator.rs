@@ -1,7 +1,7 @@
+use float_cmp::approx_eq;
 use crate::overlap::overlap_proxy::{bin_overlap_proxy, poly_overlap_proxy};
 use crate::overlap::tracker::OverlapTracker;
 use crate::sample::eval::{SampleEval, SampleEvaluator};
-use float_cmp::approx_eq;
 use jagua_rs::collision_detection::hazard_helpers::{HazardDetector, DetectionMap};
 use jagua_rs::collision_detection::hazard::HazardEntity;
 use jagua_rs::entities::item::Item;
@@ -12,17 +12,17 @@ use jagua_rs::geometry::d_transformation::DTransformation;
 use jagua_rs::geometry::geo_traits::TransformableFrom;
 use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
 
-pub struct OverlappingSampleEvaluator<'a> {
+pub struct SeparationSampleEvaluator<'a> {
     layout: &'a Layout,
     item: &'a Item,
     current_pk: PItemKey,
     ot: &'a OverlapTracker,
-    coll_buff: DetectionMap,
+    detection_map: DetectionMap,
     shape_buff: SimplePolygon,
     n_evals: usize,
 }
 
-impl<'a> OverlappingSampleEvaluator<'a> {
+impl<'a> SeparationSampleEvaluator<'a> {
     pub fn new(
         layout: &'a Layout,
         item: &'a Item,
@@ -34,29 +34,29 @@ impl<'a> OverlappingSampleEvaluator<'a> {
             item,
             current_pk,
             ot,
-            coll_buff: DetectionMap::new(),
+            detection_map: DetectionMap::new(),
             shape_buff: item.shape.as_ref().clone(),
             n_evals: 0,
         }
     }
 }
 
-impl<'a> SampleEvaluator for OverlappingSampleEvaluator<'a> {
+impl<'a> SampleEvaluator for SeparationSampleEvaluator<'a> {
     fn eval(&mut self, dt: DTransformation, upper_bound: Option<SampleEval>) -> SampleEval {
         self.n_evals += 1;
         let cde = self.layout.cde();
 
-        self.coll_buff.clear();
+        self.detection_map.clear();
         let transf = dt.compose();
         self.shape_buff.transform_from(&self.item.shape, &transf);
         let pi = &self.layout.placed_items[self.current_pk];
         let irrel_haz = HazardEntity::from((self.current_pk,pi));
 
         //do a check with the surrogate, calculate overlap
-        cde.collect_surrogate_collisions_in_detector(&self.item.shape.surrogate(), &transf, &[irrel_haz], &mut self.coll_buff);
+        cde.collect_surrogate_collisions_in_detector(&self.item.shape.surrogate(), &transf, &[irrel_haz], &mut self.detection_map);
 
         //calculate weighted overlap for all hazards detected by the surrogate
-        let surr_w_overlap = self.calc_overlap_cost(self.coll_buff.iter());
+        let surr_w_overlap = self.calc_overlap_cost(self.detection_map.iter());
 
         //if this already exceeds the upperbound, return
         if let Some(SampleEval::Colliding(upper_bound)) = upper_bound {
@@ -67,21 +67,24 @@ impl<'a> SampleEvaluator for OverlappingSampleEvaluator<'a> {
         }
 
         //If not, move onto a full collision check
-        let n_detected_by_surr = self.coll_buff.len();
-        cde.collect_poly_collisions_in_detector(&self.shape_buff, &[irrel_haz], &mut self.coll_buff);
+        let dm_index_counter = self.detection_map.index_counter();
+        cde.collect_poly_collisions_in_detector(&self.shape_buff, &[irrel_haz], &mut self.detection_map);
 
         //By now, the buffer should contain all hazards
-        if self.coll_buff.len() == 0 {
+        if self.detection_map.len() == 0 {
             SampleEval::Valid(0.0)
         } else {
             //Calculate the remaining weighted overlap for the hazards not detected by the surrogate
-            // let extra_hazards = &self.coll_buff[n_detected_by_surr..];
-            // let full_w_overlap = surr_w_overlap + self.calc_overlap_cost(extra_hazards);
-            //
-            // debug_assert!(approx_eq!(fsize, full_w_overlap, self.calc_overlap_cost(&self.coll_buff)));
-            //
-            // SampleEval::Colliding(full_w_overlap)
-            SampleEval::Colliding(self.calc_overlap_cost(self.coll_buff.iter()))
+            let add_hazards = self.detection_map.iter_with_index()
+                .filter(|(_, idx)| *idx >= dm_index_counter)
+                .map(|(h, _)| h);
+
+            let add_w_overlap = self.calc_overlap_cost(add_hazards);
+            let full_w_overlap = surr_w_overlap + add_w_overlap;
+
+            debug_assert!(approx_eq!(fsize, full_w_overlap, self.calc_overlap_cost(self.detection_map.iter())));
+
+            SampleEval::Colliding(full_w_overlap)
         }
     }
 
@@ -90,7 +93,7 @@ impl<'a> SampleEvaluator for OverlappingSampleEvaluator<'a> {
     }
 }
 
-impl<'a> OverlappingSampleEvaluator<'a> {
+impl<'a> SeparationSampleEvaluator<'a> {
     pub fn calc_overlap_cost(&self, colliding: impl Iterator<Item=&'a HazardEntity>) -> fsize {
         colliding.map(|haz| match haz {
             HazardEntity::PlacedItem { pk: other_pk, .. } => {

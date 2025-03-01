@@ -2,7 +2,7 @@ extern crate core;
 
 use std::fs;
 use chrono::Local;
-use gls_strip_packing::config::{DRAW_OPTIONS, OUTPUT_DIR, RNG_SEED, SEPARATOR_CONFIG_COMPRESS, SEPARATOR_CONFIG_EXPLORE};
+use gls_strip_packing::config::{DRAW_OPTIONS, OUTPUT_DIR, RNG_SEED, SEPARATOR_CONFIG_COMPRESS, SEP_CONFIG_EXPLORE};
 use gls_strip_packing::optimizer::builder::LBFBuilder;
 use gls_strip_packing::optimizer::{compress, explore};
 use gls_strip_packing::optimizer::separator::Separator;
@@ -48,7 +48,7 @@ fn main() {
         }
     };
 
-    let n_runs_per_iter = (num_cpus::get_physical() / SEPARATOR_CONFIG_EXPLORE.n_workers).min(n_runs_total);
+    let n_runs_per_iter = (num_cpus::get_physical() / SEP_CONFIG_EXPLORE.n_workers).min(n_runs_total);
     let n_batches = (n_runs_total as fsize / n_runs_per_iter as fsize).ceil() as usize;
 
     println!(
@@ -99,7 +99,7 @@ fn main() {
 
                 s.spawn(move |_| {
                     let builder = builder.construct();
-                    let mut expl_separator = Separator::new(builder.instance, builder.prob, builder.rng, sols_output_dir.clone(), 0, SEPARATOR_CONFIG_EXPLORE);
+                    let mut expl_separator = Separator::new(builder.instance, builder.prob, builder.rng, sols_output_dir.clone(), 0, SEP_CONFIG_EXPLORE);
 
                     let solutions = explore(&mut expl_separator, explore_time_limit);
                     let final_explore_sol = solutions.last().expect("no solutions found during exploration");

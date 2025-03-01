@@ -1,7 +1,5 @@
 use crate::overlap::overlap_proxy;
 use crate::overlap::tracker::OverlapTracker;
-use crate::util::io;
-use crate::util::io::layout_to_svg::layout_to_svg_2;
 use crate::util::io::svg_util::SvgDrawOptions;
 use float_cmp::{approx_eq, assert_approx_eq};
 use itertools::Itertools;
@@ -10,7 +8,6 @@ use jagua_rs::entities::layout::Layout;
 use jagua_rs::fsize;
 use jagua_rs::util::assertions;
 use log::warn;
-use std::path::Path;
 use jagua_rs::collision_detection::hazard_helpers::HazardDetector;
 
 pub fn tracker_matches_layout(ot: &OverlapTracker, l: &Layout) -> bool {
@@ -79,8 +76,6 @@ pub fn tracker_matches_layout(ot: &OverlapTracker, l: &Layout) -> bool {
                             {
                                 let mut svg_draw_options = SvgDrawOptions::default();
                                 svg_draw_options.quadtree = true;
-                                let svg = layout_to_svg_2(l, svg_draw_options);
-                                io::write_svg(&svg, &*Path::new("debug.svg"), log::Level::Warn);
                                 panic!("overlap tracker error");
                             }
                         }
