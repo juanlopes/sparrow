@@ -6,10 +6,10 @@ use crate::optimizer::separator::SeparatorConfig;
 
 pub const RNG_SEED: Option<usize> = None;
 
-#[cfg(feature = "live_solutions")]
+#[cfg(feature = "live_svg")]
 pub const EXPORT_LIVE_SVG: bool = true;
 
-#[cfg(not(feature = "live_solutions"))]
+#[cfg(not(feature = "live_svg"))]
 pub const EXPORT_LIVE_SVG: bool = false;
 
 pub const OUTPUT_DIR: &str = "output";
