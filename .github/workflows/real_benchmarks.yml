@@ -27,8 +27,8 @@ jobs:
           submodules: 'recursive'
       - uses: dtolnay/rust-toolchain@stable
 
-      - name: Disable compiler warnings
-        run: echo "RUSTFLAGS=-Awarnings" >> $GITHUB_ENV
+      - name: set RUSTFLAGS
+        run: echo "RUSTFLAGS=\"-C target-cpu=native -Awarnings\"" >> $GITHUB_ENV
 
       - name: Run bench for ${{ matrix.instance }}
         run: |
