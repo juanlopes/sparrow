@@ -92,7 +92,7 @@ impl Separator {
 
         let mut n_strikes = 0;
         let mut n_iter = 0;
-        let mut n_items_moved = 0;
+        let mut n_evals = 0;
         let start = Instant::now();
 
         while n_strikes < self.config.strike_limit && time_out.map_or(true, |t| Instant::now() < t) {
@@ -106,13 +106,13 @@ impl Separator {
                     self.ot.get_total_overlap(),
                     self.ot.get_total_weighted_overlap(),
                 );
-                let n_moves = self.modify();
+                n_evals += self.modify();
                 let (overlap, w_overlap) = (
                     self.ot.get_total_overlap(),
                     self.ot.get_total_weighted_overlap(),
                 );
 
-                debug!("[SEP] [s:{n_strikes},i:{n_iter}] ( ) o: {} -> {}, w_o: {} -> {}, #mv: {}, (min o: {})",FMT.fmt2(overlap_before),FMT.fmt2(overlap),FMT.fmt2(w_overlap_before),FMT.fmt2(w_overlap),n_moves,FMT.fmt2(min_overlap));
+                debug!("[SEP] [s:{n_strikes},i:{n_iter}] ( ) o: {} -> {}, w_o: {} -> {}, (min o: {})",FMT.fmt2(overlap_before),FMT.fmt2(overlap),FMT.fmt2(w_overlap_before),FMT.fmt2(w_overlap),FMT.fmt2(min_overlap));
                 debug_assert!(FPA(w_overlap) <= FPA(w_overlap_before), "weighted overlap increased: {} -> {}", FMT.fmt2(w_overlap_before), FMT.fmt2(w_overlap));
 
                 if overlap == 0.0 {
@@ -136,7 +136,6 @@ impl Separator {
                 }
 
                 self.ot.increment_weights();
-                n_items_moved += n_moves;
                 n_iter += 1;
             }
 
@@ -147,7 +146,12 @@ impl Separator {
             }
             self.rollback(&min_overlap_sol.0, Some(&min_overlap_sol.1));
         }
-        log!(self.config.log_level,"[SEP] strike limit reached ({}), moves/s: {}, iter/s: {}, time: {}ms",n_strikes,(n_items_moved as f64 / start.elapsed().as_secs_f64()) as usize,(n_iter as f64 / start.elapsed().as_secs_f64()) as usize,start.elapsed().as_millis());
+        if time_out.map_or(true, |t| Instant::now() < t) {
+            log!(self.config.log_level,"[SEP] finished due to strike limit ({}), evals/s: {}, iter/s: {}, took {:.3}s",n_strikes,FMT.fmt2(n_evals as f64 / start.elapsed().as_secs_f64()),FMT.fmt2(n_iter as f64 / start.elapsed().as_secs_f64()),start.elapsed().as_secs());
+        }
+        else{
+            log!(self.config.log_level,"[SEP] finished due to time limit, evals/s: {}, iter/s: {}, took {:.3}s",FMT.fmt2(n_evals as f64 / start.elapsed().as_secs_f64()),FMT.fmt2(n_iter as f64 / start.elapsed().as_secs_f64()),start.elapsed().as_secs());
+        }
 
         (min_overlap_sol.0, min_overlap_sol.1)
     }
@@ -155,13 +159,12 @@ impl Separator {
     fn modify(&mut self) -> usize {
         let master_sol = self.prob.create_solution(None);
 
-        let n_movements = self.workers.par_iter_mut()
+        let n_evals = self.workers.par_iter_mut()
             .map(|worker| {
                 // Sync the workers with the master
                 worker.load(&master_sol, &self.ot);
                 // Let them modify
-                let n_moves = worker.separate();
-                n_moves
+                worker.separate()
             })
             .sum();
 
@@ -177,7 +180,7 @@ impl Separator {
         self.prob.restore_to_solution(&best_opt.0);
         self.ot = best_opt.1.clone();
 
-        n_movements
+        n_evals
     }
 
     pub fn rollback(&mut self, sol: &Solution, ots: Option<&OTSnapshot>) {
