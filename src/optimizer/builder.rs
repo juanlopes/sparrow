@@ -87,7 +87,7 @@ impl LBFBuilder {
         let item = self.instance.item(item_id);
         let evaluator = ConstructiveEvaluator::new(layout, item);
 
-        let (d_transf, eval) = search_placement(layout, item, None, evaluator, self.sample_config, &mut self.rng);
+        let (d_transf, eval, _) = search_placement(layout, item, None, evaluator, self.sample_config, &mut self.rng);
 
         if let SampleEval::Valid(_) = eval {
             Some(

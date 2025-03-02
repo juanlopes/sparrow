@@ -18,7 +18,7 @@ pub struct SampleConfig {
     pub n_coord_descents: usize,
 }
 
-pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, mut evaluator: impl SampleEvaluator, sample_config: SampleConfig, rng: &mut impl Rng) -> (DTransformation, SampleEval) {
+pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, mut evaluator: impl SampleEvaluator, sample_config: SampleConfig, rng: &mut impl Rng) -> (DTransformation, SampleEval, usize) {
     let item_min_dim = fsize::min(item.shape.bbox().width(), item.shape.bbox().height());
 
     let mut best_samples = BestSamples::new(sample_config.n_coord_descents, item_min_dim * 0.1);
@@ -64,5 +64,6 @@ pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, mut e
 
     debug!("[S] {} samples evaluated, best: {:?}, {}",evaluator.n_evals(),best_samples.best().1,best_samples.best().0);
 
-    best_samples.best()
+    let best_sample = best_samples.best();
+    (best_sample.0, best_sample.1, evaluator.n_evals())
 }

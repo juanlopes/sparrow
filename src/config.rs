@@ -27,12 +27,12 @@ pub const DRAW_OPTIONS: SvgDrawOptions = SvgDrawOptions {
 };
 
 pub const CDE_CONFIG: CDEConfig = CDEConfig {
-    quadtree_depth: 4,
+    quadtree_depth: 3,
     hpg_n_cells: 0,
     item_surrogate_config: SPSurrogateConfig {
         pole_coverage_goal: 0.95,
         max_poles: 20,
-        n_ff_poles: 2,
+        n_ff_poles: 3,
         n_ff_piers: 0,
     },
 };
