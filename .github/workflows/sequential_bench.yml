@@ -16,7 +16,7 @@ on:
 
 jobs:
   swim:
-    uses: ./.github/workflow/single_bench.yml
+    uses: ./.github/workflows/single_bench.yml@${{ github.ref_name }}
     with:
       instance: swim
       n_runs: ${{ github.event.inputs.n_runs }}
@@ -24,7 +24,7 @@ jobs:
 
   trousers:
     needs: swim
-    uses: ./.github/workflow/single_bench.yml
+    uses: ./.github/workflows/single_bench.yml@${{ github.ref_name }}
     with:
       instance: trousers
       n_runs: ${{ github.event.inputs.n_runs }}
@@ -32,7 +32,7 @@ jobs:
 
   shirts:
     needs: trousers
-    uses: ./.github/workflow/single_bench.yml
+    uses: ./.github/workflows/single_bench.yml@${{ github.ref_name }}
     with:
       instance: shirts
       n_runs: ${{ github.event.inputs.n_runs }}
@@ -40,7 +40,7 @@ jobs:
 
   mao:
     needs: shirts
-    uses: ./.github/workflow/single_bench.yml
+    uses: ./.github/workflows/single_bench.yml@${{ github.ref_name }}
     with:
       instance: mao
       n_runs: ${{ github.event.inputs.n_runs }}
@@ -48,7 +48,7 @@ jobs:
 
   dagli:
     needs: mao
-    uses: ./.github/workflow/single_bench.yml
+    uses: ./.github/workflows/single_bench.yml@${{ github.ref_name }}
     with:
       instance: dagli
       n_runs: ${{ github.event.inputs.n_runs }}
@@ -56,7 +56,7 @@ jobs:
 
   albano:
     needs: dagli
-    uses: ./.github/workflow/single_bench.yml
+    uses: ./.github/workflows/single_bench.yml@${{ github.ref_name }}
     with:
       instance: albano
       n_runs: ${{ github.event.inputs.n_runs }}
@@ -64,7 +64,7 @@ jobs:
 
   marques:
     needs: albano
-    uses: ./.github/workflow/single_bench.yml
+    uses: ./.github/workflows/single_bench.yml@${{ github.ref_name }}
     with:
       instance: marques
       n_runs: ${{ github.event.inputs.n_runs }}
