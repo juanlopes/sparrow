@@ -23,7 +23,6 @@ on:
 
 jobs:
   benchmark:
-    name: extra benches on ${{ github.event.inputs.cpu_tag }} (${{ github.event.inputs.n_runs }} x ${{ github.event.inputs.run_time_s }}s)
     runs-on: [self-hosted, ${{ github.event.inputs.cpu_tag }}]
     strategy:
       matrix:
