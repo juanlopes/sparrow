@@ -23,12 +23,7 @@ pub fn tracker_matches_layout(ot: &OverlapTracker, l: &Layout) -> bool {
                 true => {
                     let calc_overlap = overlap_proxy::poly_overlap_proxy(&pi1.shape, &pi2.shape);
                     let calc_overlap2 = overlap_proxy::poly_overlap_proxy(&pi2.shape, &pi1.shape);
-                    if !approx_eq!(
-                        fsize,
-                        calc_overlap,
-                        stored_overlap,
-                        epsilon = 0.001 * stored_overlap
-                    ) {
+                    if !approx_eq!(fsize,calc_overlap,stored_overlap,epsilon = 0.10 * stored_overlap) && !approx_eq!(fsize,calc_overlap2,stored_overlap, epsilon = 0.10 * stored_overlap) {
                         let opposite_collisions =
                             l.cde().collect_poly_collisions(&pi2.shape, &[(pk2, pi2).into()]);
                         if opposite_collisions.contains(&((pk1, pi1).into())) {

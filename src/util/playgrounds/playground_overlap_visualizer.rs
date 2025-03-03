@@ -17,7 +17,7 @@ use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
 use jagua_rs::io::parser::Parser;
 use jagua_rs::util::config::{CDEConfig, SPSurrogateConfig};
 use jagua_rs::util::polygon_simplification::PolySimplConfig;
-use ordered_float::{Float, OrderedFloat};
+use ordered_float::OrderedFloat;
 use plotly::common::{ColorScale, ColorScaleElement};
 use plotly::layout::{AspectMode, AspectRatio, LayoutScene};
 use plotly::{Plot, Surface};
@@ -354,7 +354,7 @@ where
     let mut total_deficit = 0.0;
     for p1 in poles_1 {
         for p2 in poles_2.clone() {
-            let d = (p1.radius + p2.radius) - p1.center.distance(p2.center);
+            let d = (p1.radius + p2.radius) - p1.center.distance(&p2.center);
 
             let dd = match d >= epsilon {
                 true => d,
