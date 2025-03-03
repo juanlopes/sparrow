@@ -15,13 +15,16 @@ on:
         type: number
       cpu_tag:
         description: 'CPU type for runner (5950X, 7950X)'
-        default: '5950X'
         required: true
-        type: string
+        type: choice
+        options:
+          - 5950X
+          - 7950X
 
 jobs:
   benchmark:
-    runs-on: [ self-hosted,${{ github.event.inputs.cpu_tag }} ]
+    name: extra benches on ${{ github.event.inputs.cpu_tag }} (${{ github.event.inputs.n_runs }} x ${{ github.event.inputs.run_time_s }}s)
+    runs-on: [self-hosted, ${{ github.event.inputs.cpu_tag }}]
     strategy:
       matrix:
         instance: [ "blaz1", "fu", "jakobs1", "jakobs2","shapes0", "shapes1" ]
