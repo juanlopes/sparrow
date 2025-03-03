@@ -1,4 +1,4 @@
-name: extra benches (on 5950X)
+name: extra benches
 
 on:
   workflow_dispatch:
@@ -13,10 +13,16 @@ on:
         default: 1200
         required: true
         type: number
+      cpu_tag:
+        description: 'CPU type for runner (5950X, 7950X)'
+        default: '5950X'
+        required: true
+        type: string
 
 jobs:
   benchmark:
-    runs-on: [ self-hosted,5950X ]
+    name: benchmark-${{ github.event.inputs.cpu_tag }} (x${{ inputs.n_runs }} x ${{ inputs.run_time_s }}s
+    runs-on: [ self-hosted,${{ github.event.inputs.cpu_tag }} ]
     strategy:
       matrix:
         instance: [ "blaz1", "fu", "jakobs1", "jakobs2","shapes0", "shapes1" ]
