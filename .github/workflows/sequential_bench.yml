@@ -19,16 +19,16 @@ jobs:
     uses: ./.github/workflows/single_bench.yml
     with:
       instance: swim
-      n_runs: 8
-      run_time_s: 10
+      n_runs: ${{ inputs.n_runs * 1}}
+      run_time_s: ${{ inputs.run_time_s * 1}}
 
   trousers:
     needs: swim
     uses: ./.github/workflows/single_bench.yml
     with:
       instance: trousers
-      n_runs: ${{ inputs.n_runs }}
-      run_time_s: ${{ inputs.run_time_s }}
+      n_runs: ${{ inputs.n_runs * 1}}
+      run_time_s: ${{ inputs.run_time_s * 1}}
 
   shirts:
     needs: trousers
