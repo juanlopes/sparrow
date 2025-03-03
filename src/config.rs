@@ -64,6 +64,7 @@ pub const WEIGHT_MAX_INC_RATIO: fsize = 2.0;
 pub const WEIGHT_MIN_INC_RATIO: fsize = 1.2;
 pub const WEIGHT_OVERLAP_DECAY: fsize = 0.95;
 pub const OVERLAP_PROXY_EPSILON_DIAM_RATIO: fsize = 0.01;
+pub const OVERLAP_PROXY_NEGLECT_EPSILON_RATIO: fsize = 5.0;
 pub const COMPRESS_R_SHRINKS: [fsize; 2] = [0.0005, 0.0001];
 pub const COMPRESS_N_STRIKES: [usize; 2] = [5,5];
 

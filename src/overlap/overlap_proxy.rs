@@ -1,13 +1,12 @@
-use crate::config::OVERLAP_PROXY_EPSILON_DIAM_RATIO;
+use crate::config::{OVERLAP_PROXY_EPSILON_DIAM_RATIO, OVERLAP_PROXY_NEGLECT_EPSILON_RATIO};
 use jagua_rs::fsize;
 use jagua_rs::geometry::fail_fast::sp_surrogate::SPSurrogate;
 use jagua_rs::geometry::geo_traits::{Distance, Shape};
 use jagua_rs::geometry::primitives::aa_rectangle::AARectangle;
-use jagua_rs::geometry::primitives::circle::Circle;
 use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
-use std::cell::RefCell;
 use std::cmp::Ordering;
 
+#[inline(always)]
 pub fn poly_overlap_proxy(s1: &SimplePolygon, s2: &SimplePolygon) -> fsize {
     let normalizer = fsize::max(s1.diameter(), s2.diameter()) * OVERLAP_PROXY_EPSILON_DIAM_RATIO;
 
@@ -60,20 +59,21 @@ pub fn poles_overlap_proxy_<'a>(sp1: &SPSurrogate, sp2: &SPSurrogate, epsilon: f
     }).sum()
 }
 
+#[inline(always)]
 pub fn poles_overlap_proxy<'a>(sp1: &SPSurrogate, sp2: &SPSurrogate, epsilon: fsize) -> fsize {
     let (sp_inner, sp_outer) = determine_inner_outer(sp1, sp2);
     let bpole_inner = sp_inner.poles_bounding_circle.clone();
 
     let mut total_deficit = 0.0;
     for p1 in &sp_outer.poles {
+        //if the pole is far enough outside the bounding circle of the inner surrogate poles, skip it.
+        //its deficit will be negligible and this speeds up the calculation quite a bit
         let sq_distance = p1.center.sq_distance(&bpole_inner.center);
-        if sq_distance > (p1.radius + bpole_inner.radius + 5.0 * epsilon).powi(2) {
-            //if the pole is outside the bounding circle of the inner surrogate poles, skip it
-            //its deficit will be negligible
+        let neglect_sd_dist = p1.radius + bpole_inner.radius + OVERLAP_PROXY_NEGLECT_EPSILON_RATIO * epsilon;
+        if sq_distance > neglect_sd_dist.powi(2) {
             continue;
-        }
-        else {
-            for p2 in &sp_inner.poles{
+        } else {
+            for p2 in &sp_inner.poles {
                 let pd = (p1.radius + p2.radius) - p1.center.distance(&p2.center);
 
                 let pd_decay = match pd >= epsilon {
