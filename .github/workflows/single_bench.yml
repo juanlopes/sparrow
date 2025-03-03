@@ -32,6 +32,7 @@ on:
 
 jobs:
   run-benchmark:
+    name: bench ${{ inputs.instance }} (x${{ inputs.n_runs }} x ${{ inputs.run_time_s }}s)
     runs-on: [self-hosted,7950X]
     steps:
       - uses: actions/checkout@v4
