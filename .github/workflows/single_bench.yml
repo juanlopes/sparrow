@@ -1,0 +1,63 @@
+name: Benchmark single instance
+
+on:
+  workflow_call:
+    inputs:
+      instance:
+        required: true
+        type: string
+      n_runs:
+        required: true
+        type: number
+      run_time_s:
+        required: true
+        type: number
+  workflow_dispatch:
+    inputs:
+      instance:
+        description: 'Instance name [swim, shirts, trousers, shirts, marques, dagli, albano]'
+        required: true
+        type: string
+      n_runs:
+        description: 'Number of times to run the instance'
+        default: 16
+        required: true
+        type: number
+      run_time_s:
+        description: 'Time per run in seconds'
+        default: 1200
+        required: true
+        type: number
+
+
+jobs:
+  run-benchmark:
+    runs-on: [self-hosted,7950X]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Run bench for ${{ inputs.instance }}
+        env:
+          RUSTFLAGS: '-C target-cpu=native -Awarnings'
+        run: |
+          echo RUSTFLAGS=$RUSTFLAGS
+          output=$(cargo run --profile release-ultimate --bin bench -- libs/jagua-rs/assets/${{ inputs.instance }}.json ${{ inputs.run_time_s}} ${{ inputs.n_runs }} | tee /dev/stderr)
+          echo "$output" > "output/${{ inputs.instance }}_bench_stdout.log"
+          {
+            echo "## Benchmark Output for \`${{ inputs.instance }}\`"
+            echo '```'
+            echo "$output"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Compress output folder
+        run: |
+          mv output/ output_${{ inputs.instance }}
+          tar -czf ${{ inputs.instance }}_output.tar.gz output_${{ inputs.instance }}
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.instance }}-results
+          path: ${{ inputs.instance }}_output.tar.gz
+          retention-days: 14

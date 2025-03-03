@@ -88,7 +88,7 @@ pub const CD_STEP_SUCCESS: fsize = 1.1;
 pub const CD_STEP_FAIL: fsize = 0.5;
 
 /// Coordinate descent initial step size as a ratio of the item's min dimension
-pub const CD_STEP_INIT_RATIO: fsize = 0.25;
+pub const CD_STEP_INIT_RATIO: fsize = 0.25; //25%
 
 /// Coordinate descent step limit as a ratio of the item's min dimension
-pub const CD_STEP_LIMIT_RATIO: fsize = 0.001;
+pub const CD_STEP_LIMIT_RATIO: fsize = 0.001; //0.1%

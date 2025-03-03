@@ -1,0 +1,71 @@
+name: Benchmark all instances sequentially
+
+on:
+  workflow_dispatch:
+    inputs:
+      n_runs:
+        description: 'Number of times to run each instance'
+        default: 16
+        required: true
+        type: number
+      run_time_s:
+        description: 'Time per run in seconds'
+        default: 1200
+        required: true
+        type: number
+
+jobs:
+  swim:
+    uses: ./.github/workflows/benchmark-job.yml
+    with:
+      instance: swim
+      n_runs: ${{ github.event.inputs.n_runs }}
+      run_time_s: ${{ github.event.inputs.run_time_s }}
+
+  trousers:
+    needs: swim
+    uses: ./.github/workflows/benchmark-job.yml
+    with:
+      instance: trousers
+      n_runs: ${{ github.event.inputs.n_runs }}
+      run_time_s: ${{ github.event.inputs.run_time_s }}
+
+  shirts:
+    needs: trousers
+    uses: ./.github/workflows/benchmark-job.yml
+    with:
+      instance: shirts
+      n_runs: ${{ github.event.inputs.n_runs }}
+      run_time_s: ${{ github.event.inputs.run_time_s }}
+
+  mao:
+    needs: shirts
+    uses: ./.github/workflows/benchmark-job.yml
+    with:
+      instance: mao
+      n_runs: ${{ github.event.inputs.n_runs }}
+      run_time_s: ${{ github.event.inputs.run_time_s }}
+
+  dagli:
+    needs: mao
+    uses: ./.github/workflows/benchmark-job.yml
+    with:
+      instance: dagli
+      n_runs: ${{ github.event.inputs.n_runs }}
+      run_time_s: ${{ github.event.inputs.run_time_s }}
+
+  albano:
+    needs: dagli
+    uses: ./.github/workflows/benchmark-job.yml
+    with:
+      instance: albano
+      n_runs: ${{ github.event.inputs.n_runs }}
+      run_time_s: ${{ github.event.inputs.run_time_s }}
+
+  marques:
+    needs: albano
+    uses: ./.github/workflows/benchmark-job.yml
+    with:
+      instance: marques
+      n_runs: ${{ github.event.inputs.n_runs }}
+      run_time_s: ${{ github.event.inputs.run_time_s }}
