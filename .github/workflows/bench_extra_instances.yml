@@ -23,7 +23,7 @@ on:
 
 jobs:
   benchmark:
-    runs-on: [self-hosted, ${{ github.event.inputs.cpu_tag }}]
+    runs-on: ["self-hosted", ${{ github.event.inputs.cpu_tag }}]
     strategy:
       matrix:
         instance: [ "blaz1", "fu", "jakobs1", "jakobs2","shapes0", "shapes1" ]
