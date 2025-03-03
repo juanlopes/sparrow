@@ -32,19 +32,17 @@ impl IndexMut<(usize, usize)> for PairMatrix {
     }
 }
 
-fn calc_idx(i: usize, j: usize, n: usize) -> usize {
-    //https://stackoverflow.com/questions/3187957/how-to-store-a-symmetric-matrix
+fn calc_idx(row: usize, col: usize, size: usize) -> usize {
     /* Example:
         0 1 2 3
           4 5 6
             7 8
               9
     */
-
-    debug_assert!(i < n && j < n);
-    if i <= j {
-        i * n - (i - 1) * i / 2 + j - i
+    debug_assert!(row < size && col < size);
+    if row <= col {
+        (row * size) + col - ((row * (row + 1)) / 2)
     } else {
-        j * n - (j - 1) * j / 2 + i - j
+        (col * size) + row - ((col * (col + 1)) / 2)
     }
 }

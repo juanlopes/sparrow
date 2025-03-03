@@ -41,30 +41,18 @@ pub fn bin_overlap_proxy(s: &SimplePolygon, bin_bbox: AARectangle) -> fsize {
 }
 
 pub fn poles_overlap_proxy<'a>(sp1: &SPSurrogate, sp2: &SPSurrogate, epsilon: fsize) -> fsize {
-    let (sp_inner, sp_outer) = match sp1.poles_bounding_circle.radius < sp2.poles_bounding_circle.radius {
-        true => (sp1, sp2),
-        false => (sp2, sp1),
-    };
-    let bpole_inner = sp_inner.poles_bounding_circle.clone();
+    let epsilon_squared = epsilon.powi(2);
+    let two_epsilon = 2.0 * epsilon;
 
-    let mut total_deficit = 0.0;
-    for p1 in &sp_outer.poles {
-        let sq_distance = p1.center.sq_distance(&bpole_inner.center);
-        if sq_distance > (p1.radius + bpole_inner.radius + 2.0 * epsilon).powi(2) {
-            continue;
-        }
-        else {
-            for p2 in &sp_inner.poles{
-                let pd = (p1.radius + p2.radius) - p1.center.distance(&p2.center);
-
-                let pd_decay = match pd >= epsilon {
-                    true => pd,
-                    false => epsilon.powi(2) / (-pd + 2.0 * epsilon),
-                };
-
-                total_deficit += pd_decay * fsize::min(p1.radius, p2.radius);
-            }
-        }
-    }
-    total_deficit
+    sp1.poles.iter().flat_map(|p1| {
+        sp2.poles.iter().map(move |p2| {
+            let pd = (p1.radius + p2.radius) - p1.center.distance(&p2.center);
+            let pd_decay = if pd >= epsilon {
+                pd
+            } else {
+                epsilon_squared / (-pd + two_epsilon)
+            };
+            pd_decay * fsize::min(p1.radius, p2.radius)
+        })
+    }).sum()
 }

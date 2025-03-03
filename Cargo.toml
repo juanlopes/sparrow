@@ -42,6 +42,9 @@ plotly = "0.12.1"
 num_cpus = "1.16.0"
 chrono = "0.4"
 
+[profile.dev]
+overflow-checks=true
+
 [profile.test]
 inherits = "release"
 debug-assertions = true
