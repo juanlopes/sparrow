@@ -21,7 +21,7 @@ on:
 
 jobs:
   benchmark:
-    name: benchmark-${{ github.event.inputs.cpu_tag }} (x${{ inputs.n_runs }} x ${{ inputs.run_time_s }}s
+    name: benchmark-${{ inputs.cpu_tag }} (x${{ inputs.n_runs }} x ${{ inputs.run_time_s }}s
     runs-on: [ self-hosted,${{ github.event.inputs.cpu_tag }} ]
     strategy:
       matrix:
