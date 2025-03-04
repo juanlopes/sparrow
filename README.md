@@ -34,7 +34,7 @@ cargo run --release --features=live_svg -- \
     libs/jagua-rs/assets/swim.json \
     120
 ```
-![](https://github.com/user-attachments/assets/92dee2b3-264e-4629-863c-9713b9a974cf)
+![](assets/demo.gif)
 
 For ultimate performance, compile with `release-ulimate` profile:
 ```bash
