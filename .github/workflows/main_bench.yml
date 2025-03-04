@@ -1,4 +1,4 @@
-name: Benchmark all instances sequentially
+name: main bench
 
 on:
   workflow_dispatch:

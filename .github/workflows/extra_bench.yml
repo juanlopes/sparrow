@@ -1,0 +1,78 @@
+name: extra benches
+
+on:
+  workflow_dispatch:
+    inputs:
+      n_runs:
+        description: 'Number of times to run each instance'
+        default: 16
+        required: true
+        type: number
+      run_time_s:
+        description: 'Time per run in seconds'
+        default: 1200
+        required: true
+        type: number
+      cpu_tag:
+        description: 'CPU type for runner (5950X, 7950X)'
+        required: true
+        type: choice
+        options:
+          - 5950X
+          - 7950X
+
+jobs:
+  blaz1:
+    uses: ./.github/workflows/single_bench.yml
+    with:
+      instance: blaz1
+      n_runs: ${{ fromJSON(inputs.n_runs) }}
+      run_time_s: ${{ fromJSON(inputs.run_time_s) }}
+      cpu_tag: ${{ fromJSON(inputs.cpu_tag) }}
+  
+  fu:
+    needs: blaz1
+    uses: ./.github/workflows/single_bench.yml
+    with:
+      instance: fu
+      n_runs: ${{ fromJSON(inputs.n_runs) }}
+      run_time_s: ${{ fromJSON(inputs.run_time_s) }}
+      cpu_tag: ${{ fromJSON(inputs.cpu_tag) }}
+
+  jakobs1:
+    needs: fu
+    uses: ./.github/workflows/single_bench.yml
+    with:
+      instance: jakobs1
+      n_runs: ${{ fromJSON(inputs.n_runs) }}
+      run_time_s: ${{ fromJSON(inputs.run_time_s) }}
+      cpu_tag: ${{ fromJSON(inputs.cpu_tag) }}
+
+  jakobs2:
+    needs: jakobs1
+    uses: ./.github/workflows/single_bench.yml
+    with:
+      instance: jakobs2
+      n_runs: ${{ fromJSON(inputs.n_runs) }}
+      run_time_s: ${{ fromJSON(inputs.run_time_s) }}
+      cpu_tag: ${{ fromJSON(inputs.cpu_tag) }}
+
+  shapes0:
+    needs: jakobs2
+    uses: ./.github/workflows/single_bench.yml
+    with:
+      instance: shapes0
+      n_runs: ${{ fromJSON(inputs.n_runs) }}
+      run_time_s: ${{ fromJSON(inputs.run_time_s) }}
+      cpu_tag: ${{ fromJSON(inputs.cpu_tag) }}
+
+  shapes1:
+    needs: shapes0
+    uses: ./.github/workflows/single_bench.yml
+    with:
+      instance: shapes1
+      n_runs: ${{ fromJSON(inputs.n_runs) }}
+      run_time_s: ${{ fromJSON(inputs.run_time_s) }}
+      cpu_tag: ${{ fromJSON(inputs.cpu_tag) }}
+
+    

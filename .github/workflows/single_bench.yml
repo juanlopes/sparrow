@@ -1,4 +1,4 @@
-name: Benchmark single instance
+name: single bench
 
 on:
   workflow_call:
@@ -18,7 +18,7 @@ on:
   workflow_dispatch:
     inputs:
       instance:
-        description: 'instance name'
+        description: 'Instance'
         required: true
         type: choice
         options: [ swim, shirts, trousers, shirts, marques, dagli, albano, fu, jakobs1, jakobs2, blaz1, shapes0, shapes1 ]
@@ -33,7 +33,7 @@ on:
         required: true
         type: number
       cpu_tag:
-        description: 'CPU type for runner (5950X, 7950X)'
+        description: 'CPU type for job'
         required: true
         type: choice
         options:
