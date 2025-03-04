@@ -15,7 +15,7 @@ jobs:
       instance: swim
       n_runs: 16
       run_time_s: 1200
-      cpu_tag: 5950X
+      cpu_tag: '5950X'
 
   trousers:
     needs: swim
@@ -24,7 +24,7 @@ jobs:
       instance: trousers
       n_runs: 16
       run_time_s: 1200
-      cpu_tag: 5950X
+      cpu_tag: '5950X'
 
   shirts:
     needs: trousers
@@ -33,7 +33,7 @@ jobs:
       instance: shirts
       n_runs: 16
       run_time_s: 1200
-      cpu_tag: 5950X
+      cpu_tag: '5950X'
 
   mao:
     needs: shirts
@@ -42,7 +42,7 @@ jobs:
       instance: mao
       n_runs: 16
       run_time_s: 1200
-      cpu_tag: 5950X
+      cpu_tag: '5950X'
 
   dagli:
     needs: mao
@@ -51,7 +51,7 @@ jobs:
       instance: dagli
       n_runs: 16
       run_time_s: 1200
-      cpu_tag: 5950X
+      cpu_tag: '5950X'
 
   albano:
     needs: dagli
@@ -60,7 +60,7 @@ jobs:
       instance: albano
       n_runs: 16
       run_time_s: 1200
-      cpu_tag: 5950X
+      cpu_tag: '5950X'
 
   marques:
     needs: albano
@@ -69,4 +69,4 @@ jobs:
       instance: marques
       n_runs: 16
       run_time_s: 1200
-      cpu_tag: 5950X
+      cpu_tag: '5950X'
