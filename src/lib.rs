@@ -20,3 +20,10 @@ const FMT: Lazy<Formatter> = Lazy::new(|| {
         .scales(Scales::short())
         .precision(Precision::Significance(3))
 });
+
+
+#[cfg(feature = "live_svg")]
+pub const EXPORT_LIVE_SVG: bool = true;
+
+#[cfg(not(feature = "live_svg"))]
+pub const EXPORT_LIVE_SVG: bool = false;

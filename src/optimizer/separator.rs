@@ -1,10 +1,10 @@
-use crate::config::{DRAW_OPTIONS, EXPORT_LIVE_SVG, OUTPUT_DIR};
+use crate::config::{DRAW_OPTIONS, OUTPUT_DIR};
 use crate::optimizer::separator_worker::SeparatorWorker;
 use crate::overlap::tracker::{OTSnapshot, OverlapTracker};
 use crate::util::assertions::tracker_matches_layout;
 use crate::util::io;
 use crate::util::io::layout_to_svg::{layout_to_svg, s_layout_to_svg};
-use crate::FMT;
+use crate::{EXPORT_LIVE_SVG, FMT};
 use itertools::Itertools;
 use jagua_rs::entities::bin::Bin;
 use jagua_rs::entities::instances::instance_generic::InstanceGeneric;
