@@ -9,69 +9,69 @@ on:
       - exp/*
 
 env:
-  DEFAULT_CPU_TAG: 5950X
-  DEFAULT_N_RUNS: 16
-  DEFAULT_RUN_TIME_S: 1200     
+  N_RUNS: 16
+  RUN_TIME_S: 1200   
+  CPU_TAG: 5950X  
 
 jobs:
   swim:
     uses: ./.github/workflows/single_bench.yml
     with:
       instance: swim
-      n_runs: ${{ env.DEFAULT_N_RUNS }}
-      run_time_s: ${{ env.DEFAULT_RUN_TIME_S }}
-      cpu_tag: ${{ env.DEFAULT_CPU_TAG }}
+      n_runs: $N_RUNS
+      run_time_s: $RUN_TIME_S
+      cpu_tag: $CPU_TAG
 
   trousers:
     needs: swim
     uses: ./.github/workflows/single_bench.yml
     with:
       instance: trousers
-      n_runs: ${{ env.DEFAULT_N_RUNS }}
-      run_time_s: ${{ env.DEFAULT_RUN_TIME_S }}
-      cpu_tag: ${{ env.DEFAULT_CPU_TAG }}
+      n_runs: $N_RUNS
+      run_time_s: $RUN_TIME_S
+      cpu_tag: $CPU_TAG
 
   shirts:
     needs: trousers
     uses: ./.github/workflows/single_bench.yml
     with:
       instance: shirts
-      n_runs: ${{ env.DEFAULT_N_RUNS }}
-      run_time_s: ${{ env.DEFAULT_RUN_TIME_S }}
-      cpu_tag: ${{ env.DEFAULT_CPU_TAG }}
+      n_runs: $N_RUNS
+      run_time_s: $RUN_TIME_S
+      cpu_tag: $CPU_TAG
 
   mao:
     needs: shirts
     uses: ./.github/workflows/single_bench.yml
     with:
       instance: mao
-      n_runs: ${{ env.DEFAULT_N_RUNS }}
-      run_time_s: ${{ env.DEFAULT_RUN_TIME_S }}
-      cpu_tag: ${{ env.DEFAULT_CPU_TAG }}
+      n_runs: $N_RUNS
+      run_time_s: $RUN_TIME_S
+      cpu_tag: $CPU_TAG
 
   dagli:
     needs: mao
     uses: ./.github/workflows/single_bench.yml
     with:
       instance: dagli
-      n_runs: ${{ env.DEFAULT_N_RUNS }}
-      run_time_s: ${{ env.DEFAULT_RUN_TIME_S }}
-      cpu_tag: ${{ env.DEFAULT_CPU_TAG }}
+      n_runs: $N_RUNS
+      run_time_s: $RUN_TIME_S
+      cpu_tag: $CPU_TAG
 
   albano:
     needs: dagli
     uses: ./.github/workflows/single_bench.yml
     with:
       instance: albano
-      n_runs: ${{ env.DEFAULT_N_RUNS }}
-      run_time_s: ${{ env.DEFAULT_RUN_TIME_S }}
-      cpu_tag: ${{ env.DEFAULT_CPU_TAG }}
+      n_runs: $N_RUNS
+      run_time_s: $RUN_TIME_S
+      cpu_tag: $CPU_TAG
 
   marques:
     needs: albano
     uses: ./.github/workflows/single_bench.yml
     with:
       instance: marques
-      n_runs: ${{ env.DEFAULT_N_RUNS }}
-      run_time_s: ${{ env.DEFAULT_RUN_TIME_S }}
-      cpu_tag: ${{ env.DEFAULT_CPU_TAG }}
+      n_runs: $N_RUNS
+      run_time_s: $RUN_TIME_S
+      cpu_tag: $CPU_TAG
