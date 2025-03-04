@@ -8,46 +8,70 @@ on:
     branches:
       - exp/*
 
+env:
+  DEFAULT_CPU_TAG: 5950X
+  DEFAULT_N_RUNS: 16
+  DEFAULT_RUN_TIME_S: 1200     
+
 jobs:
-  benchmark:
-    runs-on: [ self-hosted,5950X ]
-    strategy:
-      matrix:
-        instance: [ "marques", "dagli", "albano", "mao","shirts", "trousers", "swim" ]
-        n_runs: [ 16 ]
-        run_time_s: [ 1200 ]
+  swim:
+    uses: ./.github/workflows/single_bench.yml
+    with:
+      instance: swim
+      n_runs: ${{ env.DEFAULT_N_RUNS }}
+      run_time_s: ${{ env.DEFAULT_RUN_TIME_S }}
+      cpu_tag: ${{ env.DEFAULT_CPU_TAG }}
 
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: 'recursive'
-      - uses: dtolnay/rust-toolchain@stable
+  trousers:
+    needs: swim
+    uses: ./.github/workflows/single_bench.yml
+    with:
+      instance: trousers
+      n_runs: ${{ env.DEFAULT_N_RUNS }}
+      run_time_s: ${{ env.DEFAULT_RUN_TIME_S }}
+      cpu_tag: ${{ env.DEFAULT_CPU_TAG }}
 
-      - name: Run bench for ${{ matrix.instance }}
-        env:
-          RUSTFLAGS: '-C target-cpu=native -Awarnings' #disable warnings and optimize for the host CPU
-        run: |
-          echo RUSTFLAGS=$RUSTFLAGS
-          output=$(cargo run --profile release-ultimate --bin bench -- libs/jagua-rs/assets/${{ matrix.instance }}.json ${{ matrix.run_time_s}} ${{ matrix.n_runs }} | tee /dev/stderr)
-          
-          # Write to log file
-          echo "$output" > "output/${{ matrix.instance }}_bench_stdout.log"
-          
-          {
-            echo "## Benchmark Output for \`${{ matrix.instance }}\`"
-            echo '```'
-            echo "$output"
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
+  shirts:
+    needs: trousers
+    uses: ./.github/workflows/single_bench.yml
+    with:
+      instance: shirts
+      n_runs: ${{ env.DEFAULT_N_RUNS }}
+      run_time_s: ${{ env.DEFAULT_RUN_TIME_S }}
+      cpu_tag: ${{ env.DEFAULT_CPU_TAG }}
 
-      - name: Compress output folder for ${{ matrix.instance }}
-        run: |
-          mv output/ output_${{ matrix.instance }}
-          tar -czf ${{ matrix.instance }}_output.tar.gz output_${{ matrix.instance }}
+  mao:
+    needs: shirts
+    uses: ./.github/workflows/single_bench.yml
+    with:
+      instance: mao
+      n_runs: ${{ env.DEFAULT_N_RUNS }}
+      run_time_s: ${{ env.DEFAULT_RUN_TIME_S }}
+      cpu_tag: ${{ env.DEFAULT_CPU_TAG }}
 
-      - name: Upload artifact for ${{ matrix.instance }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.instance }}-results
-          path: ${{ matrix.instance }}_output.tar.gz
-          retention-days: 7
+  dagli:
+    needs: mao
+    uses: ./.github/workflows/single_bench.yml
+    with:
+      instance: dagli
+      n_runs: ${{ env.DEFAULT_N_RUNS }}
+      run_time_s: ${{ env.DEFAULT_RUN_TIME_S }}
+      cpu_tag: ${{ env.DEFAULT_CPU_TAG }}
+
+  albano:
+    needs: dagli
+    uses: ./.github/workflows/single_bench.yml
+    with:
+      instance: albano
+      n_runs: ${{ env.DEFAULT_N_RUNS }}
+      run_time_s: ${{ env.DEFAULT_RUN_TIME_S }}
+      cpu_tag: ${{ env.DEFAULT_CPU_TAG }}
+
+  marques:
+    needs: albano
+    uses: ./.github/workflows/single_bench.yml
+    with:
+      instance: marques
+      n_runs: ${{ env.DEFAULT_N_RUNS }}
+      run_time_s: ${{ env.DEFAULT_RUN_TIME_S }}
+      cpu_tag: ${{ env.DEFAULT_CPU_TAG }}

@@ -12,12 +12,16 @@ on:
       run_time_s:
         required: true
         type: number
+      cpu_tag:
+        required: true
+        type: string
   workflow_dispatch:
     inputs:
       instance:
-        description: 'Instance name [swim, shirts, trousers, shirts, marques, dagli, albano]'
+        description: 'instance name'
         required: true
-        type: string
+        type: choice
+        options: [ swim, shirts, trousers, shirts, marques, dagli, albano, fu, jakobs1, jakobs2, blaz1, shapes0, shapes1 ]
       n_runs:
         description: 'Number of times to run the instance'
         default: 16
@@ -28,12 +32,18 @@ on:
         default: 1200
         required: true
         type: number
-
+      cpu_tag:
+        description: 'CPU type for runner (5950X, 7950X)'
+        required: true
+        type: choice
+        options:
+          - 5950X
+          - 7950X
 
 jobs:
   run-benchmark:
     name: bench ${{ inputs.instance }} (${{ inputs.n_runs }} x ${{ inputs.run_time_s }}s)
-    runs-on: [self-hosted,7950X]
+    runs-on: ${{ github.event.inputs.cpu_tag }}
     steps:
       - uses: actions/checkout@v4
         with:
