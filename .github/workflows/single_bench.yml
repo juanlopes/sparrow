@@ -43,7 +43,7 @@ on:
 jobs:
   run-benchmark:
     name: bench ${{ inputs.instance }} (${{ inputs.n_runs }} x ${{ inputs.run_time_s }}s)
-    runs-on: ${{ github.event.inputs.cpu_tag }}
+    runs-on: ${{ inputs.cpu_tag }}
     steps:
       - uses: actions/checkout@v4
         with:
