@@ -28,7 +28,7 @@ jobs:
       instance: blaz1
       n_runs: ${{ fromJSON(inputs.n_runs) }}
       run_time_s: ${{ fromJSON(inputs.run_time_s) }}
-      cpu_tag: ${{ fromJSON(inputs.cpu_tag) }}
+      cpu_tag: ${{ inputs.cpu_tag }}
   
   fu:
     needs: blaz1
@@ -37,7 +37,7 @@ jobs:
       instance: fu
       n_runs: ${{ fromJSON(inputs.n_runs) }}
       run_time_s: ${{ fromJSON(inputs.run_time_s) }}
-      cpu_tag: ${{ fromJSON(inputs.cpu_tag) }}
+      cpu_tag: ${{ inputs.cpu_tag }}
 
   jakobs1:
     needs: fu
@@ -46,7 +46,7 @@ jobs:
       instance: jakobs1
       n_runs: ${{ fromJSON(inputs.n_runs) }}
       run_time_s: ${{ fromJSON(inputs.run_time_s) }}
-      cpu_tag: ${{ fromJSON(inputs.cpu_tag) }}
+      cpu_tag: ${{ inputs.cpu_tag }}
 
   jakobs2:
     needs: jakobs1
@@ -55,7 +55,7 @@ jobs:
       instance: jakobs2
       n_runs: ${{ fromJSON(inputs.n_runs) }}
       run_time_s: ${{ fromJSON(inputs.run_time_s) }}
-      cpu_tag: ${{ fromJSON(inputs.cpu_tag) }}
+      cpu_tag: ${{ inputs.cpu_tag }}
 
   shapes0:
     needs: jakobs2
@@ -64,7 +64,7 @@ jobs:
       instance: shapes0
       n_runs: ${{ fromJSON(inputs.n_runs) }}
       run_time_s: ${{ fromJSON(inputs.run_time_s) }}
-      cpu_tag: ${{ fromJSON(inputs.cpu_tag) }}
+      cpu_tag: ${{ inputs.cpu_tag }}
 
   shapes1:
     needs: shapes0
@@ -73,6 +73,6 @@ jobs:
       instance: shapes1
       n_runs: ${{ fromJSON(inputs.n_runs) }}
       run_time_s: ${{ fromJSON(inputs.run_time_s) }}
-      cpu_tag: ${{ fromJSON(inputs.cpu_tag) }}
+      cpu_tag: ${{ inputs.cpu_tag }}
 
     
