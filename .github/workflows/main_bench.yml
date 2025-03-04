@@ -1,4 +1,4 @@
-name: main bench
+name: main benches
 
 on:
   workflow_dispatch:
