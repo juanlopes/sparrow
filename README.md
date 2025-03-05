@@ -7,11 +7,11 @@ Built on top of the [`jagua-rs`](https://github.com/JeroenGar/jagua-rs) collisio
 Some example solutions:
 <p align="center">
     <img src="assets/records/final_best_trousers.svg" height=200/>
+    <img src="assets/records/final_best_mao.svg" height=200/>
 </p>
 <p align="center">
     <img src="assets/records/final_best_swim.svg" height=250/>
     <img src="assets/records/final_best_marques.svg" height=250/>
-    <img src="assets/records/final_best_mao.svg" height=250/>
     <img src="assets/records/final_best_dagli.svg" height=250/>
 </p>
 <p align="center">
