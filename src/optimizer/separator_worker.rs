@@ -13,8 +13,6 @@ use jagua_rs::entities::problems::strip_packing::{strip_width, SPProblem};
 use jagua_rs::entities::solution::Solution;
 use jagua_rs::fsize;
 use jagua_rs::geometry::d_transformation::DTransformation;
-use jagua_rs::geometry::geo_enums::GeoRelation;
-use jagua_rs::geometry::geo_traits::{Shape};
 use log::debug;
 use rand::prelude::{SliceRandom, SmallRng};
 use tap::Tap;
@@ -53,16 +51,8 @@ impl SeparatorWorker {
 
                 let evaluator = SeparationSampleEvaluator::new(&self.prob.layout, item, pk, &self.ot);
 
-                let sample_config = match self.ot.is_on_jump_cooldown(pk) {
-                    false => self.sample_config.clone(),
-                    true => SampleConfig {
-                        n_bin_samples: 0,
-                        ..self.sample_config.clone()
-                    }
-                };
-
                 let (new_dt, _, n_evals) = search::search_placement(
-                    &self.prob.layout, item, Some(pk), evaluator, sample_config, &mut self.rng,
+                    &self.prob.layout, item, Some(pk), evaluator, self.sample_config, &mut self.rng,
                 );
 
                 self.move_item(pk, new_dt);
@@ -79,7 +69,6 @@ impl SeparatorWorker {
 
         let old_overlap = self.ot.get_overlap(pk);
         let old_weighted_overlap = self.ot.get_weighted_overlap(pk);
-        let old_bbox = self.prob.layout.placed_items()[pk].shape.bbox();
 
         //modify the problem, by removing the item and placing it in the new position
         self.prob.remove_item(STRIP_LAYOUT_IDX, pk, true);
@@ -95,19 +84,8 @@ impl SeparatorWorker {
 
         let new_overlap = self.ot.get_overlap(new_pk);
         let new_weighted_overlap = self.ot.get_weighted_overlap(new_pk);
-        let new_bbox = self.prob.layout.placed_items()[new_pk].shape.bbox();
 
-        let jumped = {
-            let item_big_enough = item.shape.surrogate().convex_hull_area > self.large_area_ch_area_cutoff;
-            let bboxes_disjoint = old_bbox.relation_to(&new_bbox) == GeoRelation::Disjoint;
-            bboxes_disjoint && item_big_enough
-        };
-
-        if jumped {
-            self.ot.register_jump(new_pk);
-        }
-
-        debug!("Moved item {} from from o: {}, wo: {} to o+1: {}, w_o+1: {} (jump: {})",item.id,FMT.fmt2(old_overlap),FMT.fmt2(old_weighted_overlap),FMT.fmt2(new_overlap),FMT.fmt2(new_weighted_overlap),jumped);
+        debug!("Moved item {} from from o: {}, wo: {} to o+1: {}, w_o+1: {}",item.id,FMT.fmt2(old_overlap),FMT.fmt2(old_weighted_overlap),FMT.fmt2(new_overlap),FMT.fmt2(new_weighted_overlap));
         debug_assert!(tracker_matches_layout(&self.ot, &self.prob.layout));
 
         new_pk

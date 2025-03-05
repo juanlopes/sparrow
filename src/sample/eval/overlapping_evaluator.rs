@@ -1,5 +1,5 @@
 use float_cmp::approx_eq;
-use crate::overlap::overlap_proxy::{bin_overlap_proxy, poly_overlap_proxy};
+use crate::overlap::proxy::{bin_overlap_proxy, poly_overlap_proxy};
 use crate::overlap::tracker::OverlapTracker;
 use crate::sample::eval::{SampleEval, SampleEvaluator};
 use jagua_rs::collision_detection::hazard_helpers::{HazardDetector, DetectionMap};
