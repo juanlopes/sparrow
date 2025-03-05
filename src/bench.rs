@@ -9,7 +9,6 @@ use gls_strip_packing::sample::search::SampleConfig;
 use gls_strip_packing::util::io;
 use gls_strip_packing::util::io::layout_to_svg::s_layout_to_svg;
 use jagua_rs::entities::instances::instance::Instance;
-use jagua_rs::fsize;
 use jagua_rs::io::parser::Parser;
 use jagua_rs::util::config::{CDEConfig, SPSurrogateConfig};
 use jagua_rs::util::polygon_simplification::PolySimplConfig;
@@ -49,7 +48,7 @@ fn main() {
     };
 
     let n_runs_per_iter = (num_cpus::get_physical() / SEP_CONFIG_EXPLORE.n_workers).min(n_runs_total);
-    let n_batches = (n_runs_total as fsize / n_runs_per_iter as fsize).ceil() as usize;
+    let n_batches = (n_runs_total as f32 / n_runs_per_iter as f32).ceil() as usize;
 
     println!(
         "[BENCH] starting bench for {} ({}x{} runs across {} cores, {:?} explore timelimit)",
@@ -125,7 +124,7 @@ fn main() {
     }
 
     //print statistics about the solutions, print best, worst, median and average
-    let (final_widths, final_usages): (Vec<fsize>, Vec<fsize>) = final_solutions
+    let (final_widths, final_usages): (Vec<f32>, Vec<f32>) = final_solutions
         .iter()
         .map(|s| {
             let width = s.layout_snapshots[0].bin.bbox().width();
@@ -167,7 +166,7 @@ fn main() {
 }
 
 //mimics Excel's percentile function
-pub fn calculate_percentile(v: &[fsize], pct: fsize) -> fsize {
+pub fn calculate_percentile(v: &[f32], pct: f32) -> f32 {
     // Validate input
     assert!(!v.is_empty(), "Cannot compute percentile of an empty slice");
     assert!(
@@ -182,12 +181,12 @@ pub fn calculate_percentile(v: &[fsize], pct: fsize) -> fsize {
     let n = sorted.len();
     // Compute the rank using Excel's formula (1-indexed):
     // k = pct * (n - 1) + 1
-    let k = pct * (n - 1) as fsize + 1.0;
+    let k = pct * (n - 1) as f32 + 1.0;
 
     // Determine the lower and upper indices (still 1-indexed)
     let lower_index = k.floor() as usize;
     let upper_index = k.ceil() as usize;
-    let fraction = k - (lower_index as fsize);
+    let fraction = k - (lower_index as f32);
 
     // Convert indices to 0-indexed by subtracting 1
     let lower_value = sorted[lower_index - 1];
@@ -197,17 +196,17 @@ pub fn calculate_percentile(v: &[fsize], pct: fsize) -> fsize {
     lower_value + fraction * (upper_value - lower_value)
 }
 
-pub fn calculate_median(v: &[fsize]) -> fsize {
+pub fn calculate_median(v: &[f32]) -> f32 {
     calculate_percentile(v, 0.5)
 }
 
-pub fn calculate_average(v: &[fsize]) -> fsize {
-    v.iter().sum::<fsize>() / v.len() as fsize
+pub fn calculate_average(v: &[f32]) -> f32 {
+    v.iter().sum::<f32>() / v.len() as f32
 }
 
-pub fn calculate_stddev(v: &[fsize]) -> fsize {
+pub fn calculate_stddev(v: &[f32]) -> f32 {
     let avg = calculate_average(v);
-    (v.iter().map(|x| (x - avg).powi(2)).sum::<fsize>() / v.len() as fsize).sqrt()
+    (v.iter().map(|x| (x - avg).powi(2)).sum::<f32>() / v.len() as f32).sqrt()
 }
 
 pub fn get_git_commit_hash() -> String {

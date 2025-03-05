@@ -1,13 +1,12 @@
 use crate::eval::sample_eval::{SampleEval, SampleEvaluator};
 use jagua_rs::entities::item::Item;
 use jagua_rs::entities::layout::Layout;
-use jagua_rs::fsize;
 use jagua_rs::geometry::d_transformation::DTransformation;
 use jagua_rs::geometry::geo_traits::{Shape, TransformableFrom};
 use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
 
-pub const X_MULTIPLIER: fsize = 10.0;
-pub const Y_MULTIPLIER: fsize = 1.0;
+pub const X_MULTIPLIER: f32 = 10.0;
+pub const Y_MULTIPLIER: f32 = 1.0;
 
 pub struct LBFEvaluator<'a> {
     layout: &'a Layout,

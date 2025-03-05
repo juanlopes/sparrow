@@ -5,7 +5,6 @@ use crate::sample::uniform_sampler::UniformBBoxSampler;
 use jagua_rs::entities::item::Item;
 use jagua_rs::entities::layout::Layout;
 use jagua_rs::entities::placed_item::PItemKey;
-use jagua_rs::fsize;
 use jagua_rs::geometry::d_transformation::DTransformation;
 use jagua_rs::geometry::geo_traits::Shape;
 use log::debug;
@@ -19,7 +18,7 @@ pub struct SampleConfig {
 }
 
 pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, mut evaluator: impl SampleEvaluator, sample_config: SampleConfig, rng: &mut impl Rng) -> (DTransformation, SampleEval, usize) {
-    let item_min_dim = fsize::min(item.shape.bbox().width(), item.shape.bbox().height());
+    let item_min_dim = f32::min(item.shape.bbox().width(), item.shape.bbox().height());
 
     let mut best_samples = BestSamples::new(sample_config.n_coord_descents, item_min_dim * 0.1);
 

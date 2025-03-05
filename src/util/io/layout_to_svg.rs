@@ -5,7 +5,6 @@ use jagua_rs::collision_detection::hazard_helpers::HazardDetector;
 use jagua_rs::entities::instances::instance_generic::InstanceGeneric;
 use jagua_rs::entities::layout::Layout;
 use jagua_rs::entities::layout::LayoutSnapshot;
-use jagua_rs::fsize;
 use jagua_rs::geometry::primitives::circle::Circle;
 use jagua_rs::geometry::primitives::edge::Edge;
 use jagua_rs::geometry::transformation::Transformation;
@@ -40,7 +39,7 @@ pub fn layout_to_svg(
     let theme = &options.theme;
 
     let stroke_width =
-        fsize::min(vbox.width(), vbox.height()) * 0.001 * theme.stroke_width_multiplier;
+        f32::min(vbox.width(), vbox.height()) * 0.001 * theme.stroke_width_multiplier;
 
     let label = {
         //print some information on above the left top of the bin
@@ -53,8 +52,8 @@ pub fn layout_to_svg(
         );
         Text::new(label_content)
             .set("x", bin.bbox().x_min)
-            .set("y", bin.bbox().y_min - 0.5 * 0.025 * fsize::min(bin.bbox().width(), bin.bbox().height()))
-            .set("font-size", fsize::min(bin.bbox().width(), bin.bbox().height()) * 0.025)
+            .set("y", bin.bbox().y_min - 0.5 * 0.025 * f32::min(bin.bbox().width(), bin.bbox().height()))
+            .set("font-size", f32::min(bin.bbox().width(), bin.bbox().height()) * 0.025)
             .set("font-family", "monospace")
             .set("font-weight", "500")
     };

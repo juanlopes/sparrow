@@ -8,7 +8,6 @@ use jagua_rs::entities::instances::instance::Instance;
 use jagua_rs::entities::instances::instance_generic::InstanceGeneric;
 use jagua_rs::entities::item::Item;
 use jagua_rs::entities::layout::Layout;
-use jagua_rs::fsize;
 use jagua_rs::geometry::d_transformation::DTransformation;
 use jagua_rs::geometry::geo_enums::GeoRelation;
 use jagua_rs::geometry::geo_traits::{Distance, Shape, Transformable};
@@ -33,9 +32,9 @@ const OUTPUT_FOLDER: &str = "output/playground/";
 
 const RESOLUTION: usize = 1000;
 
-const ZOOM: fsize = 1.2;
+const ZOOM: f32 = 1.2;
 
-const EPSILON_DIAM_FRAC: fsize = 0.005;
+const EPSILON_DIAM_FRAC: f32 = 0.005;
 
 pub fn main() {
     io::init_logger(log::LevelFilter::Info);
@@ -92,8 +91,8 @@ pub fn main() {
 
     for sx in 0..RESOLUTION {
         for sy in 0..RESOLUTION {
-            let x = bbox.x_min + bbox.width() / RESOLUTION as fsize * sx as fsize;
-            let y = bbox.y_min + bbox.height() / RESOLUTION as fsize * sy as fsize;
+            let x = bbox.x_min + bbox.width() / RESOLUTION as f32 * sx as f32;
+            let y = bbox.y_min + bbox.height() / RESOLUTION as f32 * sy as f32;
 
             let dt = DTransformation::new(0.0, (x, y));
             let overlap = eval(&dummy_layout, item_to_sample, dt);
@@ -149,7 +148,7 @@ pub fn main() {
         (bbox.x_min, bbox.y_min, bbox.width(), bbox.height()),
     );
 
-    let stroke_width = fsize::min(bbox.width(), bbox.height()) * 0.001 * 2.0;
+    let stroke_width = f32::min(bbox.width(), bbox.height()) * 0.001 * 2.0;
 
     let item_paths = dummy_layout
         .placed_items()
@@ -183,11 +182,11 @@ pub fn main() {
 
     let mut overlap_group = Group::new();
 
-    let margin = bbox.width() / RESOLUTION as fsize * 0.1;
+    let margin = bbox.width() / RESOLUTION as f32 * 0.1;
     for sx in 0..RESOLUTION {
         for sy in 0..RESOLUTION {
-            let x = bbox.x_min + bbox.width() / RESOLUTION as fsize * sx as fsize;
-            let y = bbox.y_min + bbox.height() / RESOLUTION as fsize * sy as fsize;
+            let x = bbox.x_min + bbox.width() / RESOLUTION as f32 * sx as f32;
+            let y = bbox.y_min + bbox.height() / RESOLUTION as f32 * sy as f32;
             let overlap = overlaps[sx * RESOLUTION + sy];
             let color = match overlap {
                 Overlap::Items(o) => {
@@ -202,8 +201,8 @@ pub fn main() {
                 let rect = svg::node::element::Rectangle::new()
                     .set("x", x - margin)
                     .set("y", y - margin)
-                    .set("width", bbox.width() / RESOLUTION as fsize + 2.0 * margin)
-                    .set("height", bbox.height() / RESOLUTION as fsize + 2.0 * margin)
+                    .set("width", bbox.width() / RESOLUTION as f32 + 2.0 * margin)
+                    .set("height", bbox.height() / RESOLUTION as f32 + 2.0 * margin)
                     .set("fill", color);
                 overlap_group = overlap_group.add(rect);
             }
@@ -242,11 +241,11 @@ pub fn main() {
             .collect();
 
         let x = (0..RESOLUTION)
-            .map(|i| bbox.x_min + bbox.width() / RESOLUTION as fsize * i as fsize)
-            .collect::<Vec<fsize>>();
+            .map(|i| bbox.x_min + bbox.width() / RESOLUTION as f32 * i as f32)
+            .collect::<Vec<f32>>();
         let y = (0..RESOLUTION)
-            .map(|i| bbox.y_min + bbox.height() / RESOLUTION as fsize * i as fsize)
-            .collect::<Vec<fsize>>();
+            .map(|i| bbox.y_min + bbox.height() / RESOLUTION as f32 * i as f32)
+            .collect::<Vec<f32>>();
 
         let color_scale = ColorScale::Vector(vec![
             ColorScaleElement(0.0, "#ffffff".into()), // White at 0.0
@@ -300,7 +299,7 @@ pub fn main() {
 enum Overlap {
     None,
     Bin,
-    Items(fsize),
+    Items(f32),
     BoundaryNone,
 }
 
@@ -329,8 +328,8 @@ fn eval(layout: &Layout, item: &Item, dt: DTransformation) -> Overlap {
     }
 }
 
-pub fn poly_overlap_proxy(s1: &SimplePolygon, s2: &SimplePolygon) -> fsize {
-    let epsilon = fsize::max(s1.diameter, s2.diameter) * EPSILON_DIAM_FRAC;
+pub fn poly_overlap_proxy(s1: &SimplePolygon, s2: &SimplePolygon) -> f32 {
+    let epsilon = f32::max(s1.diameter, s2.diameter) * EPSILON_DIAM_FRAC;
 
     let deficit = poles_overlap_proxy(
         s1.surrogate().poles.iter(),
@@ -342,12 +341,12 @@ pub fn poly_overlap_proxy(s1: &SimplePolygon, s2: &SimplePolygon) -> fsize {
     let s2_penalty = s2.surrogate().convex_hull_area; // + 0.1 * (s2.diameter / 4.0).powi(2));
 
     let penalty =
-        1.00 * fsize::min(s1_penalty, s2_penalty) + 0.00 * fsize::max(s1_penalty, s2_penalty);
+        1.00 * f32::min(s1_penalty, s2_penalty) + 0.00 * f32::max(s1_penalty, s2_penalty);
 
     (deficit * penalty).sqrt()
 }
 
-pub fn poles_overlap_proxy<'a, C>(poles_1: C, poles_2: C, epsilon: fsize) -> fsize
+pub fn poles_overlap_proxy<'a, C>(poles_1: C, poles_2: C, epsilon: f32) -> f32
 where
     C: Iterator<Item = &'a Circle> + Clone,
 {
@@ -361,13 +360,13 @@ where
                 false => epsilon.powi(2) / (-d + 2.0 * epsilon),
             };
 
-            total_deficit += dd * fsize::min(p1.radius, p2.radius);
+            total_deficit += dd * f32::min(p1.radius, p2.radius);
         }
     }
     total_deficit
 }
 
-fn distance_between_bboxes(big_bbox: &AARectangle, small_bbox: &AARectangle) -> fsize {
+fn distance_between_bboxes(big_bbox: &AARectangle, small_bbox: &AARectangle) -> f32 {
     let min_d = [
         big_bbox.x_max - small_bbox.x_max,
         small_bbox.x_min - big_bbox.x_min,

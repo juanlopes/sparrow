@@ -1,7 +1,6 @@
 use crate::eval::sample_eval::SampleEval;
 use crate::sample::dtransfs_are_similar;
 use itertools::Itertools;
-use jagua_rs::fsize;
 use jagua_rs::geometry::d_transformation::DTransformation;
 use std::fmt::Debug;
 
@@ -11,11 +10,11 @@ use std::fmt::Debug;
 pub struct BestSamples {
     pub size: usize,
     pub samples: Vec<(DTransformation, SampleEval)>,
-    pub unique_thresh: fsize,
+    pub unique_thresh: f32,
 }
 
 impl BestSamples {
-    pub fn new(size: usize, unique_thresh: fsize) -> Self {
+    pub fn new(size: usize, unique_thresh: f32) -> Self {
         Self {
             size,
             samples: vec![(DTransformation::empty(), SampleEval::Invalid); size],

@@ -1,6 +1,5 @@
 use crate::config::{CD_STEP_FAIL, CD_STEP_INIT_RATIO, CD_STEP_LIMIT_RATIO, CD_STEP_SUCCESS};
 use crate::eval::sample_eval::{SampleEval, SampleEvaluator};
-use jagua_rs::fsize;
 use jagua_rs::geometry::d_transformation::DTransformation;
 use jagua_rs::geometry::primitives::point::Point;
 use log::trace;
@@ -11,7 +10,7 @@ use std::fmt::Debug;
 pub fn coordinate_descent(
     (init_dt, init_eval): (DTransformation, SampleEval),
     evaluator: &mut impl SampleEvaluator,
-    min_dim: fsize,
+    min_dim: f32,
     rng: &mut impl Rng,
 ) -> (DTransformation, SampleEval) {
     let mut counter = 0;
@@ -54,8 +53,8 @@ struct CDState {
     pub pos: Point,
     pub eval: SampleEval,
     pub axis: CDAxis,
-    pub steps: (fsize, fsize),
-    pub step_limit: fsize,
+    pub steps: (f32, f32),
+    pub step_limit: f32,
 }
 
 impl CDState {

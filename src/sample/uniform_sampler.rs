@@ -1,8 +1,8 @@
+use std::f32::consts::PI;
 use jagua_rs::entities::item::Item;
 use jagua_rs::geometry::d_transformation::DTransformation;
 use jagua_rs::geometry::geo_enums::AllowedRotation;
 use jagua_rs::geometry::primitives::aa_rectangle::AARectangle;
-use jagua_rs::{fsize, PI};
 use rand::prelude::IndexedRandom;
 use rand::Rng;
 use std::ops::Range;
@@ -11,8 +11,8 @@ use std::ops::Range;
 /// Generates random samples uniformly within a bounding box.
 #[derive(Clone, Debug)]
 pub struct UniformBBoxSampler {
-    pub uniform_x: Range<fsize>,
-    pub uniform_y: Range<fsize>,
+    pub uniform_x: Range<f32>,
+    pub uniform_y: Range<f32>,
     pub uniform_r: UniformRotDistr,
 }
 
@@ -39,8 +39,8 @@ impl UniformBBoxSampler {
 
 #[derive(Debug, Clone)]
 pub enum UniformRotDistr {
-    Range(Range<fsize>),
-    Discrete(Vec<fsize>),
+    Range(Range<f32>),
+    Discrete(Vec<f32>),
     None,
 }
 
@@ -53,7 +53,7 @@ impl UniformRotDistr {
         }
     }
 
-    pub fn sample(&self, rng: &mut impl Rng) -> fsize {
+    pub fn sample(&self, rng: &mut impl Rng) -> f32 {
         match self {
             UniformRotDistr::None => 0.0,
             UniformRotDistr::Range(u) => rng.random_range(u.clone()),

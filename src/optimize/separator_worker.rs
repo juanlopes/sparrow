@@ -12,7 +12,6 @@ use jagua_rs::entities::placing_option::PlacingOption;
 use jagua_rs::entities::problems::problem_generic::{ProblemGeneric, STRIP_LAYOUT_IDX};
 use jagua_rs::entities::problems::strip_packing::{strip_width, SPProblem};
 use jagua_rs::entities::solution::Solution;
-use jagua_rs::fsize;
 use jagua_rs::geometry::d_transformation::DTransformation;
 use log::debug;
 use rand::prelude::{SliceRandom, SmallRng};
@@ -23,7 +22,6 @@ pub struct SeparatorWorker {
     pub prob: SPProblem,
     pub ot: OverlapTracker,
     pub rng: SmallRng,
-    pub large_area_ch_area_cutoff: fsize,
     pub sample_config: SampleConfig,
 }
 

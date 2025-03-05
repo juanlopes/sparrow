@@ -8,21 +8,18 @@ use crate::util::io::layout_to_svg::{layout_to_svg, s_layout_to_svg};
 use crate::{EXPORT_LIVE_SVG, FMT};
 use itertools::Itertools;
 use jagua_rs::entities::bin::Bin;
-use jagua_rs::entities::instances::instance_generic::InstanceGeneric;
 use jagua_rs::entities::instances::strip_packing::SPInstance;
 use jagua_rs::entities::placed_item::PItemKey;
 use jagua_rs::entities::placing_option::PlacingOption;
 use jagua_rs::entities::problems::problem_generic::{ProblemGeneric, STRIP_LAYOUT_IDX};
 use jagua_rs::entities::problems::strip_packing::{strip_width, SPProblem};
 use jagua_rs::entities::solution::Solution;
-use jagua_rs::fsize;
 use jagua_rs::geometry::d_transformation::DTransformation;
 use jagua_rs::geometry::geo_traits::Shape;
 use jagua_rs::geometry::primitives::aa_rectangle::AARectangle;
 use jagua_rs::util::fpa::FPA;
 use log::{debug, log, Level};
 use ordered_float::OrderedFloat;
-use rand::prelude::IteratorRandom;
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 use rayon::iter::IntoParallelRefMutIterator;
@@ -35,7 +32,6 @@ pub struct SeparatorConfig {
     pub strike_limit: usize,
     pub n_workers: usize,
     pub log_level: Level,
-    pub large_area_ch_area_cutoff_ratio: fsize,
     pub sample_config: SampleConfig
 }
 
@@ -47,24 +43,18 @@ pub struct Separator {
     pub workers: Vec<SeparatorWorker>,
     pub svg_counter: usize,
     pub output_svg_folder: String,
-    pub config: SeparatorConfig,
-    pub large_area_ch_area_cutoff: fsize,
+    pub config: SeparatorConfig
 }
 
 impl Separator {
     pub fn new(instance: SPInstance, prob: SPProblem, mut rng: SmallRng, output_svg_folder: String, svg_counter: usize, config: SeparatorConfig) -> Self {
         let overlap_tracker = OverlapTracker::new(&prob.layout);
-        let large_area_ch_area_cutoff = instance.items().iter()
-            .map(|(item, _)| item.shape.surrogate().convex_hull_area)
-            .max_by_key(|&x| OrderedFloat(x))
-            .unwrap() * config.large_area_ch_area_cutoff_ratio;
         let workers = (0..config.n_workers).map(|_|
             SeparatorWorker {
                 instance: instance.clone(),
                 prob: prob.clone(),
                 ot: overlap_tracker.clone(),
                 rng: SmallRng::seed_from_u64(rng.random()),
-                large_area_ch_area_cutoff,
                 sample_config: config.sample_config.clone(),
             }).collect();
 
@@ -76,8 +66,7 @@ impl Separator {
             workers,
             svg_counter,
             output_svg_folder,
-            config,
-            large_area_ch_area_cutoff,
+            config
         }
     }
 
@@ -195,29 +184,7 @@ impl Separator {
         }
     }
 
-    pub fn swap_large_pair_of_items(&mut self) {
-        let layout = &self.prob.layout;
-        let (pk1, pi1) = layout.placed_items.iter()
-            .filter(|(_, pi)| pi.shape.surrogate().convex_hull_area > self.large_area_ch_area_cutoff)
-            .choose(&mut self.rng)
-            .unwrap();
-
-        let (pk2, pi2) = layout.placed_items.iter()
-            .filter(|(_, pi)| pi.item_id != pi1.item_id)
-            .filter(|(_, pi)| pi.shape.surrogate().convex_hull_area > self.large_area_ch_area_cutoff)
-            .choose(&mut self.rng)
-            .unwrap_or(layout.placed_items.iter().choose(&mut self.rng).unwrap());
-
-        let dt1 = pi1.d_transf;
-        let dt2 = pi2.d_transf;
-
-        log!(self.config.log_level,"[GLS] swapped two large items (ids: {} <-> {})", pi1.item_id, pi2.item_id);
-
-        self.move_item(pk1, dt2);
-        self.move_item(pk2, dt1);
-    }
-
-    fn move_item(&mut self, pk: PItemKey, d_transf: DTransformation) -> PItemKey {
+    pub fn move_item(&mut self, pk: PItemKey, d_transf: DTransformation) -> PItemKey {
         debug_assert!(tracker_matches_layout(&self.ot, &self.prob.layout));
 
         let item_id = self.prob.layout.placed_items()[pk].item_id;
@@ -247,7 +214,7 @@ impl Separator {
         new_pk
     }
 
-    pub fn change_strip_width(&mut self, new_width: fsize, split_position: Option<fsize>) {
+    pub fn change_strip_width(&mut self, new_width: f32, split_position: Option<f32>) {
         //if no split position is provided, use the center of the strip
         let split_position = split_position.unwrap_or(self.prob.strip_width() / 2.0);
         let delta = new_width - self.prob.strip_width();
@@ -281,11 +248,10 @@ impl Separator {
                 prob: self.prob.clone(),
                 ot: self.ot.clone(),
                 rng: SmallRng::seed_from_u64(self.rng.random()),
-                large_area_ch_area_cutoff: self.large_area_ch_area_cutoff,
                 sample_config: self.config.sample_config.clone(),
             };
         });
-        debug!("[GLS] changed strip width to {:.3}", new_width);
+        debug!("[SEP] changed strip width to {:.3}", new_width);
     }
 
     pub fn export_svg(&mut self, solution: Option<Solution>, suffix: &str, only_live: bool) {

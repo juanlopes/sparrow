@@ -6,7 +6,6 @@ use jagua_rs::collision_detection::hazard::HazardEntity;
 use jagua_rs::collision_detection::hazard_helpers::HazardDetector;
 use jagua_rs::entities::layout::Layout;
 use jagua_rs::entities::placed_item::PItemKey;
-use jagua_rs::fsize;
 use ordered_float::Float;
 use slotmap::SecondaryMap;
 use tap::Tap;
@@ -138,67 +137,67 @@ impl OverlapTracker {
         }
     }
 
-    pub fn get_pair_weight(&self, pk1: PItemKey, pk2: PItemKey) -> fsize {
+    pub fn get_pair_weight(&self, pk1: PItemKey, pk2: PItemKey) -> f32 {
         let (idx1, idx2) = (self.pk_idx_map[pk1], self.pk_idx_map[pk2]);
         self.pair_overlap[(idx1, idx2)].weight
     }
 
-    pub fn get_bin_weight(&self, pk: PItemKey) -> fsize {
+    pub fn get_bin_weight(&self, pk: PItemKey) -> f32 {
         let idx = self.pk_idx_map[pk];
         self.bin_overlap[idx].weight
     }
 
-    pub fn get_pair_overlap(&self, pk1: PItemKey, pk2: PItemKey) -> fsize {
+    pub fn get_pair_overlap(&self, pk1: PItemKey, pk2: PItemKey) -> f32 {
         let (idx1, idx2) = (self.pk_idx_map[pk1], self.pk_idx_map[pk2]);
         self.pair_overlap[(idx1, idx2)].overlap
     }
 
-    pub fn get_bin_overlap(&self, pk: PItemKey) -> fsize {
+    pub fn get_bin_overlap(&self, pk: PItemKey) -> f32 {
         let idx = self.pk_idx_map[pk];
         self.bin_overlap[idx].overlap
     }
 
-    pub fn get_overlap(&self, pk: PItemKey) -> fsize {
+    pub fn get_overlap(&self, pk: PItemKey) -> f32 {
         let idx = self.pk_idx_map[pk];
 
         self.bin_overlap[idx].overlap
             + (0..self.size)
             .map(|i| self.pair_overlap[(idx, i)].overlap)
-            .sum::<fsize>()
+            .sum::<f32>()
     }
 
-    pub fn get_weighted_overlap(&self, pk: PItemKey) -> fsize {
+    pub fn get_weighted_overlap(&self, pk: PItemKey) -> f32 {
         let idx = self.pk_idx_map[pk];
 
         let w_bin_overlap = self.bin_overlap[idx].weighted_overlap();
         let w_pair_overlap = (0..self.size)
             .map(|i| self.pair_overlap[(idx, i)].weighted_overlap())
-            .sum::<fsize>();
+            .sum::<f32>();
 
         w_bin_overlap + w_pair_overlap
     }
 
-    pub fn get_total_overlap(&self) -> fsize {
-        let bin_o = self.bin_overlap.iter().map(|e| e.overlap).sum::<fsize>();
+    pub fn get_total_overlap(&self) -> f32 {
+        let bin_o = self.bin_overlap.iter().map(|e| e.overlap).sum::<f32>();
 
         let pair_o = self
             .pair_overlap
             .data
             .iter()
             .map(|e| e.overlap)
-            .sum::<fsize>();
+            .sum::<f32>();
 
         bin_o + pair_o
     }
 
-    pub fn get_total_weighted_overlap(&self) -> fsize {
+    pub fn get_total_weighted_overlap(&self) -> f32 {
         let bin_w_o = self.bin_overlap.iter()
             .map(|e| e.weighted_overlap())
-            .sum::<fsize>();
+            .sum::<f32>();
 
         let pair_w_o = self.pair_overlap.data.iter()
             .map(|e| e.weighted_overlap())
-            .sum::<fsize>();
+            .sum::<f32>();
 
         bin_w_o + pair_w_o
     }
@@ -206,8 +205,8 @@ impl OverlapTracker {
 
 #[derive(Debug, Clone, Copy)]
 pub struct OTEntry {
-    pub weight: fsize,
-    pub overlap: fsize,
+    pub weight: f32,
+    pub overlap: f32,
 }
 
 impl Default for OTEntry {
@@ -217,7 +216,7 @@ impl Default for OTEntry {
 }
 
 impl OTEntry {
-    pub fn weighted_overlap(&self) -> fsize {
+    pub fn weighted_overlap(&self) -> f32 {
         self.weight * self.overlap
     }
 }
@@ -226,5 +225,5 @@ pub struct OTSnapshot {
     pub pk_idx_map: SecondaryMap<PItemKey, usize>,
     pub pair_overlap: OTPairMatrix,
     pub bin_overlap: Vec<OTEntry>,
-    pub total_overlap: fsize,
+    pub total_overlap: f32,
 }

@@ -7,12 +7,12 @@ use jagua_rs::collision_detection::quadtree::qt_node::QTNode;
 use jagua_rs::geometry::primitives::edge::Edge;
 use jagua_rs::geometry::primitives::point::Point;
 use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
-use jagua_rs::{fsize, geometry};
+use jagua_rs::geometry;
 
 pub fn simple_polygon_data(s_poly: &SimplePolygon) -> Data {
-    let mut data = Data::new().move_to::<(fsize, fsize)>(s_poly.get_point(0).into());
+    let mut data = Data::new().move_to::<(f32, f32)>(s_poly.get_point(0).into());
     for i in 1..s_poly.number_of_points() {
-        data = data.line_to::<(fsize, fsize)>(s_poly.get_point(i).into());
+        data = data.line_to::<(f32, f32)>(s_poly.get_point(i).into());
     }
     data.close()
 }
@@ -82,7 +82,7 @@ pub fn data_to_path(data: Data, params: &[(&str, &str)]) -> Path {
     path.set("d", data)
 }
 
-pub fn point(Point(x, y): Point, fill: Option<&str>, rad: Option<fsize>) -> Circle {
+pub fn point(Point(x, y): Point, fill: Option<&str>, rad: Option<f32>) -> Circle {
     Circle::new()
         .set("cx", x)
         .set("cy", y)

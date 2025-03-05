@@ -7,7 +7,6 @@ use jagua_rs::collision_detection::hazard_helpers::{DetectionMap, HazardDetector
 use jagua_rs::entities::item::Item;
 use jagua_rs::entities::layout::Layout;
 use jagua_rs::entities::placed_item::PItemKey;
-use jagua_rs::fsize;
 use jagua_rs::geometry::d_transformation::DTransformation;
 use jagua_rs::geometry::geo_traits::TransformableFrom;
 use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
@@ -83,7 +82,7 @@ impl<'a> SampleEvaluator for SeparationEvaluator<'a> {
             let extra_w_overlap = self.calc_overlap_cost(extra_hazards);
             let full_w_overlap = surr_w_overlap + extra_w_overlap;
 
-            debug_assert!(approx_eq!(fsize, full_w_overlap, self.calc_overlap_cost(self.detection_map.iter())));
+            debug_assert!(approx_eq!(f32, full_w_overlap, self.calc_overlap_cost(self.detection_map.iter())));
 
             SampleEval::Collision{loss: full_w_overlap}
         }
@@ -95,7 +94,7 @@ impl<'a> SampleEvaluator for SeparationEvaluator<'a> {
 }
 
 impl<'a> SeparationEvaluator<'a> {
-    pub fn calc_overlap_cost(&self, colliding: impl Iterator<Item=&'a HazardEntity>) -> fsize {
+    pub fn calc_overlap_cost(&self, colliding: impl Iterator<Item=&'a HazardEntity>) -> f32 {
         //go over all colliding hazards and sum their weighted overlaps
         colliding.map(|haz| match haz {
             HazardEntity::PlacedItem { pk: other_pk, .. } => {

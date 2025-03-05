@@ -1,4 +1,4 @@
-use crate::config::{CDE_CONFIG, COMPRESS_N_STRIKES, COMPRESS_R_SHRINKS, CONSTR_SAMPLE_CONFIG, EXPLORE_R_SHRINK, EXPLORE_SOL_DISTR_STDDEV, SEPARATOR_CONFIG_COMPRESS, SEP_CONFIG_EXPLORE};
+use crate::config::{CDE_CONFIG, COMPRESS_N_STRIKES, COMPRESS_R_SHRINKS, CONSTR_SAMPLE_CONFIG, EXPLORE_R_SHRINK, EXPLORE_SOL_DISTR_STDDEV, LARGE_AREA_CH_AREA_CUTOFF_RATIO, SEPARATOR_CONFIG_COMPRESS, SEP_CONFIG_EXPLORE};
 use crate::optimize::lbf::LBFBuilder;
 use crate::optimize::separator::Separator;
 use crate::FMT;
@@ -6,13 +6,15 @@ use jagua_rs::entities::instances::strip_packing::SPInstance;
 use jagua_rs::entities::problems::problem_generic::ProblemGeneric;
 use jagua_rs::entities::problems::strip_packing::strip_width;
 use jagua_rs::entities::solution::Solution;
-use jagua_rs::fsize;
-use log::info;
-use rand::prelude::SmallRng;
+use log::{info};
+use rand::prelude::{IteratorRandom, SmallRng};
 use rand::Rng;
 use rand_distr::Distribution;
 use rand_distr::Normal;
 use std::time::{Duration, Instant};
+use jagua_rs::entities::instances::instance_generic::InstanceGeneric;
+use ordered_float::OrderedFloat;
+
 pub mod lbf;
 pub mod separator;
 mod separator_worker;
@@ -42,7 +44,7 @@ pub fn explore(sep: &mut Separator, time_out: Duration) -> Vec<Solution> {
     info!("[EXPL] starting optimization with initial width: {:.3} ({:.3}%)",current_width,sep.prob.usage() * 100.0);
 
     let end_time = Instant::now() + time_out;
-    let mut solution_pool: Vec<(Solution, fsize)> = vec![];
+    let mut solution_pool: Vec<(Solution, f32)> = vec![];
 
     while Instant::now() < end_time {
         let local_best = sep.separate_layout(Some(end_time));
@@ -76,7 +78,7 @@ pub fn explore(sep: &mut Separator, time_out: Duration) -> Vec<Solution> {
                 let distr = Normal::new(0.0, EXPLORE_SOL_DISTR_STDDEV).unwrap();
                 let sample = distr.sample(&mut sep.rng).abs().min(0.999);
                 //map it to the range of the solution pool
-                let selected_idx = (sample * solution_pool.len() as fsize) as usize;
+                let selected_idx = (sample * solution_pool.len() as f32) as usize;
 
                 let (selected_sol, overlap) = &solution_pool[selected_idx];
                 info!("[EXPL] selected starting solution {}/{} from solution pool (o: {})", selected_idx, solution_pool.len(), FMT.fmt2(*overlap));
@@ -85,7 +87,7 @@ pub fn explore(sep: &mut Separator, time_out: Duration) -> Vec<Solution> {
 
             //restore and swap two large items
             sep.rollback(selected_sol, None);
-            sep.swap_large_pair_of_items();
+            swap_large_pair_of_items(sep);
         }
     }
 
@@ -117,7 +119,7 @@ pub fn compress(sep: &mut Separator, init: &Solution) -> Solution {
     info!("[CMPR] finished compression, improved from {:.3}% to {:.3}% (+{:.3}%)", init.usage * 100.0, best.usage * 100.0, (best.usage - init.usage) * 100.0);
     best
 }
-fn attempt_to_compress(sep: &mut Separator, init: &Solution, r_shrink: fsize) -> Option<Solution> {
+fn attempt_to_compress(sep: &mut Separator, init: &Solution, r_shrink: f32) -> Option<Solution> {
     //restore to the initial solution and width
     sep.change_strip_width(strip_width(&init), None);
     sep.rollback(&init, None);
@@ -133,4 +135,31 @@ fn attempt_to_compress(sep: &mut Separator, init: &Solution, r_shrink: fsize) ->
         true => Some(compacted_sol),
         false => None,
     }
+}
+
+fn swap_large_pair_of_items(sep: &mut Separator) {
+    let large_area_ch_area_cutoff = sep.instance.items().iter()
+        .map(|(item, _)| item.shape.surrogate().convex_hull_area)
+        .max_by_key(|&x| OrderedFloat(x))
+        .unwrap() * LARGE_AREA_CH_AREA_CUTOFF_RATIO;
+
+    let layout = &sep.prob.layout;
+    let (pk1, pi1) = layout.placed_items.iter()
+        .filter(|(_, pi)| pi.shape.surrogate().convex_hull_area > large_area_ch_area_cutoff)
+        .choose(&mut sep.rng)
+        .unwrap();
+
+    let (pk2, pi2) = layout.placed_items.iter()
+        .filter(|(_, pi)| pi.item_id != pi1.item_id)
+        .filter(|(_, pi)| pi.shape.surrogate().convex_hull_area > large_area_ch_area_cutoff)
+        .choose(&mut sep.rng)
+        .unwrap_or(layout.placed_items.iter().choose(&mut sep.rng).unwrap());
+
+    let dt1 = pi1.d_transf;
+    let dt2 = pi2.d_transf;
+
+    info!("[EXPL] swapped two large items (ids: {} <-> {})", pi1.item_id, pi2.item_id);
+
+    sep.move_item(pk1, dt2);
+    sep.move_item(pk2, dt1);
 }

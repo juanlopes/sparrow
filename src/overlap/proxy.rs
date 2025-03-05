@@ -1,5 +1,4 @@
 use crate::config::{OVERLAP_PROXY_EPSILON_DIAM_RATIO, OVERLAP_PROXY_NEGLECT_EPSILON_RATIO};
-use jagua_rs::fsize;
 use jagua_rs::geometry::fail_fast::sp_surrogate::SPSurrogate;
 use jagua_rs::geometry::geo_traits::{Distance, Shape};
 use jagua_rs::geometry::primitives::aa_rectangle::AARectangle;
@@ -7,8 +6,8 @@ use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
 use std::cmp::Ordering;
 
 #[inline(always)]
-pub fn poly_overlap_proxy(s1: &SimplePolygon, s2: &SimplePolygon) -> fsize {
-    let normalizer = fsize::max(s1.diameter(), s2.diameter()) * OVERLAP_PROXY_EPSILON_DIAM_RATIO;
+pub fn poly_overlap_proxy(s1: &SimplePolygon, s2: &SimplePolygon) -> f32 {
+    let normalizer = f32::max(s1.diameter(), s2.diameter()) * OVERLAP_PROXY_EPSILON_DIAM_RATIO;
 
     let deficit = poles_overlap_proxy(
         &s1.surrogate(),
@@ -20,13 +19,13 @@ pub fn poly_overlap_proxy(s1: &SimplePolygon, s2: &SimplePolygon) -> fsize {
     let s2_penalty = s2.surrogate().convex_hull_area;
 
     let penalty =
-        0.99 * fsize::min(s1_penalty, s2_penalty) + 0.01 * fsize::max(s1_penalty, s2_penalty);
+        0.99 * f32::min(s1_penalty, s2_penalty) + 0.01 * f32::max(s1_penalty, s2_penalty);
 
     (deficit + 0.001 * penalty).sqrt() * penalty.sqrt()
 }
 
 #[inline(always)]
-pub fn bin_overlap_proxy(s: &SimplePolygon, bin_bbox: AARectangle) -> fsize {
+pub fn bin_overlap_proxy(s: &SimplePolygon, bin_bbox: AARectangle) -> f32 {
     let s_bbox = s.bbox();
     let deficit = match AARectangle::from_intersection(&s_bbox, &bin_bbox) {
         Some(r) => {
@@ -43,7 +42,7 @@ pub fn bin_overlap_proxy(s: &SimplePolygon, bin_bbox: AARectangle) -> fsize {
     10.0 * (deficit + 0.001 * penalty).sqrt() * penalty.sqrt()
 }
 #[inline(always)]
-pub fn poles_overlap_proxy<'a>(sp1: &SPSurrogate, sp2: &SPSurrogate, epsilon: fsize) -> fsize {
+pub fn poles_overlap_proxy<'a>(sp1: &SPSurrogate, sp2: &SPSurrogate, epsilon: f32) -> f32 {
     let (sp_inner, sp_outer) = choose_inner_outer(sp1, sp2);
     let bpole_inner = sp_inner.poles_bounding_circle.clone();
 
@@ -64,7 +63,7 @@ pub fn poles_overlap_proxy<'a>(sp1: &SPSurrogate, sp2: &SPSurrogate, epsilon: fs
                     false => epsilon.powi(2) / (-pd + 2.0 * epsilon),
                 };
 
-                total_deficit += pd_decay * fsize::min(p1.radius, p2.radius);
+                total_deficit += pd_decay * f32::min(p1.radius, p2.radius);
             }
         }
     }
