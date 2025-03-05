@@ -5,14 +5,18 @@ A state-of-the-art heuristic for the 2D irregular strip packing problem.
 Built on top of the [`jagua-rs`](https://github.com/JeroenGar/jagua-rs) collision detection engine.
 
 Some example solutions:
-<p align="center">
-    <img src="assets/records/final_best_trousers.svg" height=200/>
+<p align="center>
+    <img src="assets/records/final_best_trousers.svg" height=180/>
+</p>
+<p align="center>
+    <img src="assets/records/final_best_swim.svg" height=250/>
+    <img src="assets/records/final_best_marques.svg" height=250/>
+    <img src="assets/records/final_best_mao.svg" height=250/>
+    <img src="assets/records/final_best_dagli.svg" height=250/>
+</p>
+<p align="center>
     <img src="assets/records/final_best_albano.svg" height=200/>
-    <img src="assets/records/final_best_marques.svg" height=200/>
     <img src="assets/records/final_best_shirts.svg" height=200/>
-    <img src="assets/records/final_best_mao.svg" height=200/>
-    <img src="assets/records/final_best_swim.svg" height=200/>
-    <img src="assets/records/final_best_dagli.svg" height=200/>
 </p>
 
 ## Requirements
@@ -44,7 +48,8 @@ If you want to view the optimization process live, open `live_solution_viewer.ht
 and compile with the `live_svg` feature enabled:
 
 ```bash
-open live_solution_visualizer.html
+rm -rf output/.live_solution.svg
+open assets/live_solution_visualizer.html
 cargo run --release --features=live_svg -- \
     [path to input JSON] \
     [timelimit exploration phase in seconds] \
