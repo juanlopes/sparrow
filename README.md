@@ -44,11 +44,11 @@ cargo run --release -- \
     120
 ```
 
-If you want to view the optimization process live, open `live_solution_viewer.html` in a web browser,
+If you want to view the optimization process live, open `assets/live_solution_viewer.html` in a web browser,
 and compile with the `live_svg` feature enabled:
 
 ```bash
-rm -rf output/.live_solution.svg
+rm output/.live_solution.svg
 open assets/live_solution_visualizer.html
 cargo run --release --features=live_svg -- \
     [path to input JSON] \
