@@ -1,22 +1,22 @@
-# 🦅 EagleNEST 🪺
+# Nesting algo 🪺
 
 A state-of-the-art heuristic for the 2D irregular strip packing problem.
 
 Built on top of the [`jagua-rs`](https://github.com/JeroenGar/jagua-rs) collision detection engine.
 
 Some example solutions:
-<p align="center>
-    <img src="assets/records/final_best_trousers.svg" height=180/>
+<p align="center">
+    <img src="assets/records/final_best_trousers.svg" height=200/>
 </p>
-<p align="center>
+<p align="center">
     <img src="assets/records/final_best_swim.svg" height=250/>
     <img src="assets/records/final_best_marques.svg" height=250/>
     <img src="assets/records/final_best_mao.svg" height=250/>
     <img src="assets/records/final_best_dagli.svg" height=250/>
 </p>
-<p align="center>
-    <img src="assets/records/final_best_albano.svg" height=200/>
-    <img src="assets/records/final_best_shirts.svg" height=200/>
+<p align="center">
+    <img src="assets/records/final_best_albano.svg" height=220/>
+    <img src="assets/records/final_best_shirts.svg" height=220/>
 </p>
 
 ## Requirements
