@@ -34,7 +34,7 @@ General usage:
 ```bash
 cargo run --release  -- \
     [path to input JSON] \
-    [timelimit exploration phase in seconds] \
+    [timelimit exploration phase in seconds]
 ```
 
 Concrete example:
@@ -52,16 +52,16 @@ rm output/.live_solution.svg
 open assets/live_solution_visualizer.html
 cargo run --release --features=live_svg -- \
     [path to input JSON] \
-    [timelimit exploration phase in seconds] \
+    [timelimit exploration phase in seconds]
 ```
 ![Demo of the live solution viewer](assets/demo.gif)
 
 For ultimate performance:
 ```bash
 RUSTFLAGS='-C target-cpu=native'
-cargo run --profile release-ultimate -- \
+cargo run --profile release -- \
     [path to input JSON] \
-    [timelimit exploration phase in seconds] \
+    [timelimit exploration phase in seconds]
 ```
 
 ## Input
