@@ -11,9 +11,6 @@ pub mod util;
 pub mod config;
 pub mod eval;
 
-#[global_allocator]
-static GLOBAL: MiMalloc = MiMalloc;
-
 pub static EPOCH: Lazy<Instant> = Lazy::new(Instant::now);
 
 const FMT: Lazy<Formatter> = Lazy::new(|| {
