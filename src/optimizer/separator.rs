@@ -36,7 +36,6 @@ pub struct SeparatorConfig {
     pub strike_limit: usize,
     pub n_workers: usize,
     pub log_level: Level,
-    pub jump_cooldown: usize,
     pub large_area_ch_area_cutoff_ratio: fsize,
     pub sample_config: SampleConfig
 }
@@ -57,7 +56,7 @@ impl Separator {
     pub fn new(instance: SPInstance, prob: SPProblem, mut rng: SmallRng, output_svg_folder: String, svg_counter: usize, config: SeparatorConfig) -> Self {
         //use the builder to create an initial placement into the problem
 
-        let overlap_tracker = OverlapTracker::new(&prob.layout, config.jump_cooldown);
+        let overlap_tracker = OverlapTracker::new(&prob.layout);
         let large_area_ch_area_cutoff = instance.items().iter()
             .map(|(item, _)| item.shape.surrogate().convex_hull_area)
             .max_by_key(|&x| OrderedFloat(x))
@@ -194,7 +193,7 @@ impl Separator {
             }
             None => {
                 //otherwise, rebuild it
-                self.ot = OverlapTracker::new(&self.prob.layout, self.config.jump_cooldown);
+                self.ot = OverlapTracker::new(&self.prob.layout);
             }
         }
     }
@@ -228,7 +227,6 @@ impl Separator {
 
         let old_overlap = self.ot.get_overlap(pk);
         let old_weighted_overlap = self.ot.get_weighted_overlap(pk);
-        let old_bbox = self.prob.layout.placed_items()[pk].shape.bbox();
 
         //Remove the item from the problem
         self.prob.remove_item(STRIP_LAYOUT_IDX, pk, true);
@@ -244,20 +242,8 @@ impl Separator {
 
         let new_overlap = self.ot.get_overlap(new_pk);
         let new_weighted_overlap = self.ot.get_weighted_overlap(new_pk);
-        let new_bbox = self.prob.layout.placed_items()[new_pk].shape.bbox();
 
-        let jumped = {
-            let disjoint_bbox = old_bbox.relation_to(&new_bbox) == GeoRelation::Disjoint;
-            let item_ch_area = self.instance.item(item_id).shape.surrogate().convex_hull_area;
-            let big_enough = item_ch_area > self.large_area_ch_area_cutoff;
-            disjoint_bbox && big_enough
-        };
-
-        if jumped {
-            self.ot.register_jump(new_pk);
-        }
-
-        debug!("[MV] moved item {} from from o: {}, wo: {} to o+1: {}, w_o+1: {} (jump: {})",item_id,FMT.fmt2(old_overlap),FMT.fmt2(old_weighted_overlap),FMT.fmt2(new_overlap),FMT.fmt2(new_weighted_overlap),jumped);
+        debug!("[MV] moved item {} from from o: {}, wo: {} to o+1: {}, w_o+1: {}",item_id,FMT.fmt2(old_overlap),FMT.fmt2(old_weighted_overlap),FMT.fmt2(new_overlap),FMT.fmt2(new_weighted_overlap));
 
         debug_assert!(tracker_matches_layout(&self.ot, &self.prob.layout));
 
@@ -289,7 +275,7 @@ impl Separator {
         self.prob.layout.change_bin(new_bin);
 
         //rebuild the overlap tracker
-        self.ot = OverlapTracker::new(&self.prob.layout, self.config.jump_cooldown);
+        self.ot = OverlapTracker::new(&self.prob.layout);
 
         //rebuild the workers
         self.workers.iter_mut().for_each(|opt| {

@@ -43,7 +43,6 @@ pub const EXPLORE_R_SHRINK: fsize = 0.005;
 pub const SEP_CONFIG_EXPLORE: SeparatorConfig = SeparatorConfig {
     iter_no_imprv_limit: 100,
     strike_limit: 5,
-    jump_cooldown: 0,
     log_level: log::Level::Info,
     n_workers: 2,
     large_area_ch_area_cutoff_ratio: 0.5,
@@ -65,7 +64,6 @@ pub const COMPRESS_N_STRIKES: [usize; 2] = [5,5];
 pub const SEPARATOR_CONFIG_COMPRESS: SeparatorConfig = SeparatorConfig {
     iter_no_imprv_limit: 100,
     strike_limit: 5,
-    jump_cooldown: 0,
     log_level: log::Level::Debug,
     n_workers: 2,
     large_area_ch_area_cutoff_ratio: 0.5,
