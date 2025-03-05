@@ -1,5 +1,5 @@
-use crate::sample::eval::constructive_evaluator::ConstructiveEvaluator;
-use crate::sample::eval::SampleEval;
+use crate::eval::lbf_eval::LBFEvaluator;
+use crate::eval::sample_eval::SampleEval;
 use crate::sample::search::{search_placement, SampleConfig};
 use itertools::Itertools;
 use jagua_rs::entities::instances::instance_generic::InstanceGeneric;
@@ -85,11 +85,11 @@ impl LBFBuilder {
     fn find_placement(&mut self, item_id: usize) -> Option<PlacingOption> {
         let layout = &self.prob.layout;
         let item = self.instance.item(item_id);
-        let evaluator = ConstructiveEvaluator::new(layout, item);
+        let evaluator = LBFEvaluator::new(layout, item);
 
         let (d_transf, eval, _) = search_placement(layout, item, None, evaluator, self.sample_config, &mut self.rng);
 
-        if let SampleEval::Valid(_) = eval {
+        if let SampleEval::Clear{..} = eval {
             Some(
                 PlacingOption {
                     layout_idx: STRIP_LAYOUT_IDX,

@@ -7,6 +7,8 @@ use rand::prelude::IndexedRandom;
 use rand::Rng;
 use std::ops::Range;
 
+
+/// Generates random samples uniformly within a bounding box.
 #[derive(Clone, Debug)]
 pub struct UniformBBoxSampler {
     pub uniform_x: Range<fsize>,

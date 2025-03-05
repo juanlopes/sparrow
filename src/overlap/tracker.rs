@@ -1,6 +1,6 @@
 use crate::config::{WEIGHT_MAX_INC_RATIO, WEIGHT_MIN_INC_RATIO, WEIGHT_OVERLAP_DECAY};
+use crate::overlap::pair_matrix::OTPairMatrix;
 use crate::overlap::proxy;
-use crate::overlap::pair_matrix::PairMatrix;
 use crate::util::assertions::tracker_matches_layout;
 use jagua_rs::collision_detection::hazard::HazardEntity;
 use jagua_rs::collision_detection::hazard_helpers::HazardDetector;
@@ -15,7 +15,7 @@ use tap::Tap;
 pub struct OverlapTracker {
     pub size: usize,
     pub pk_idx_map: SecondaryMap<PItemKey, usize>,
-    pub pair_overlap: PairMatrix,
+    pub pair_overlap: OTPairMatrix,
     pub bin_overlap: Vec<OTEntry>,
 }
 
@@ -28,7 +28,7 @@ impl OverlapTracker {
         Self {
             size,
             pk_idx_map,
-            pair_overlap: PairMatrix::new(size),
+            pair_overlap: OTPairMatrix::new(size),
             bin_overlap: vec![OTEntry::default(); size],
         }.tap_mut(|ot| {
             l.placed_items.keys().for_each(|pk| {
@@ -224,7 +224,7 @@ impl OTEntry {
 
 pub struct OTSnapshot {
     pub pk_idx_map: SecondaryMap<PItemKey, usize>,
-    pub pair_overlap: PairMatrix,
+    pub pair_overlap: OTPairMatrix,
     pub bin_overlap: Vec<OTEntry>,
     pub total_overlap: fsize,
 }

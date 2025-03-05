@@ -3,7 +3,6 @@ use jagua_rs::{fsize, PI};
 
 mod best_samples;
 mod coord_descent;
-pub mod eval;
 pub mod search;
 mod uniform_sampler;
 

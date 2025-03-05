@@ -4,11 +4,11 @@ use crate::util::io::svg_util::SvgDrawOptions;
 use float_cmp::{approx_eq, assert_approx_eq};
 use itertools::Itertools;
 use jagua_rs::collision_detection::hazard::HazardEntity;
+use jagua_rs::collision_detection::hazard_helpers::HazardDetector;
 use jagua_rs::entities::layout::Layout;
 use jagua_rs::fsize;
 use jagua_rs::util::assertions;
 use log::warn;
-use jagua_rs::collision_detection::hazard_helpers::HazardDetector;
 
 pub fn tracker_matches_layout(ot: &OverlapTracker, l: &Layout) -> bool {
     assert!(l.placed_items.keys().all(|k| ot.pk_idx_map.contains_key(k)));

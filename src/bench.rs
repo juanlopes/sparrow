@@ -1,11 +1,10 @@
 extern crate core;
 
-use std::fs;
 use chrono::Local;
 use gls_strip_packing::config::{DRAW_OPTIONS, OUTPUT_DIR, RNG_SEED, SEPARATOR_CONFIG_COMPRESS, SEP_CONFIG_EXPLORE};
-use gls_strip_packing::optimizer::builder::LBFBuilder;
-use gls_strip_packing::optimizer::{compress, explore};
-use gls_strip_packing::optimizer::separator::Separator;
+use gls_strip_packing::optimize::lbf::LBFBuilder;
+use gls_strip_packing::optimize::separator::Separator;
+use gls_strip_packing::optimize::{compress, explore};
 use gls_strip_packing::sample::search::SampleConfig;
 use gls_strip_packing::util::io;
 use gls_strip_packing::util::io::layout_to_svg::s_layout_to_svg;
@@ -17,6 +16,7 @@ use jagua_rs::util::polygon_simplification::PolySimplConfig;
 use ordered_float::OrderedFloat;
 use rand::prelude::SmallRng;
 use rand::{Rng, SeedableRng};
+use std::fs;
 use std::path::Path;
 use std::time::{Duration, Instant};
 

@@ -1,11 +1,12 @@
+use crate::eval::sample_eval::SampleEval;
 use crate::sample::dtransfs_are_similar;
-use crate::sample::eval::SampleEval;
 use itertools::Itertools;
 use jagua_rs::fsize;
 use jagua_rs::geometry::d_transformation::DTransformation;
 use std::fmt::Debug;
 
-//Datastructure that stores the N best (non-similar) samples, automatically keeps them sorted and evicts the worst
+//datastructure that stores the N best samples, automatically keeps them sorted and evicts the worst.
+//it also makes sure that no two samples in its list are too similar
 #[derive(Debug, Clone)]
 pub struct BestSamples {
     pub size: usize,
@@ -53,7 +54,7 @@ impl BestSamples {
         self.samples[0].clone()
     }
 
-    pub fn worst(&self) -> (DTransformation, SampleEval) {
-        self.samples[self.size - 1].clone()
+    pub fn upperbound(&self) -> SampleEval {
+        self.samples.last().unwrap().1
     }
 }

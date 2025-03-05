@@ -1,6 +1,6 @@
+use crate::eval::sample_eval::{SampleEval, SampleEvaluator};
 use crate::sample::best_samples::BestSamples;
 use crate::sample::coord_descent::coordinate_descent;
-use crate::sample::eval::{SampleEval, SampleEvaluator};
 use crate::sample::uniform_sampler::UniformBBoxSampler;
 use jagua_rs::entities::item::Item;
 use jagua_rs::entities::layout::Layout;
@@ -27,7 +27,7 @@ pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, mut e
         Some(ref_pk) => {
             //report the current placement (and eval)
             let dt = l.placed_items[ref_pk].d_transf;
-            let eval = evaluator.eval(dt, Some(best_samples.worst().1));
+            let eval = evaluator.eval(dt, Some(best_samples.upperbound()));
 
             best_samples.report(dt, eval);
 
@@ -45,14 +45,14 @@ pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, mut e
 
     for _ in 0..sample_config.n_bin_samples {
         let dt = bin_sampler.sample(rng).into();
-        let eval = evaluator.eval(dt, Some(best_samples.worst().1));
+        let eval = evaluator.eval(dt, Some(best_samples.upperbound()));
         best_samples.report(dt, eval);
     }
 
     if let Some(focussed_sampler) = focussed_sampler {
         for _ in 0..sample_config.n_focussed_samples {
             let dt = focussed_sampler.sample(rng);
-            let eval = evaluator.eval(dt, Some(best_samples.worst().1));
+            let eval = evaluator.eval(dt, Some(best_samples.upperbound()));
             best_samples.report(dt, eval);
         }
     }

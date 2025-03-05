@@ -2,6 +2,7 @@ use gls_strip_packing::util::io;
 use gls_strip_packing::util::io::svg_export;
 use itertools::Itertools;
 use jagua_rs::collision_detection::hazard::HazardEntity;
+use jagua_rs::collision_detection::hazard_helpers::HazardDetector;
 use jagua_rs::entities::bin::Bin;
 use jagua_rs::entities::instances::instance::Instance;
 use jagua_rs::entities::instances::instance_generic::InstanceGeneric;
@@ -22,7 +23,6 @@ use plotly::common::{ColorScale, ColorScaleElement};
 use plotly::layout::{AspectMode, AspectRatio, LayoutScene};
 use plotly::{Plot, Surface};
 use std::path::Path;
-use jagua_rs::collision_detection::hazard_helpers::HazardDetector;
 use svg::node::element::Group;
 use svg::Document;
 

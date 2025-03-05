@@ -1,14 +1,15 @@
 use crate::overlap::tracker::OTEntry;
 use std::ops::{Index, IndexMut};
 
-// Triangular matrix of pair-wise overlaps and weights
+// triangular matrix of pair-wise overlaps and weights
+// supporting data structure for the OverlapTracker
 #[derive(Debug, Clone)]
-pub struct PairMatrix {
+pub struct OTPairMatrix {
     pub size: usize,
     pub data: Vec<OTEntry>,
 }
 
-impl PairMatrix {
+impl OTPairMatrix {
     pub fn new(size: usize) -> Self {
         let len = size * (size + 1) / 2;
         Self {
@@ -18,7 +19,7 @@ impl PairMatrix {
     }
 }
 
-impl Index<(usize, usize)> for PairMatrix {
+impl Index<(usize, usize)> for OTPairMatrix {
     type Output = OTEntry;
 
     fn index(&self, (row, col): (usize, usize)) -> &Self::Output {
@@ -26,7 +27,7 @@ impl Index<(usize, usize)> for PairMatrix {
     }
 }
 
-impl IndexMut<(usize, usize)> for PairMatrix {
+impl IndexMut<(usize, usize)> for OTPairMatrix {
     fn index_mut(&mut self, (row, col): (usize, usize)) -> &mut Self::Output {
         &mut self.data[calc_idx(row, col, self.size)]
     }

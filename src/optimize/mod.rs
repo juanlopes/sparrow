@@ -1,19 +1,19 @@
-use std::time::{Duration, Instant};
+use crate::config::{CDE_CONFIG, COMPRESS_N_STRIKES, COMPRESS_R_SHRINKS, CONSTR_SAMPLE_CONFIG, EXPLORE_R_SHRINK, EXPLORE_SOL_DISTR_STDDEV, SEPARATOR_CONFIG_COMPRESS, SEP_CONFIG_EXPLORE};
+use crate::optimize::lbf::LBFBuilder;
+use crate::optimize::separator::Separator;
+use crate::FMT;
 use jagua_rs::entities::instances::strip_packing::SPInstance;
 use jagua_rs::entities::problems::problem_generic::ProblemGeneric;
 use jagua_rs::entities::problems::strip_packing::strip_width;
 use jagua_rs::entities::solution::Solution;
 use jagua_rs::fsize;
-use log::{info};
+use log::info;
 use rand::prelude::SmallRng;
 use rand::Rng;
-use rand_distr::Normal;
 use rand_distr::Distribution;
-use crate::config::{CDE_CONFIG, CONSTR_SAMPLE_CONFIG, EXPLORE_SOL_DISTR_STDDEV, COMPRESS_N_STRIKES, COMPRESS_R_SHRINKS, EXPLORE_R_SHRINK, SEPARATOR_CONFIG_COMPRESS, SEP_CONFIG_EXPLORE};
-use crate::FMT;
-use crate::optimizer::builder::LBFBuilder;
-use crate::optimizer::separator::Separator;
-pub mod builder;
+use rand_distr::Normal;
+use std::time::{Duration, Instant};
+pub mod lbf;
 pub mod separator;
 mod separator_worker;
 
@@ -100,7 +100,7 @@ pub fn compress(sep: &mut Separator, init: &Solution) -> Solution {
         let mut n_strikes = 0;
         info!("[CMPR] attempting to compress in steps of {}%", r_shrink * 100.0);
         while n_strikes < COMPRESS_N_STRIKES[i] {
-            match try_compress(sep, &best, r_shrink) {
+            match attempt_to_compress(sep, &best, r_shrink) {
                 Some(compacted_sol) => {
                     info!("[CMPR] compressed to {:.3} ({:.3}%)", strip_width(&compacted_sol), compacted_sol.usage * 100.0);
                     sep.export_svg(Some(compacted_sol.clone()), "p", false);
@@ -117,10 +117,7 @@ pub fn compress(sep: &mut Separator, init: &Solution) -> Solution {
     info!("[CMPR] finished compression, improved from {:.3}% to {:.3}% (+{:.3}%)", init.usage * 100.0, best.usage * 100.0, (best.usage - init.usage) * 100.0);
     best
 }
-
-
-//TODO: refine separator for this purpose (more greedy, more restores)
-fn try_compress(sep: &mut Separator, init: &Solution, r_shrink: fsize) -> Option<Solution> {
+fn attempt_to_compress(sep: &mut Separator, init: &Solution, r_shrink: fsize) -> Option<Solution> {
     //restore to the initial solution and width
     sep.change_strip_width(strip_width(&init), None);
     sep.rollback(&init, None);
@@ -130,7 +127,7 @@ fn try_compress(sep: &mut Separator, init: &Solution, r_shrink: fsize) -> Option
     let split_pos = sep.rng.random_range(0.0..sep.prob.strip_width());
     sep.change_strip_width(new_width, Some(split_pos));
 
-    //separate layout
+    //try to separate layout, if all overlap is eliminated, return the solution
     let (compacted_sol, ot) = sep.separate_layout(None);
     match ot.total_overlap == 0.0 {
         true => Some(compacted_sol),

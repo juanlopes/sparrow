@@ -1,6 +1,7 @@
 use crate::config::{DRAW_OPTIONS, OUTPUT_DIR};
-use crate::optimizer::separator_worker::SeparatorWorker;
+use crate::optimize::separator_worker::SeparatorWorker;
 use crate::overlap::tracker::{OTSnapshot, OverlapTracker};
+use crate::sample::search::SampleConfig;
 use crate::util::assertions::tracker_matches_layout;
 use crate::util::io;
 use crate::util::io::layout_to_svg::{layout_to_svg, s_layout_to_svg};
@@ -28,7 +29,6 @@ use rayon::iter::IntoParallelRefMutIterator;
 use rayon::iter::ParallelIterator;
 use std::path::Path;
 use std::time::Instant;
-use crate::sample::search::SampleConfig;
 
 pub struct SeparatorConfig {
     pub iter_no_imprv_limit: usize,
@@ -53,8 +53,6 @@ pub struct Separator {
 
 impl Separator {
     pub fn new(instance: SPInstance, prob: SPProblem, mut rng: SmallRng, output_svg_folder: String, svg_counter: usize, config: SeparatorConfig) -> Self {
-        //use the builder to create an initial placement into the problem
-
         let overlap_tracker = OverlapTracker::new(&prob.layout);
         let large_area_ch_area_cutoff = instance.items().iter()
             .map(|(item, _)| item.shape.surrogate().convex_hull_area)
@@ -174,7 +172,7 @@ impl Separator {
             .map(|opt| (opt.prob.create_solution(None), &opt.ot))
             .unwrap();
 
-        // Sync the master with the best optimizer
+        // Sync the master with the best optimize
         self.prob.restore_to_solution(&best_opt.0);
         self.ot = best_opt.1.clone();
 
@@ -182,7 +180,7 @@ impl Separator {
     }
 
     pub fn rollback(&mut self, sol: &Solution, ots: Option<&OTSnapshot>) {
-        assert_eq!(strip_width(sol), self.prob.strip_width());
+        debug_assert!(strip_width(sol) == self.prob.strip_width());
         self.prob.restore_to_solution(sol);
 
         match ots {

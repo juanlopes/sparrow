@@ -2,7 +2,7 @@ extern crate core;
 
 use chrono::Local;
 use gls_strip_packing::config::{CDE_CONFIG, DRAW_OPTIONS, LOG_LEVEL_FILTER_DEBUG, LOG_LEVEL_FILTER_RELEASE, OUTPUT_DIR, RNG_SEED};
-use gls_strip_packing::optimizer::optimize;
+use gls_strip_packing::optimize::optimize;
 use gls_strip_packing::util::io;
 use gls_strip_packing::util::io::layout_to_svg::s_layout_to_svg;
 use jagua_rs::entities::instances::instance::Instance;

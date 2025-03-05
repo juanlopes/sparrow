@@ -1,4 +1,5 @@
-use crate::sample::eval::{SampleEval, SampleEvaluator};
+use crate::config::{CD_STEP_FAIL, CD_STEP_INIT_RATIO, CD_STEP_LIMIT_RATIO, CD_STEP_SUCCESS};
+use crate::eval::sample_eval::{SampleEval, SampleEvaluator};
 use jagua_rs::fsize;
 use jagua_rs::geometry::d_transformation::DTransformation;
 use jagua_rs::geometry::primitives::point::Point;
@@ -6,7 +7,6 @@ use log::trace;
 use rand::Rng;
 use std::cmp::Ordering;
 use std::fmt::Debug;
-use crate::config::{CD_STEP_FAIL, CD_STEP_SUCCESS, CD_STEP_INIT_RATIO, CD_STEP_LIMIT_RATIO};
 
 pub fn coordinate_descent(
     (init_dt, init_eval): (DTransformation, SampleEval),
@@ -40,7 +40,7 @@ pub fn coordinate_descent(
         cd_state.evolve(min_state);
         trace!("CD: {:?}", cd_state);
 
-        assert!(counter < 100_000);
+        debug_assert!(counter < 10_000);
     }
     trace!(
         "CD: {} evals, t: ({:.3}, {:.3}) -> ({:.3}, {:.3}), eval: {:?}",

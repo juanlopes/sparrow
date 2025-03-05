@@ -1,6 +1,7 @@
 use crate::util::io::svg_util::SvgDrawOptions;
 use crate::util::io::{svg_export, svg_util};
 use jagua_rs::collision_detection::hazard::HazardEntity;
+use jagua_rs::collision_detection::hazard_helpers::HazardDetector;
 use jagua_rs::entities::instances::instance_generic::InstanceGeneric;
 use jagua_rs::entities::layout::Layout;
 use jagua_rs::entities::layout::LayoutSnapshot;
@@ -11,7 +12,6 @@ use jagua_rs::geometry::transformation::Transformation;
 use jagua_rs::io::parser;
 use log::warn;
 use std::hash::{DefaultHasher, Hash, Hasher};
-use jagua_rs::collision_detection::hazard_helpers::HazardDetector;
 use svg::node::element::{Definitions, Group, Text, Title, Use};
 use svg::Document;
 
