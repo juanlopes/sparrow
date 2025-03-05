@@ -1,4 +1,4 @@
-# Nesting algo 🪺
+# nest-rs 🐦🪺
 
 A state-of-the-art heuristic for the 2D irregular strip packing problem.
 
