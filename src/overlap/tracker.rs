@@ -1,5 +1,5 @@
 use crate::config::{WEIGHT_MAX_INC_RATIO, WEIGHT_MIN_INC_RATIO, WEIGHT_OVERLAP_DECAY};
-use crate::overlap::overlap_proxy;
+use crate::overlap::proxy;
 use crate::overlap::pair_matrix::PairMatrix;
 use crate::util::assertions::tracker_matches_layout;
 use jagua_rs::collision_detection::hazard::HazardEntity;
@@ -59,14 +59,14 @@ impl OverlapTracker {
             match haz {
                 HazardEntity::PlacedItem { pk: other_pk, .. } => {
                     let other_shape = &l.placed_items[*other_pk].shape;
-                    let overlap = overlap_proxy::poly_overlap_proxy(shape, other_shape);
+                    let overlap = proxy::poly_overlap_proxy(shape, other_shape);
 
                     let other_idx = self.pk_idx_map[*other_pk];
 
                     self.pair_overlap[(idx, other_idx)].overlap = overlap;
                 }
                 HazardEntity::BinExterior => {
-                    let overlap = overlap_proxy::bin_overlap_proxy(shape, l.bin.bbox());
+                    let overlap = proxy::bin_overlap_proxy(shape, l.bin.bbox());
                     self.bin_overlap[idx].overlap = overlap;
                 }
                 _ => unimplemented!("unsupported hazard entity"),
