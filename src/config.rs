@@ -1,4 +1,4 @@
-use crate::optimize::separator::SeparatorConfig;
+use crate::optimizer::separator::SeparatorConfig;
 use crate::sample::search::SampleConfig;
 use crate::util::io::svg_util::{SvgDrawOptions, SvgLayoutTheme};
 use jagua_rs::util::config::{CDEConfig, SPSurrogateConfig};
@@ -30,7 +30,7 @@ pub const CDE_CONFIG: CDEConfig = CDEConfig {
     },
 };
 
-pub const CONSTR_SAMPLE_CONFIG: SampleConfig = SampleConfig {
+pub const LBF_SAMPLE_CONFIG: SampleConfig = SampleConfig {
     n_bin_samples: 1000,
     n_focussed_samples: 0,
     n_coord_descents: 3,

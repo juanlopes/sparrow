@@ -22,29 +22,27 @@ use plotly::common::{ColorScale, ColorScaleElement};
 use plotly::layout::{AspectMode, AspectRatio, LayoutScene};
 use plotly::{Plot, Surface};
 use std::path::Path;
+use jagua_rs::geometry::primitives::point::Point;
 use svg::node::element::Group;
 use svg::Document;
 
 const INSTANCE_PATH: &str = "libs/jagua-rs/assets/swim.json";
-const ITEM_ID_TO_SAMPLE: usize = 7;
+const ITEM_ID_TO_SAMPLE: usize = 8;
 
 const OUTPUT_FOLDER: &str = "output/playground/";
 
-const RESOLUTION: usize = 1000;
-
-const ZOOM: f32 = 1.2;
-
-const EPSILON_DIAM_FRAC: f32 = 0.005;
+const RESOLUTION: usize = 500;
+const EPSILON_DIAM_FRAC: f32 = 0.00000000001;
 
 pub fn main() {
     io::init_logger(log::LevelFilter::Info);
 
     let cde_config = CDEConfig {
-        quadtree_depth: 4,
-        hpg_n_cells: 2000,
+        quadtree_depth: 3,
+        hpg_n_cells: 0,
         item_surrogate_config: SPSurrogateConfig {
-            pole_coverage_goal: 0.95,
-            max_poles: 20,
+            pole_coverage_goal: 0.8,
+            max_poles: 6,
             n_ff_poles: 2,
             n_ff_piers: 0,
         },
@@ -62,15 +60,13 @@ pub fn main() {
 
     let item_to_sample = sp_instance.item(ITEM_ID_TO_SAMPLE);
 
-    let diameter = 5000.0;
+    let diameter = 1200.0;
     let bbox = AARectangle::new(-diameter, -diameter, diameter, diameter);
     let dummy_bin = Bin::from_strip(bbox.clone(), cde_config);
     let mut dummy_layout = Layout::new(0, dummy_bin);
 
     let items_to_place = [
-        (9, DTransformation::new(0.0, (1000.0, -1500.0))),
-        (4, DTransformation::new(0.0, (1000.0, 1500.0))),
-        (8, DTransformation::new(0.0, (-1000.0, 250.0))),
+        (7, DTransformation::new(0.0, (0.0, 0.0)))
     ];
 
     for (item_id, transf) in items_to_place.iter() {
@@ -148,7 +144,6 @@ pub fn main() {
         (bbox.x_min, bbox.y_min, bbox.width(), bbox.height()),
     );
 
-    let stroke_width = f32::min(bbox.width(), bbox.height()) * 0.001 * 2.0;
 
     let item_paths = dummy_layout
         .placed_items()
@@ -158,25 +153,66 @@ pub fn main() {
                 svg_export::simple_polygon_data(&pi.shape),
                 &[
                     ("fill", "rgba(0, 0, 0, 0.0)"),
-                    ("stroke-width", &*format!("{}", stroke_width)),
+                    ("stroke-width", "15"),
                     ("fill-rule", "nonzero"),
                     ("stroke", "black"),
-                    ("opacity", "0.5"),
+                    ("opacity", "1.0"),
                 ],
             )
         })
         .collect_vec();
 
-    let other_item_path = svg_export::data_to_path(
-        svg_export::simple_polygon_data(&item_to_sample.shape),
-        &[
-            ("fill", "none"),
-            ("stroke-width", &*format!("{}", stroke_width)),
-            ("fill-rule", "nonzero"),
-            ("stroke", "black"),
-            ("opacity", "0.2"),
-        ],
-    );
+    let sample_group = {
+        let idx_to_point = |i: usize| {
+            let sx = i / RESOLUTION;
+            let sy = i % RESOLUTION;
+            let x = bbox.x_min + bbox.width() / RESOLUTION as f32 * sx as f32;
+            let y = bbox.y_min + bbox.height() / RESOLUTION as f32 * sy as f32;
+            Point(x, y)
+        };
+
+        let filtered_overlaps = overlaps.iter().enumerate()
+            .filter(|(_, o)| o == &&Overlap::BoundaryNone)
+            .map(|(idx,_)| idx_to_point(idx));
+
+        let x_min = filtered_overlaps.clone()
+            .min_by_key(|p| OrderedFloat(p.0))
+            .unwrap();
+
+        let x_max = filtered_overlaps.clone()
+            .max_by_key(|p| OrderedFloat(p.0))
+            .unwrap();
+
+        let y_min = filtered_overlaps.clone()
+            .min_by_key(|p| OrderedFloat(p.1))
+            .unwrap();
+
+        let y_max = filtered_overlaps.clone()
+            .max_by_key(|p| OrderedFloat(p.1))
+            .unwrap();
+
+        let mut sample_group = [x_min, x_max, y_min, y_max].map(|p| {
+            let t_shape = item_to_sample.shape.transform_clone(&DTransformation::new(0.0, p.into()).compose());
+            svg_export::data_to_path(
+                svg_export::simple_polygon_data(&t_shape),
+                &[
+                    ("fill", "none"),
+                    ("stroke-width", "15"),
+                    ("fill-rule", "nonzero"),
+                    ("stroke", "black"),
+                    ("opacity", "0.5"),
+                ])
+        }).into_iter().fold(Group::new(), |group, path| group.add(path));
+
+        sample_group = [x_min, x_max, y_min, y_max].map(|p| {
+            svg_export::circle(
+                &Circle::new(p, 15.0),
+                &[("fill", "black"), ("opacity", "1.0")],
+            )
+        }).into_iter().fold(sample_group, |group, path| group.add(path));
+
+        sample_group
+    };
 
     //overlay the overlaps
 
@@ -188,36 +224,51 @@ pub fn main() {
             let x = bbox.x_min + bbox.width() / RESOLUTION as f32 * sx as f32;
             let y = bbox.y_min + bbox.height() / RESOLUTION as f32 * sy as f32;
             let overlap = overlaps[sx * RESOLUTION + sy];
-            let color = match overlap {
+            overlap_group = match overlap {
                 Overlap::Items(o) => {
                     let gradient = 255.0 * (1.0 - o / max_overlap);
-                    Some(format!("rgb(255, {}, {})", gradient, gradient))
+                    let rect = svg::node::element::Rectangle::new()
+                        .set("x", x - margin)
+                        .set("y", y - margin)
+                        .set("width", bbox.width() / RESOLUTION as f32 + 2.0 * margin)
+                        .set("height", bbox.height() / RESOLUTION as f32 + 2.0 * margin)
+                        .set("fill", format!("rgb(255, {}, {})", gradient, gradient));
+                    overlap_group.add(rect)
                 }
-                Overlap::None => None,
-                Overlap::Bin => None,
-                Overlap::BoundaryNone => Some(format!("rgb(220, 255, 220)")),
+                _ => overlap_group,
             };
-            if let Some(color) = color {
-                let rect = svg::node::element::Rectangle::new()
-                    .set("x", x - margin)
-                    .set("y", y - margin)
-                    .set("width", bbox.width() / RESOLUTION as f32 + 2.0 * margin)
-                    .set("height", bbox.height() / RESOLUTION as f32 + 2.0 * margin)
-                    .set("fill", color);
-                overlap_group = overlap_group.add(rect);
-            }
         }
     }
+
+    for sx in 0..RESOLUTION {
+        for sy in 0..RESOLUTION {
+            let x = bbox.x_min + bbox.width() / RESOLUTION as f32 * sx as f32;
+            let y = bbox.y_min + bbox.height() / RESOLUTION as f32 * sy as f32;
+            let overlap = overlaps[sx * RESOLUTION + sy];
+            overlap_group = match overlap {
+                Overlap::BoundaryNone => {
+                    let circle = svg::node::element::Circle::new()
+                        .set("cx", x)
+                        .set("cy", y)
+                        .set("r", 2.0 * bbox.width() / RESOLUTION as f32)
+                        .set("fill", "rgb(100, 255, 100)")
+                        .set("stroke", "none");
+                    overlap_group.add(circle)
+                }
+                _ => overlap_group,
+            };
+        }
+    }
+
+
+
+
+
 
     let doc = doc.add(overlap_group);
 
     let doc = item_paths.into_iter().fold(doc, |doc, path| doc.add(path));
-    let doc = doc.add(other_item_path);
-
-    let doc = doc.add(svg_export::circle(
-        &Circle::new((0.0, 0.0).into(), stroke_width),
-        &[("fill", "blue"), ("opacity", "1.0")],
-    ));
+    let doc = doc.add(sample_group);
 
     io::write_svg(
         &doc,
@@ -295,7 +346,7 @@ pub fn main() {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 enum Overlap {
     None,
     Bin,
@@ -340,8 +391,7 @@ pub fn poly_overlap_proxy(s1: &SimplePolygon, s2: &SimplePolygon) -> f32 {
     let s1_penalty = s1.surrogate().convex_hull_area; //+ //0.1 * (s1.diameter / 4.0).powi(2));
     let s2_penalty = s2.surrogate().convex_hull_area; // + 0.1 * (s2.diameter / 4.0).powi(2));
 
-    let penalty =
-        1.00 * f32::min(s1_penalty, s2_penalty) + 0.00 * f32::max(s1_penalty, s2_penalty);
+    let penalty = f32::min(s1_penalty, s2_penalty);
 
     (deficit * penalty).sqrt()
 }

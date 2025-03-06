@@ -3,7 +3,7 @@
 use numfmt::{Formatter, Precision, Scales};
 use once_cell::sync::Lazy;
 use std::time::Instant;
-pub mod optimize;
+pub mod optimizer;
 pub mod overlap;
 pub mod sample;
 pub mod util;

@@ -44,6 +44,7 @@ numfmt = "1.1.1"
 plotly = "0.12.1"
 num_cpus = "1.16.0"
 chrono = "0.4"
+ctrlc = "3.4.5"
 
 [profile.dev]
 overflow-checks=true
@@ -55,7 +56,7 @@ debug = true
 
 [profile.release]
 opt-level = 3
-lto = true
+lto = "thin"
 strip = true
 codegen-units = 1
 panic = "abort"

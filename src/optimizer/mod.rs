@@ -1,6 +1,8 @@
-use crate::config::{CDE_CONFIG, COMPRESS_N_STRIKES, COMPRESS_R_SHRINKS, CONSTR_SAMPLE_CONFIG, EXPLORE_R_SHRINK, EXPLORE_SOL_DISTR_STDDEV, LARGE_AREA_CH_AREA_CUTOFF_RATIO, SEPARATOR_CONFIG_COMPRESS, SEP_CONFIG_EXPLORE};
-use crate::optimize::lbf::LBFBuilder;
-use crate::optimize::separator::Separator;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use crate::config::{CDE_CONFIG, COMPRESS_N_STRIKES, COMPRESS_R_SHRINKS, LBF_SAMPLE_CONFIG, EXPLORE_R_SHRINK, EXPLORE_SOL_DISTR_STDDEV, LARGE_AREA_CH_AREA_CUTOFF_RATIO, SEPARATOR_CONFIG_COMPRESS, SEP_CONFIG_EXPLORE};
+use crate::optimizer::lbf::LBFBuilder;
+use crate::optimizer::separator::Separator;
 use crate::FMT;
 use jagua_rs::entities::instances::strip_packing::SPInstance;
 use jagua_rs::entities::problems::problem_generic::ProblemGeneric;
@@ -20,21 +22,24 @@ pub mod separator;
 mod separator_worker;
 
 // All high-level heuristic logic
-pub fn optimize(instance: SPInstance, rng: SmallRng, output_folder_path: String, explore_time_limit: Duration) -> Solution {
-    let builder = LBFBuilder::new(instance, CDE_CONFIG, rng, CONSTR_SAMPLE_CONFIG).construct();
+pub fn optimize(instance: SPInstance, rng: SmallRng, output_folder_path: String, mut terminator: Terminator, explore_time_limit: Duration) -> Solution {
+    let builder = LBFBuilder::new(instance, CDE_CONFIG, rng, LBF_SAMPLE_CONFIG).construct();
     let mut expl_separator = Separator::new(builder.instance, builder.prob, builder.rng, output_folder_path.clone(), 0, SEP_CONFIG_EXPLORE);
 
-    let solutions = explore(&mut expl_separator, explore_time_limit);
+    terminator.set_timeout(Some(explore_time_limit));
+    let solutions = explore(&mut expl_separator, &terminator);
     let final_explore_sol = solutions.last().expect("no solutions found during exploration");
 
     let mut cmpr_separator = Separator::new(expl_separator.instance, expl_separator.prob, expl_separator.rng, expl_separator.output_svg_folder, expl_separator.svg_counter, SEPARATOR_CONFIG_COMPRESS);
 
-    let final_sol = compress(&mut cmpr_separator, final_explore_sol);
+    terminator.set_timeout(None);
+    terminator.reset_ctrlc();
+    let final_sol = compress(&mut cmpr_separator, final_explore_sol, &terminator);
 
     final_sol
 }
 
-pub fn explore(sep: &mut Separator, time_out: Duration) -> Vec<Solution> {
+pub fn explore(sep: &mut Separator, term: &Terminator) -> Vec<Solution> {
     let mut current_width = sep.prob.occupied_width();
     let mut best_width = current_width;
 
@@ -43,11 +48,10 @@ pub fn explore(sep: &mut Separator, time_out: Duration) -> Vec<Solution> {
     sep.export_svg(None, "init", false);
     info!("[EXPL] starting optimization with initial width: {:.3} ({:.3}%)",current_width,sep.prob.usage() * 100.0);
 
-    let end_time = Instant::now() + time_out;
     let mut solution_pool: Vec<(Solution, f32)> = vec![];
 
-    while Instant::now() < end_time {
-        let local_best = sep.separate_layout(Some(end_time));
+    while !term.kill() {
+        let local_best = sep.separate_layout(&term);
         let total_overlap = local_best.1.total_overlap;
 
         if total_overlap == 0.0 {
@@ -96,13 +100,13 @@ pub fn explore(sep: &mut Separator, time_out: Duration) -> Vec<Solution> {
     feasible_solutions
 }
 
-pub fn compress(sep: &mut Separator, init: &Solution) -> Solution {
+pub fn compress(sep: &mut Separator, init: &Solution, term: &Terminator) -> Solution {
     let mut best = init.clone();
     for (i, &r_shrink) in COMPRESS_R_SHRINKS.iter().enumerate() {
         let mut n_strikes = 0;
         info!("[CMPR] attempting to compress in steps of {}%", r_shrink * 100.0);
-        while n_strikes < COMPRESS_N_STRIKES[i] {
-            match attempt_to_compress(sep, &best, r_shrink) {
+        while n_strikes < COMPRESS_N_STRIKES[i] && !term.kill() {
+            match attempt_to_compress(sep, &best, r_shrink, &term) {
                 Some(compacted_sol) => {
                     info!("[CMPR] compressed to {:.3} ({:.3}%)", strip_width(&compacted_sol), compacted_sol.usage * 100.0);
                     sep.export_svg(Some(compacted_sol.clone()), "p", false);
@@ -115,11 +119,12 @@ pub fn compress(sep: &mut Separator, init: &Solution) -> Solution {
                 }
             }
         }
+        term.reset_ctrlc();
     }
     info!("[CMPR] finished compression, improved from {:.3}% to {:.3}% (+{:.3}%)", init.usage * 100.0, best.usage * 100.0, (best.usage - init.usage) * 100.0);
     best
 }
-fn attempt_to_compress(sep: &mut Separator, init: &Solution, r_shrink: f32) -> Option<Solution> {
+fn attempt_to_compress(sep: &mut Separator, init: &Solution, r_shrink: f32, term: &Terminator) -> Option<Solution> {
     //restore to the initial solution and width
     sep.change_strip_width(strip_width(&init), None);
     sep.rollback(&init, None);
@@ -130,7 +135,7 @@ fn attempt_to_compress(sep: &mut Separator, init: &Solution, r_shrink: f32) -> O
     sep.change_strip_width(new_width, Some(split_pos));
 
     //try to separate layout, if all overlap is eliminated, return the solution
-    let (compacted_sol, ot) = sep.separate_layout(None);
+    let (compacted_sol, ot) = sep.separate_layout(term);
     match ot.total_overlap == 0.0 {
         true => Some(compacted_sol),
         false => None,
@@ -162,4 +167,25 @@ fn swap_large_pair_of_items(sep: &mut Separator) {
 
     sep.move_item(pk1, dt2);
     sep.move_item(pk2, dt1);
+}
+
+#[derive(Debug, Clone)]
+pub struct Terminator {
+    pub timeout: Option<Instant>,
+    pub ctrlc: Arc<AtomicBool>,
+}
+
+impl Terminator {
+    pub fn kill(&self) -> bool {
+        self.timeout.map_or(false, |timeout| Instant::now() > timeout)
+            || self.ctrlc.load(Ordering::SeqCst)
+    }
+
+    pub fn reset_ctrlc(&self) {
+        self.ctrlc.store(false, Ordering::SeqCst);
+    }
+
+    pub fn set_timeout(&mut self, timeout: Option<Duration>) {
+        self.timeout = timeout.map(|t| Instant::now() + t);
+    }
 }

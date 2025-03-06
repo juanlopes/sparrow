@@ -2,7 +2,7 @@ extern crate core;
 
 use chrono::Local;
 use sparrow::config::{CDE_CONFIG, DRAW_OPTIONS, LOG_LEVEL_FILTER_DEBUG, LOG_LEVEL_FILTER_RELEASE, OUTPUT_DIR, RNG_SEED};
-use sparrow::optimize::optimize;
+use sparrow::optimizer::{optimize, Terminator};
 use sparrow::util::io;
 use sparrow::util::io::layout_to_svg::s_layout_to_svg;
 use jagua_rs::entities::instances::instance::Instance;
@@ -15,7 +15,9 @@ use rand::SeedableRng;
 use std::env::args;
 use std::fs;
 use std::path::Path;
-use std::time::Duration;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::{Duration};
 
 fn main() {
     let input_file_path = args().nth(1).expect("first argument must be the input file");
@@ -47,9 +49,7 @@ fn main() {
     let json_instance = io::read_json_instance(Path::new(&input_file_path));
 
     let parser = Parser::new(PolySimplConfig::Disabled, CDE_CONFIG, true);
-    let instance = parser.parse(&json_instance);
-
-    let sp_instance = match instance.clone() {
+    let instance = match parser.parse(&json_instance){
         Instance::SP(spi) => spi,
         _ => panic!("expected strip packing instance"),
     };
@@ -58,7 +58,22 @@ fn main() {
 
     let output_folder_path = format!("{OUTPUT_DIR}/sols_{}", json_instance.name);
 
-    let solution = optimize(sp_instance, rng, output_folder_path, explore_time_limit);
+    let terminator = {
+        //set up Ctrl-C handler
+        let ctrlc = Arc::new(AtomicBool::new(false));
+        let c = ctrlc.clone();
+
+        ctrlc::set_handler(move || {
+            warn!(" terminating...");
+            c.store(true, Ordering::SeqCst);
+        }).expect("Error setting Ctrl-C handler");
+        Terminator{
+            timeout: None,
+            ctrlc,
+        }
+    };
+
+    let solution = optimize(instance, rng, output_folder_path, terminator, explore_time_limit);
 
     {
         let svg = s_layout_to_svg(&solution.layout_snapshots[0], &instance, DRAW_OPTIONS, "final");

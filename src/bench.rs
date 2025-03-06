@@ -1,22 +1,22 @@
 extern crate core;
 
 use chrono::Local;
-use sparrow::config::{DRAW_OPTIONS, OUTPUT_DIR, RNG_SEED, SEPARATOR_CONFIG_COMPRESS, SEP_CONFIG_EXPLORE};
-use sparrow::optimize::lbf::LBFBuilder;
-use sparrow::optimize::separator::Separator;
-use sparrow::optimize::{compress, explore};
-use sparrow::sample::search::SampleConfig;
+use sparrow::config::{CDE_CONFIG, LBF_SAMPLE_CONFIG, DRAW_OPTIONS, OUTPUT_DIR, RNG_SEED, SEPARATOR_CONFIG_COMPRESS, SEP_CONFIG_EXPLORE};
+use sparrow::optimizer::lbf::LBFBuilder;
+use sparrow::optimizer::separator::Separator;
+use sparrow::optimizer::{compress, explore, Terminator};
 use sparrow::util::io;
 use sparrow::util::io::layout_to_svg::s_layout_to_svg;
 use jagua_rs::entities::instances::instance::Instance;
 use jagua_rs::io::parser::Parser;
-use jagua_rs::util::config::{CDEConfig, SPSurrogateConfig};
 use jagua_rs::util::polygon_simplification::PolySimplConfig;
 use ordered_float::OrderedFloat;
 use rand::prelude::SmallRng;
 use rand::{Rng, SeedableRng};
 use std::fs;
 use std::path::Path;
+use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 use std::time::{Duration, Instant};
 
 fn main() {
@@ -55,32 +55,20 @@ fn main() {
         json_instance.name, n_batches, n_runs_per_iter, num_cpus::get_physical(), explore_time_limit
     );
 
-    let cde_config = CDEConfig {
-        quadtree_depth: 4,
-        hpg_n_cells: 0,
-        item_surrogate_config: SPSurrogateConfig {
-            pole_coverage_goal: 0.95,
-            max_poles: 20,
-            n_ff_poles: 2,
-            n_ff_piers: 0,
-        },
-    };
-
-    let parser = Parser::new(PolySimplConfig::Disabled, cde_config, true);
+    let parser = Parser::new(PolySimplConfig::Disabled, CDE_CONFIG, true);
     let instance = parser.parse(&json_instance);
 
-    let sp_instance = match instance.clone() {
+    let instance = match instance {
         Instance::SP(spi) => spi,
         _ => panic!("Expected SPInstance"),
     };
 
-    let explore_sample_config = SampleConfig {
-        n_bin_samples: 1000,
-        n_focussed_samples: 0,
-        n_coord_descents: 3,
-    };
-
     let mut final_solutions = vec![];
+
+    let dummy_terminator = Terminator {
+        timeout: None,
+        ctrlc: Arc::new(AtomicBool::new(false)),
+    };
 
     for i in 0..n_batches {
         println!("[BENCH] batch {}/{}", i + 1, n_batches);
@@ -88,25 +76,29 @@ fn main() {
         rayon::scope(|s| {
             for (j, sol_slice) in iter_solutions.iter_mut().enumerate() {
                 let bench_idx = i * n_runs_per_iter + j;
-                let sols_output_dir = format!("{OUTPUT_DIR}/bench_{}_sols_{}", bench_idx, json_instance.name);
+                let output_folder_path = format!("{OUTPUT_DIR}/bench_{}_sols_{}", bench_idx, json_instance.name);
                 let builder = LBFBuilder::new(
-                    sp_instance.clone(),
-                    cde_config,
+                    instance.clone(),
+                    CDE_CONFIG,
                     SmallRng::seed_from_u64(rng.random()),
-                    explore_sample_config,
+                    LBF_SAMPLE_CONFIG,
                 );
+                let mut terminator = dummy_terminator.clone();
 
                 s.spawn(move |_| {
                     let builder = builder.construct();
-                    let mut expl_separator = Separator::new(builder.instance, builder.prob, builder.rng, sols_output_dir.clone(), 0, SEP_CONFIG_EXPLORE);
+                    let mut expl_separator = Separator::new(builder.instance, builder.prob, builder.rng, output_folder_path, 0, SEP_CONFIG_EXPLORE);
 
-                    let solutions = explore(&mut expl_separator, explore_time_limit);
+                    terminator.set_timeout(Some(explore_time_limit));
+                    let solutions = explore(&mut expl_separator, &terminator);
                     let final_explore_sol = solutions.last().expect("no solutions found during exploration");
 
                     let start_comp = Instant::now();
 
-                    let mut cmpr_separator = Separator::new(expl_separator.instance, expl_separator.prob, expl_separator.rng, sols_output_dir.clone(), expl_separator.svg_counter, SEPARATOR_CONFIG_COMPRESS);
-                    let final_sol = compress(&mut cmpr_separator, final_explore_sol);
+                    terminator.set_timeout(None);
+                    terminator.reset_ctrlc();
+                    let mut cmpr_separator = Separator::new(expl_separator.instance, expl_separator.prob, expl_separator.rng, expl_separator.output_svg_folder, expl_separator.svg_counter, SEPARATOR_CONFIG_COMPRESS);
+                    let final_sol = compress(&mut cmpr_separator, final_explore_sol, &terminator);
 
                     println!("[BENCH] [id:{:>3}] finished, expl: {:.3}% ({}s), cmpr: {:.3}% (+{:.3}%) ({}s)",
                              bench_idx,

@@ -1,5 +1,5 @@
 use crate::config::{DRAW_OPTIONS, OUTPUT_DIR};
-use crate::optimize::separator_worker::SeparatorWorker;
+use crate::optimizer::separator_worker::SeparatorWorker;
 use crate::overlap::tracker::{OTSnapshot, OverlapTracker};
 use crate::sample::search::SampleConfig;
 use crate::util::assertions::tracker_matches_layout;
@@ -26,6 +26,7 @@ use rayon::iter::IntoParallelRefMutIterator;
 use rayon::iter::ParallelIterator;
 use std::path::Path;
 use std::time::Instant;
+use crate::optimizer::Terminator;
 
 pub struct SeparatorConfig {
     pub iter_no_imprv_limit: usize,
@@ -70,7 +71,7 @@ impl Separator {
         }
     }
 
-    pub fn separate_layout(&mut self, time_out: Option<Instant>) -> (Solution, OTSnapshot) {
+    pub fn separate_layout(&mut self, term: &Terminator) -> (Solution, OTSnapshot) {
         let mut min_overlap_sol: (Solution, OTSnapshot) = (self.prob.create_solution(None), self.ot.create_snapshot());
         let mut min_overlap = self.ot.get_total_overlap();
         log!(self.config.log_level,"[SEP] separating at width: {:.3} and overlap: {} ", self.prob.strip_width(), FMT.fmt2(min_overlap));
@@ -80,7 +81,7 @@ impl Separator {
         let mut n_evals = 0;
         let start = Instant::now();
 
-        while n_strikes < self.config.strike_limit && time_out.map_or(true, |t| Instant::now() < t) {
+        while n_strikes < self.config.strike_limit && !term.kill() {
             let mut n_iter_no_improvement = 0;
 
             let initial_strike_overlap = self.ot.get_total_overlap();
@@ -131,11 +132,11 @@ impl Separator {
             }
             self.rollback(&min_overlap_sol.0, Some(&min_overlap_sol.1));
         }
-        if time_out.map_or(true, |t| Instant::now() < t) {
+        if !term.kill() {
             log!(self.config.log_level,"[SEP] finished due to strike limit ({}), evals/s: {}, iter/s: {}, took {:.3}s",n_strikes,FMT.fmt2(n_evals as f64 / start.elapsed().as_secs_f64()),FMT.fmt2(n_iter as f64 / start.elapsed().as_secs_f64()),start.elapsed().as_secs());
         }
         else{
-            log!(self.config.log_level,"[SEP] finished due to time limit, evals/s: {}, iter/s: {}, took {:.3}s",FMT.fmt2(n_evals as f64 / start.elapsed().as_secs_f64()),FMT.fmt2(n_iter as f64 / start.elapsed().as_secs_f64()),start.elapsed().as_secs());
+            log!(self.config.log_level,"[SEP] finished due to termination, evals/s: {}, iter/s: {}, took {:.3}s",FMT.fmt2(n_evals as f64 / start.elapsed().as_secs_f64()),FMT.fmt2(n_iter as f64 / start.elapsed().as_secs_f64()),start.elapsed().as_secs());
         }
 
         (min_overlap_sol.0, min_overlap_sol.1)
@@ -161,7 +162,7 @@ impl Separator {
             .map(|opt| (opt.prob.create_solution(None), &opt.ot))
             .unwrap();
 
-        // Sync the master with the best optimize
+        // Sync the master with the best optimizer
         self.prob.restore_to_solution(&best_opt.0);
         self.ot = best_opt.1.clone();
 
