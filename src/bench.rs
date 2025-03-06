@@ -1,13 +1,13 @@
 extern crate core;
 
 use chrono::Local;
-use gls_strip_packing::config::{DRAW_OPTIONS, OUTPUT_DIR, RNG_SEED, SEPARATOR_CONFIG_COMPRESS, SEP_CONFIG_EXPLORE};
-use gls_strip_packing::optimize::lbf::LBFBuilder;
-use gls_strip_packing::optimize::separator::Separator;
-use gls_strip_packing::optimize::{compress, explore};
-use gls_strip_packing::sample::search::SampleConfig;
-use gls_strip_packing::util::io;
-use gls_strip_packing::util::io::layout_to_svg::s_layout_to_svg;
+use sparrow::config::{DRAW_OPTIONS, OUTPUT_DIR, RNG_SEED, SEPARATOR_CONFIG_COMPRESS, SEP_CONFIG_EXPLORE};
+use sparrow::optimize::lbf::LBFBuilder;
+use sparrow::optimize::separator::Separator;
+use sparrow::optimize::{compress, explore};
+use sparrow::sample::search::SampleConfig;
+use sparrow::util::io;
+use sparrow::util::io::layout_to_svg::s_layout_to_svg;
 use jagua_rs::entities::instances::instance::Instance;
 use jagua_rs::io::parser::Parser;
 use jagua_rs::util::config::{CDEConfig, SPSurrogateConfig};

@@ -26,8 +26,6 @@ use svg::node::element::Group;
 use svg::Document;
 
 const INSTANCE_PATH: &str = "libs/jagua-rs/assets/swim.json";
-const ITEM_ID_TO_SAMPLE: usize = 7;
-
 const OUTPUT_FOLDER: &str = "output/playground/";
 
 const RESOLUTION: usize = 1000;
@@ -60,7 +58,7 @@ pub fn main() {
         _ => panic!("Only SP instances are supported"),
     };
 
-    let item_to_sample = sp_instance.item(ITEM_ID_TO_SAMPLE);
+    let item_to_sample = sp_instance.item(4);
 
     let diameter = 5000.0;
     let bbox = AARectangle::new(-diameter, -diameter, diameter, diameter);
@@ -373,10 +371,10 @@ fn distance_between_bboxes(big_bbox: &AARectangle, small_bbox: &AARectangle) -> 
         big_bbox.y_max - small_bbox.y_max,
         small_bbox.y_min - big_bbox.y_min,
     ]
-    .iter()
-    .min_by_key(|d| OrderedFloat(**d))
-    .copied()
-    .unwrap();
+        .iter()
+        .min_by_key(|d| OrderedFloat(**d))
+        .copied()
+        .unwrap();
 
     assert!(min_d >= -1.0);
 

@@ -1,11 +1,11 @@
 # sparrow 🐦‍⬛🪺
-A state-of-the-art heuristic for the 2D irregular strip packing problem.
+#### A State-of-the-Art Heuristic for the 2D Irregular Strip Packing Problem
+#### *sparrow 🐦‍⬛ creates an intricate nesting 🪺 in the most challenging environments*
 
-`sparrow` builds intricate nestings, no matter the situation.
+This optimization algorithm can be used to solve the 2D irregular strip packing problems, also commonly referred to as nesting problems.
+It is built on top of [`jagua-rs`](https://github.com/JeroenGar/jagua-rs): *a collision detection engine for 2D irregular cutting & packing problems*.
 
-Built on top of the [`jagua-rs`](https://github.com/JeroenGar/jagua-rs) collision detection engine.
-
-Some example solutions:
+## Example solutions
 <p align="center">
     <img src="assets/records/final_best_trousers.svg" height=200/>
     <img src="assets/records/final_best_mao.svg" height=200/>
@@ -23,10 +23,10 @@ Some example solutions:
 ## Requirements
 - Rust ≥ 1.85
 
-This repository contains [`jagua-rs`](https://github.com/JeroenGar/jagua-rs) as a submodule.
+This repository includes `jagua-rs` as a submodule.
 Make sure it is initialized and up to date:
 ```bash
-git submodule update --init --recursive
+git submodule update --init
 ```
 
 ## Usage
