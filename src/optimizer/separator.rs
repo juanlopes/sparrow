@@ -5,7 +5,7 @@ use crate::sample::search::SampleConfig;
 use crate::util::assertions::tracker_matches_layout;
 use crate::util::io;
 use crate::util::io::layout_to_svg::{layout_to_svg, s_layout_to_svg};
-use crate::{EXPORT_LIVE_SVG, FMT};
+use crate::{EXPORT_LIVE_SVG, EXPORT_ONLY_FINAL_SVG, FMT};
 use itertools::Itertools;
 use jagua_rs::entities::bin::Bin;
 use jagua_rs::entities::instances::strip_packing::SPInstance;
@@ -133,10 +133,10 @@ impl Separator {
             self.rollback(&min_overlap_sol.0, Some(&min_overlap_sol.1));
         }
         if !term.kill() {
-            log!(self.config.log_level,"[SEP] finished due to strike limit ({}), evals/s: {}, iter/s: {}, took {:.3}s",n_strikes,FMT.fmt2(n_evals as f64 / start.elapsed().as_secs_f64()),FMT.fmt2(n_iter as f64 / start.elapsed().as_secs_f64()),start.elapsed().as_secs());
+            log!(self.config.log_level,"[SEP] ended due to strike limit ({}), evals/s: {}, iter/s: {}, took {:.3}s",n_strikes,FMT.fmt2(n_evals as f64 / start.elapsed().as_secs_f64()),FMT.fmt2(n_iter as f64 / start.elapsed().as_secs_f64()),start.elapsed().as_secs());
         }
         else{
-            log!(self.config.log_level,"[SEP] finished due to termination, evals/s: {}, iter/s: {}, took {:.3}s",FMT.fmt2(n_evals as f64 / start.elapsed().as_secs_f64()),FMT.fmt2(n_iter as f64 / start.elapsed().as_secs_f64()),start.elapsed().as_secs());
+            log!(self.config.log_level,"[SEP] ended due to termination, evals/s: {}, iter/s: {}, took {:.3}s",FMT.fmt2(n_evals as f64 / start.elapsed().as_secs_f64()),FMT.fmt2(n_iter as f64 / start.elapsed().as_secs_f64()),start.elapsed().as_secs());
         }
 
         (min_overlap_sol.0, min_overlap_sol.1)
@@ -256,30 +256,32 @@ impl Separator {
     }
 
     pub fn export_svg(&mut self, solution: Option<Solution>, suffix: &str, only_live: bool) {
-        if self.svg_counter == 0 {
-            std::fs::create_dir_all(&self.output_svg_folder).unwrap();
-            //remove all svg files from the directory. ONLY SVG FILES
-            for file in std::fs::read_dir(&self.output_svg_folder).unwrap().flatten() {
-                if file.path().extension().unwrap_or_default() == "svg" {
-                    std::fs::remove_file(file.path()).unwrap();
+        if !EXPORT_ONLY_FINAL_SVG {
+            if self.svg_counter == 0 {
+                std::fs::create_dir_all(&self.output_svg_folder).unwrap();
+                //remove all svg files from the directory. ONLY SVG FILES
+                for file in std::fs::read_dir(&self.output_svg_folder).unwrap().flatten() {
+                    if file.path().extension().unwrap_or_default() == "svg" {
+                        std::fs::remove_file(file.path()).unwrap();
+                    }
                 }
             }
-        }
 
-        let file_name = format!("{}_{:.3}_{suffix}", self.svg_counter, self.prob.strip_width());
-        let svg = match solution {
-            Some(sol) => s_layout_to_svg(&sol.layout_snapshots[0], &self.instance, DRAW_OPTIONS, file_name.as_str()),
-            None => layout_to_svg(&self.prob.layout, &self.instance, DRAW_OPTIONS, file_name.as_str()),
-        };
+            let file_name = format!("{}_{:.3}_{suffix}", self.svg_counter, self.prob.strip_width());
+            let svg = match solution {
+                Some(sol) => s_layout_to_svg(&sol.layout_snapshots[0], &self.instance, DRAW_OPTIONS, file_name.as_str()),
+                None => layout_to_svg(&self.prob.layout, &self.instance, DRAW_OPTIONS, file_name.as_str()),
+            };
 
-        if EXPORT_LIVE_SVG {
-            io::write_svg(&svg, Path::new(&*format!("{}/.live_solution.svg", OUTPUT_DIR)), Level::Trace);
-        }
+            if EXPORT_LIVE_SVG {
+                io::write_svg(&svg, Path::new(&*format!("{}/.live_solution.svg", OUTPUT_DIR)), Level::Trace);
+            }
 
-        if !only_live {
-            let file_path = &*format!("{}/{}.svg", &self.output_svg_folder, file_name);
-            io::write_svg(&svg, Path::new(file_path), self.config.log_level);
-            self.svg_counter += 1;
+            if !only_live {
+                let file_path = &*format!("{}/{}.svg", &self.output_svg_folder, file_name);
+                io::write_svg(&svg, Path::new(file_path), self.config.log_level);
+                self.svg_counter += 1;
+            }
         }
     }
 }

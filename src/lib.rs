@@ -24,3 +24,12 @@ pub const EXPORT_LIVE_SVG: bool = true;
 
 #[cfg(not(feature = "live_svg"))]
 pub const EXPORT_LIVE_SVG: bool = false;
+
+#[cfg(feature = "only_final_svg")]
+pub const EXPORT_ONLY_FINAL_SVG: bool = true;
+
+#[cfg(not(feature = "only_final_svg"))]
+pub const EXPORT_ONLY_FINAL_SVG: bool = false;
+
+#[cfg(all(feature = "live_svg", feature = "only_final_svg"))]
+compile_error!("The features `live_svg` and `only_final_svg` are mutually exclusive.");

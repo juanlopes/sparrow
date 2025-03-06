@@ -6,6 +6,7 @@ default-run = "main"
 
 [features]
 live_svg = []
+only_final_svg = []
 
 [[bin]]
 name = "main"

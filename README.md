@@ -65,12 +65,15 @@ RUSTFLAGS='-C target-cpu=native'
 
 ## Input
 
-The input JSON file 
+This repository uses the same JSON format as [`jagua-rs`](https://github.com/JeroenGar/jagua-rs) to represent instances.
+These are also available in Oscar Oliveira's [OR-Datasets repository](https://github.com/Oscar-Oliveira/OR-Datasets/tree/master/Cutting-and-Packing/2D-Irregular).
+
+See [`jagua-rs` README](https://github.com/JeroenGar/jagua-rs?tab=readme-ov-file#input) for details on the input format.
 
 ## Output
 
-Solutions will be exported as SVG files in `/output` folder.
-These SVGs contain all the original shapes and transformations applied to them:
+Solutions are exported as SVG files in `/output` folder.
+The SVG files are both a visualization and a formal output of a solution as they define all the original shapes and the exact transformations applied to them:
 ```html
     ...
     <g id="items">
@@ -81,3 +84,14 @@ These SVGs contain all the original shapes and transformations applied to them:
     </g>
     ...
 ```
+The final SVG solutions is saved as `output/final_{name}.svg`.
+
+By default, a range of intermediate (and infeasible) solutions will be exported into `/output/sols_{name}`.
+
+To disable this and export only a single final solution, enable the `only_final_svg` feature:
+```bash
+cargo run --release --features=only_final_svg -- \
+    libs/jagua-rs/assets/swim.json \
+    120
+```
+

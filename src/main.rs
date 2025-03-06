@@ -73,7 +73,7 @@ fn main() {
         }
     };
 
-    let solution = optimize(instance, rng, output_folder_path, terminator, explore_time_limit);
+    let solution = optimize(instance.clone(), rng, output_folder_path, terminator, explore_time_limit);
 
     {
         let svg = s_layout_to_svg(&solution.layout_snapshots[0], &instance, DRAW_OPTIONS, "final");
