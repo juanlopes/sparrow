@@ -4,7 +4,7 @@
 
 This optimization algorithm can be used to solve the 2D irregular strip packing problems, also commonly referred to as nesting problems.
 
-It is built on top of [`jagua-rs`](https://github.com/JeroenGar/jagua-rs): *a collision detection engine for 2D irregular cutting & packing problems*.
+The algorithm is built on top of [`jagua-rs`](https://github.com/JeroenGar/jagua-rs): *a collision detection engine for 2D irregular cutting & packing problems*.
 
 ## Example solutions
 <p align="center">
@@ -53,22 +53,19 @@ and compile with the `live_svg` feature enabled:
 rm output/.live_solution.svg
 open assets/live_solution_visualizer.html
 cargo run --release --features=live_svg -- \
-    [path to input JSON] \
-    [timelimit exploration phase in seconds]
+    libs/jagua-rs/assets/swim.json \
+    120
 ```
 ![Demo of the live solution viewer](assets/demo.gif)
 
-For ultimate performance:
+To ensure maximum performance, compile with:
 ```bash
 RUSTFLAGS='-C target-cpu=native'
-cargo run --profile release -- \
-    [path to input JSON] \
-    [timelimit exploration phase in seconds]
 ```
 
 ## Input
 
-🚧
+The input JSON file 
 
 ## Output
 
