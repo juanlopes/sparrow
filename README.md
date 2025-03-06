@@ -1,8 +1,9 @@
-# sparrow 🐦‍⬛🪺
-#### A State-of-the-Art Heuristic for the 2D Irregular Strip Packing Problem
-#### *sparrow 🐦‍⬛ creates an intricate nesting 🪺 in the most challenging environments*
+# sparrow 🪶🪺
+*builds intricate nestings in any environment*
+### A State-of-the-Art Heuristic for the 2D Irregular Strip Packing Problem
 
 This optimization algorithm can be used to solve the 2D irregular strip packing problems, also commonly referred to as nesting problems.
+
 It is built on top of [`jagua-rs`](https://github.com/JeroenGar/jagua-rs): *a collision detection engine for 2D irregular cutting & packing problems*.
 
 ## Example solutions
