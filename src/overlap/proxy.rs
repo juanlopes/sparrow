@@ -18,7 +18,8 @@ pub fn poly_overlap_proxy(s1: &SimplePolygon, s2: &SimplePolygon) -> f32 {
     let s1_penalty = s1.surrogate().convex_hull_area;
     let s2_penalty = s2.surrogate().convex_hull_area;
 
-    let penalty = f32::min(s1_penalty, s2_penalty);
+    //let penalty = f32::min(s1_penalty, s2_penalty);
+    let penalty = 0.95 * f32::min(s1_penalty, s2_penalty) + 0.05 * f32::max(s1_penalty, s2_penalty);
 
     (deficit * penalty).sqrt()
 }
