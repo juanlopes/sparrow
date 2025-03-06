@@ -1,7 +1,7 @@
 # sparrow 🐦‍⬛🪺
+A state-of-the-art heuristic for the 2D irregular strip packing problem.
 
-`sparrow` builds intricate nestings, no matter the situation:
-a state-of-the-art heuristic for the 2D irregular strip packing problem.
+`sparrow` builds intricate nestings, no matter the situation.
 
 Built on top of the [`jagua-rs`](https://github.com/JeroenGar/jagua-rs) collision detection engine.
 
