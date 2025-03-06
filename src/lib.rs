@@ -1,6 +1,5 @@
 #![allow(const_item_mutation)]
 
-use mimalloc::MiMalloc;
 use numfmt::{Formatter, Precision, Scales};
 use once_cell::sync::Lazy;
 use std::time::Instant;
