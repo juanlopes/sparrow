@@ -33,6 +33,13 @@ pub fn collect_poly_collisions_in_detector2(
             return;
         }
     }
+    // for edge in shape.edge_iter() {
+    //     cde.quadtree.collect_collisions(&edge, detector);
+    //     if detector.early_terminate(shape) {
+    //         return;
+    //     }
+    // }
+
 
     //At this point, all hazards that edge-edge intersect must be caught.
 
@@ -181,14 +188,14 @@ impl<'a> HazardDetector for DetectionMap2<'a> {
         match haz {
             HazardEntity::PlacedItem { pk, .. } => {
                 let (_, idx) = self.detected_pis.remove(*pk).unwrap();
-                if idx >= self.weighted_overlap_cache.0 {
+                if idx < self.weighted_overlap_cache.0 {
                     //wipe the cache if we removed an element that was in it
                     self.weighted_overlap_cache = (0, 0.0);
                 }
             }
             HazardEntity::BinExterior => {
                 let (_, idx) = self.detected_bin.take().unwrap();
-                if idx >= self.weighted_overlap_cache.0 {
+                if idx < self.weighted_overlap_cache.0 {
                     //wipe the cache if we removed an element that was in it
                     self.weighted_overlap_cache = (0, 0.0);
                 }
@@ -249,11 +256,9 @@ impl Iterator for GeneralizedBitReversalIterator {
     }
 }
 
-/// Gathers all hazards that collide with the entity and reports them to the `detector`.
-/// All hazards already present in the `detector` are ignored.
+/// Gathers all hazards that are within a given boundingbox.
+/// May overestimate the hazards, but never underestimate.
 pub fn hazards_within_bbox(qtn: &QTNode, bbox: &AARectangle, detector: &mut impl HazardDetector){
-    //TODO: This seems to be the fastest version of this function
-    //      Check if the other collision functions can also be improved.
     match bbox.collides_with(&qtn.bbox) {
         false => return, //Entity does not collide with the node
         true => match qtn.children.as_ref() {
