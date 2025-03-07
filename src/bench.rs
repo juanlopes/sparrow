@@ -77,16 +77,12 @@ fn main() {
             for (j, sol_slice) in iter_solutions.iter_mut().enumerate() {
                 let bench_idx = i * n_runs_per_iter + j;
                 let output_folder_path = format!("{OUTPUT_DIR}/bench_{}_sols_{}", bench_idx, json_instance.name);
-                let builder = LBFBuilder::new(
-                    instance.clone(),
-                    CDE_CONFIG,
-                    SmallRng::seed_from_u64(rng.random()),
-                    LBF_SAMPLE_CONFIG,
-                );
+                let instance = instance.clone();
+                let rng = SmallRng::seed_from_u64(rng.random());
                 let mut terminator = dummy_terminator.clone();
 
                 s.spawn(move |_| {
-                    let builder = builder.construct();
+                    let builder = LBFBuilder::new(instance.clone(), CDE_CONFIG, rng, LBF_SAMPLE_CONFIG).construct();
                     let mut expl_separator = Separator::new(builder.instance, builder.prob, builder.rng, output_folder_path, 0, SEP_CONFIG_EXPLORE);
 
                     terminator.set_timeout(Some(explore_time_limit));
@@ -106,6 +102,12 @@ fn main() {
                              final_sol.usage * 100.0,
                              final_sol.usage * 100.0 - final_explore_sol.usage * 100.0,
                              start_comp.elapsed().as_secs()
+                    );
+
+                    io::write_svg(
+                        &s_layout_to_svg(&final_sol.layout_snapshots[0], &instance, DRAW_OPTIONS, &*format!("final_bench_{}", bench_idx)),
+                        Path::new(&format!("{OUTPUT_DIR}/final_bench_{}.svg", bench_idx)),
+                        log::Level::Info,
                     );
 
                     *sol_slice = Some(final_sol);
@@ -128,7 +130,7 @@ fn main() {
     let best_final_solution = final_solutions.iter().max_by_key(|s| OrderedFloat(s.usage)).unwrap();
 
     io::write_svg(
-        &s_layout_to_svg(&best_final_solution.layout_snapshots[0], &instance, DRAW_OPTIONS, "best_final"),
+        &s_layout_to_svg(&best_final_solution.layout_snapshots[0], &instance, DRAW_OPTIONS, "final_best"),
         Path::new(format!("{OUTPUT_DIR}/final_best_{}.svg", json_instance.name).as_str()),
         log::Level::Info,
     );
