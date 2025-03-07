@@ -2,23 +2,22 @@ use crate::config::OVERLAP_PROXY_EPSILON_DIAM_RATIO;
 use jagua_rs::geometry::fail_fast::sp_surrogate::SPSurrogate;
 use jagua_rs::geometry::geo_traits::{Distance, Shape};
 use jagua_rs::geometry::primitives::aa_rectangle::AARectangle;
-use jagua_rs::geometry::primitives::circle::Circle;
 use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
-use std::cell::RefCell;
-use std::cmp::Ordering;
 use ordered_float::NotNan;
+use std::cmp::Ordering;
 
 #[inline(always)]
 pub fn poly_overlap_proxy(s1: &SimplePolygon, s2: &SimplePolygon) -> f32 {
     let epsilon = f32::max(s1.diameter(), s2.diameter()) * OVERLAP_PROXY_EPSILON_DIAM_RATIO;
 
-    let deficit = poles_overlap_proxy(
-        &s1.surrogate(),
-        &s2.surrogate(),
-        epsilon,
-    );
+    let deficit = poles_overlap_proxy(&s1.surrogate(), &s2.surrogate(), epsilon);
 
-    debug_assert!(deficit > 0.0, "d:{deficit} has to be greater than 0.0. safety margins: {}, {}", s1.surrogate().max_distance_point_to_pole, s2.surrogate().max_distance_point_to_pole);
+    debug_assert!(
+        deficit > 0.0,
+        "d:{deficit} has to be greater than 0.0. safety margins: {}, {}",
+        s1.surrogate().max_distance_point_to_pole,
+        s2.surrogate().max_distance_point_to_pole
+    );
 
     let s1_penalty = s1.surrogate().convex_hull_area;
     let s2_penalty = s2.surrogate().convex_hull_area;
@@ -79,15 +78,22 @@ pub fn poles_overlap_proxy<'a>(sp1: &SPSurrogate, sp2: &SPSurrogate, epsilon: f3
     total_deficit
 }
 
-fn choose_inner_outer<'a>(sp1: &'a SPSurrogate, sp2: &'a SPSurrogate) -> (&'a SPSurrogate, &'a SPSurrogate) {
+fn choose_inner_outer<'a>(
+    sp1: &'a SPSurrogate,
+    sp2: &'a SPSurrogate,
+) -> (&'a SPSurrogate, &'a SPSurrogate) {
     //selects the surrogate with the smaller bounding circle as the inner surrogate
     let bp1 = &sp1.poles_bounding_circle;
     let bp2 = &sp2.poles_bounding_circle;
     match bp1.radius.partial_cmp(&bp2.radius).unwrap() {
         Ordering::Less => (sp1, sp2),
         Ordering::Greater => (sp2, sp1),
-        Ordering::Equal => { //tiebreaker to ensure associativity
-            match (bp1.center.0 + bp1.center.1).partial_cmp(&(bp2.center.0 + bp2.center.1)).unwrap() {
+        Ordering::Equal => {
+            //tiebreaker to ensure associativity
+            match (bp1.center.0 + bp1.center.1)
+                .partial_cmp(&(bp2.center.0 + bp2.center.1))
+                .unwrap()
+            {
                 Ordering::Less => (sp1, sp2),
                 _ => (sp2, sp1),
             }
