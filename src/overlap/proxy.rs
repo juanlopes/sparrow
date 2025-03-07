@@ -7,21 +7,21 @@ use std::cmp::Ordering;
 
 #[inline(always)]
 pub fn poly_overlap_proxy(s1: &SimplePolygon, s2: &SimplePolygon) -> f32 {
-    let normalizer = f32::max(s1.diameter(), s2.diameter()) * OVERLAP_PROXY_EPSILON_DIAM_RATIO;
+    let epsilon = f32::max(s1.diameter(), s2.diameter()) * OVERLAP_PROXY_EPSILON_DIAM_RATIO;
 
     let deficit = poles_overlap_proxy(
         &s1.surrogate(),
         &s2.surrogate(),
-        normalizer,
+        epsilon,
     );
 
     let s1_penalty = s1.surrogate().convex_hull_area;
     let s2_penalty = s2.surrogate().convex_hull_area;
 
-    let penalty =
-        0.99 * f32::min(s1_penalty, s2_penalty) + 0.01 * f32::max(s1_penalty, s2_penalty);
+    //let penalty = f32::min(s1_penalty, s2_penalty);
+    let penalty = 0.90 * f32::min(s1_penalty, s2_penalty) + 0.10 * f32::max(s1_penalty, s2_penalty);
 
-    (deficit + 0.001 * penalty).sqrt() * penalty.sqrt()
+    (deficit * penalty).sqrt()
 }
 
 #[inline(always)]
@@ -39,7 +39,7 @@ pub fn bin_overlap_proxy(s: &SimplePolygon, bin_bbox: AARectangle) -> f32 {
     };
     let penalty = s.surrogate().convex_hull_area;
 
-    10.0 * (deficit + 0.001 * penalty).sqrt() * penalty.sqrt()
+    10.0 * (deficit * penalty).sqrt()
 }
 #[inline(always)]
 pub fn poles_overlap_proxy<'a>(sp1: &SPSurrogate, sp2: &SPSurrogate, epsilon: f32) -> f32 {
