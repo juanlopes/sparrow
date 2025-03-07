@@ -16,7 +16,6 @@ use jagua_rs::geometry::d_transformation::DTransformation;
 use log::debug;
 use rand::prelude::{SliceRandom, SmallRng};
 use tap::Tap;
-use crate::eval::separation_eval2::SeparationEvaluator2;
 
 pub struct SeparatorWorker {
     pub instance: SPInstance,
@@ -51,12 +50,14 @@ impl SeparatorWorker {
                 let item_id = self.prob.layout.placed_items()[pk].item_id;
                 let item = self.instance.item(item_id);
 
-                let evaluator = SeparationEvaluator2::new(&self.prob.layout, item, pk, &self.ot);
+                // create an evaluator to evaluate the samples during the search
+                let evaluator = SeparationEvaluator::new(&self.prob.layout, item, pk, &self.ot);
 
-                let (new_dt, _, n_evals) = search::search_placement(
-                    &self.prob.layout, item, Some(pk), evaluator, self.sample_config, &mut self.rng,
-                );
+                // search for a better position for the item
+                let (new_dt, _, n_evals) =
+                    search::search_placement(&self.prob.layout, item, Some(pk), evaluator, self.sample_config, &mut self.rng);
 
+                // move the item to the new position
                 self.move_item(pk, new_dt);
                 total_evals += n_evals;
             }

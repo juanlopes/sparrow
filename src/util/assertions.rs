@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use crate::overlap::proxy;
 use crate::overlap::tracker::OverlapTracker;
 use crate::util::io::svg_util::SvgDrawOptions;
@@ -6,8 +7,10 @@ use itertools::Itertools;
 use jagua_rs::collision_detection::hazard::HazardEntity;
 use jagua_rs::collision_detection::hazard_helpers::HazardDetector;
 use jagua_rs::entities::layout::Layout;
+use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
 use jagua_rs::util::assertions;
 use log::warn;
+use crate::eval::specialized_jaguars_pipeline::SpecializedDetectionMap;
 
 pub fn tracker_matches_layout(ot: &OverlapTracker, l: &Layout) -> bool {
     assert!(l.placed_items.keys().all(|k| ot.pk_idx_map.contains_key(k)));
@@ -118,5 +121,21 @@ pub fn tracker_matches_layout(ot: &OverlapTracker, l: &Layout) -> bool {
         }
     }
 
+    true
+}
+
+pub fn cc_matches_jaguars(shape: &SimplePolygon, det: &SpecializedDetectionMap) -> bool {
+    //Standard colllision collection, provided by jagua-rs, for comparison
+    let default_dm = {
+        let pi = &det.layout.placed_items[det.current_pk];
+        let pk = det.current_pk;
+        det.layout.cde().collect_poly_collisions(shape, &[HazardEntity::from((pk, pi))])
+    };
+
+    //make sure these detection maps are equivalent
+    let default_set: HashSet<HazardEntity> = default_dm.iter().cloned().collect();
+    let custom_set: HashSet<HazardEntity> = det.iter().cloned().collect();
+
+    assert_eq!(default_set, custom_set, "custom cde pipeline does not match jagua-rs!");
     true
 }

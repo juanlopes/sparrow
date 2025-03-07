@@ -1,9 +1,12 @@
-use crate::config::{OVERLAP_PROXY_EPSILON_DIAM_RATIO};
+use crate::config::OVERLAP_PROXY_EPSILON_DIAM_RATIO;
 use jagua_rs::geometry::fail_fast::sp_surrogate::SPSurrogate;
 use jagua_rs::geometry::geo_traits::{Distance, Shape};
 use jagua_rs::geometry::primitives::aa_rectangle::AARectangle;
+use jagua_rs::geometry::primitives::circle::Circle;
 use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
+use std::cell::RefCell;
 use std::cmp::Ordering;
+use ordered_float::NotNan;
 
 #[inline(always)]
 pub fn poly_overlap_proxy(s1: &SimplePolygon, s2: &SimplePolygon) -> f32 {
@@ -50,26 +53,29 @@ pub fn poles_overlap_proxy<'a>(sp1: &SPSurrogate, sp2: &SPSurrogate, epsilon: f3
     let safety_margin = sp1.max_distance_point_to_pole + sp2.max_distance_point_to_pole;
 
     let mut total_deficit = 0.0;
-    for p1 in &sp_outer.poles {
+    for p_o in &sp_outer.poles {
         //if the pole is far enough outside the bounding circle of the inner surrogate poles, skip it.
         //its deficit will be negligible and this speeds up the calculation quite a bit
-        let sq_distance = p1.center.sq_distance(&bpole_inner.center);
-        let neglect_sq_dist = (p1.radius + bpole_inner.radius + safety_margin).powi(2);
+        let sq_distance = p_o.center.sq_distance(&bpole_inner.center);
+        let neglect_sq_dist = (p_o.radius + bpole_inner.radius + safety_margin).powi(2);
         if sq_distance > neglect_sq_dist {
+            //p_o is far enough away from the inner surrogate's bounding pole that it can be neglected,
+            //saving precious time
             continue;
         } else {
-            for p2 in &sp_inner.poles {
-                let pd = (p1.radius + p2.radius) - p1.center.distance(&p2.center);
+            for p_i in &sp_inner.poles {
+                let pd = (p_o.radius + p_i.radius) - p_o.center.distance(&p_i.center);
 
                 let pd_decay = match pd >= epsilon {
                     true => pd,
                     false => epsilon.powi(2) / (-pd + 2.0 * epsilon),
                 };
 
-                total_deficit += pd_decay * f32::min(p1.radius, p2.radius);
+                total_deficit += pd_decay * f32::min(p_o.radius, p_i.radius);
             }
         }
     }
+    assert!(NotNan::new(total_deficit).is_ok(), "total deficit is NaN");
     total_deficit
 }
 
@@ -77,11 +83,11 @@ fn choose_inner_outer<'a>(sp1: &'a SPSurrogate, sp2: &'a SPSurrogate) -> (&'a SP
     //selects the surrogate with the smaller bounding circle as the inner surrogate
     let bp1 = &sp1.poles_bounding_circle;
     let bp2 = &sp2.poles_bounding_circle;
-    match bp1.radius.partial_cmp(&bp2.radius).unwrap(){
+    match bp1.radius.partial_cmp(&bp2.radius).unwrap() {
         Ordering::Less => (sp1, sp2),
         Ordering::Greater => (sp2, sp1),
         Ordering::Equal => { //tiebreaker to ensure associativity
-            match (bp1.center.0 + bp1.center.1).partial_cmp(&(bp2.center.0 + bp2.center.1)).unwrap(){
+            match (bp1.center.0 + bp1.center.1).partial_cmp(&(bp2.center.0 + bp2.center.1)).unwrap() {
                 Ordering::Less => (sp1, sp2),
                 _ => (sp2, sp1),
             }
