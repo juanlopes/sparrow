@@ -1,4 +1,4 @@
-use crate::config::{OVERLAP_PROXY_EPSILON_DIAM_RATIO, OVERLAP_PROXY_NEGLECT_EPSILON_RATIO};
+use crate::config::{OVERLAP_PROXY_EPSILON_DIAM_RATIO};
 use jagua_rs::geometry::fail_fast::sp_surrogate::SPSurrogate;
 use jagua_rs::geometry::geo_traits::{Distance, Shape};
 use jagua_rs::geometry::primitives::aa_rectangle::AARectangle;
@@ -15,10 +15,11 @@ pub fn poly_overlap_proxy(s1: &SimplePolygon, s2: &SimplePolygon) -> f32 {
         epsilon,
     );
 
+    debug_assert!(deficit > 0.0, "d:{deficit} has to be greater than 0.0. safety margins: {}, {}", s1.surrogate().max_distance_point_to_pole, s2.surrogate().max_distance_point_to_pole);
+
     let s1_penalty = s1.surrogate().convex_hull_area;
     let s2_penalty = s2.surrogate().convex_hull_area;
 
-    //let penalty = f32::min(s1_penalty, s2_penalty);
     let penalty = 0.90 * f32::min(s1_penalty, s2_penalty) + 0.10 * f32::max(s1_penalty, s2_penalty);
 
     (deficit * penalty).sqrt()
@@ -41,17 +42,19 @@ pub fn bin_overlap_proxy(s: &SimplePolygon, bin_bbox: AARectangle) -> f32 {
 
     10.0 * (deficit * penalty).sqrt()
 }
+
 #[inline(always)]
 pub fn poles_overlap_proxy<'a>(sp1: &SPSurrogate, sp2: &SPSurrogate, epsilon: f32) -> f32 {
     let (sp_inner, sp_outer) = choose_inner_outer(sp1, sp2);
     let bpole_inner = sp_inner.poles_bounding_circle.clone();
+    let safety_margin = sp1.max_distance_point_to_pole + sp2.max_distance_point_to_pole;
 
     let mut total_deficit = 0.0;
     for p1 in &sp_outer.poles {
         //if the pole is far enough outside the bounding circle of the inner surrogate poles, skip it.
         //its deficit will be negligible and this speeds up the calculation quite a bit
         let sq_distance = p1.center.sq_distance(&bpole_inner.center);
-        let neglect_sq_dist = (p1.radius + bpole_inner.radius + OVERLAP_PROXY_NEGLECT_EPSILON_RATIO * epsilon).powi(2);
+        let neglect_sq_dist = (p1.radius + bpole_inner.radius + safety_margin).powi(2);
         if sq_distance > neglect_sq_dist {
             continue;
         } else {
