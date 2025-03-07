@@ -50,12 +50,14 @@ impl SeparatorWorker {
                 let item_id = self.prob.layout.placed_items()[pk].item_id;
                 let item = self.instance.item(item_id);
 
+                // create an evaluator to evaluate the samples during the search
                 let evaluator = SeparationEvaluator::new(&self.prob.layout, item, pk, &self.ot);
 
-                let (new_dt, _, n_evals) = search::search_placement(
-                    &self.prob.layout, item, Some(pk), evaluator, self.sample_config, &mut self.rng,
-                );
+                // search for a better position for the item
+                let (new_dt, _, n_evals) =
+                    search::search_placement(&self.prob.layout, item, Some(pk), evaluator, self.sample_config, &mut self.rng);
 
+                // move the item to the new position
                 self.move_item(pk, new_dt);
                 total_evals += n_evals;
             }

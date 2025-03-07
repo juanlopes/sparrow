@@ -20,12 +20,12 @@ pub const DRAW_OPTIONS: SvgDrawOptions = SvgDrawOptions {
 };
 
 pub const CDE_CONFIG: CDEConfig = CDEConfig {
-    quadtree_depth: 3,
+    quadtree_depth: 4,
     hpg_n_cells: 0,
     item_surrogate_config: SPSurrogateConfig {
-        pole_coverage_goal: 0.95,
+        pole_coverage_goal: 0.9,
         max_poles: 20,
-        n_ff_poles: 3,
+        n_ff_poles: 2,
         n_ff_piers: 0,
     },
 };
@@ -56,7 +56,6 @@ pub const WEIGHT_MAX_INC_RATIO: f32 = 2.0;
 pub const WEIGHT_MIN_INC_RATIO: f32 = 1.2;
 pub const WEIGHT_OVERLAP_DECAY: f32 = 0.95;
 pub const OVERLAP_PROXY_EPSILON_DIAM_RATIO: f32 = 0.01;
-pub const OVERLAP_PROXY_NEGLECT_EPSILON_RATIO: f32 = 5.0;
 pub const COMPRESS_R_SHRINKS: [f32; 2] = [0.0005, 0.0001];
 pub const COMPRESS_N_STRIKES: [usize; 2] = [5,5];
 
