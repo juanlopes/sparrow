@@ -50,7 +50,7 @@ jiff = "0.2.4"
 [profile.dev]
 overflow-checks=true
 
-[profile.test]
+[profile.debug-release]
 inherits = "release"
 debug-assertions = true
 debug = true

@@ -1,10 +1,11 @@
 # sparrow 🪶🪺
-*builds intricate nestings in any environment*
+_Builds nests that make the most out of every inch of space._
+
 ### A State-of-the-Art Heuristic for the 2D Irregular Strip Packing Problem
 
-This optimization algorithm can be used to solve the 2D irregular strip packing problems, also commonly referred to as nesting problems.
+This optimization algorithm can be used to solve 2D irregular strip packing problems, also commonly referred to as nesting problems.
 
-The algorithm is built on top of [`jagua-rs`](https://github.com/JeroenGar/jagua-rs): *a collision detection engine for 2D irregular cutting & packing problems*.
+It builts on [`jagua-rs`](https://github.com/JeroenGar/jagua-rs): *a collision detection engine for 2D irregular cutting & packing problems*.
 
 ## Example solutions
 <p align="center">
@@ -95,3 +96,29 @@ cargo run --release --features=only_final_svg -- \
     120
 ```
 
+## Testing
+The codebase contains a suite of `debug_assert!` checks to verify the correctness of the heuristic.
+These assertions are omitted in release builds to maximize performance, but can be enabled by running the algorithm in the `debug-release` profile:
+```bash
+cargo run --profile debug-release -- \
+    libs/jagua-rs/assets/swim.json \
+    120
+```
+
+## Development
+
+This repo is meant to remain a faithful representation of the algorithm described in [...].
+Therefore, only pull requests containing performance improvements and bug fixes will be accepted.
+Feel free to fork the repository if you want to experiment with different heuristics.
+
+## License
+
+This project is licensed under Mozilla Public License 2.0 - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgements
+
+This project began development at [KU Leuven](https://www.kuleuven.be/english/) and was funded by [Research Foundation - Flanders (FWO)](https://www.fwo.be/en/) (grant number: 1S71222N).
+
+<img src="https://upload.wikimedia.org/wikipedia/commons/9/97/Fonds_Wetenschappelijk_Onderzoek_logo_2024.svg" height="50px" alt="FWO logo">
+&nbsp;
+<img src="https://upload.wikimedia.org/wikipedia/commons/4/49/KU_Leuven_logo.svg" height="50px" alt="KU Leuven logo">
