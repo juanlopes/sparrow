@@ -13,7 +13,7 @@ pub fn poly_overlap_proxy(s1: &SimplePolygon, s2: &SimplePolygon) -> f32 {
     let deficit = poles_overlap_proxy(&s1.surrogate(), &s2.surrogate(), epsilon);
 
     debug_assert!(
-        deficit > 0.0,
+        deficit.is_normal(),
         "d:{deficit} has to be greater than 0.0. safety margins: {}, {}",
         s1.surrogate().max_distance_point_to_pole,
         s2.surrogate().max_distance_point_to_pole
@@ -32,7 +32,7 @@ pub fn bin_overlap_proxy(s: &SimplePolygon, bin_bbox: AARectangle) -> f32 {
     let s_bbox = s.bbox();
     let deficit = match AARectangle::from_intersection(&s_bbox, &bin_bbox) {
         Some(r) => {
-            let negative_area = s_bbox.area() - r.area();
+            let negative_area = s_bbox.area() - r.area() + 0.001 * s_bbox.area(); //to assure it is always positive
             negative_area
         }
         None => {
@@ -40,6 +40,7 @@ pub fn bin_overlap_proxy(s: &SimplePolygon, bin_bbox: AARectangle) -> f32 {
             s_bbox.area() + s_bbox.centroid().distance(&bin_bbox.centroid())
         }
     };
+    debug_assert!(deficit.is_normal());
     let penalty = s.surrogate().convex_hull_area;
 
     10.0 * (deficit * penalty).sqrt()
