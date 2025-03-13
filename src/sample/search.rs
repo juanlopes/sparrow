@@ -37,15 +37,16 @@ pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, mut e
         None => None,
     };
 
-    let bin_sampler = UniformBBoxSampler::new(
-        l.bin.bbox().resize_by(-item.shape.poi.radius, -item.shape.poi.radius),
-        item,
-    );
+    let bin_sampler = l.bin.bbox()
+        .resize_by(-item.shape.poi.radius, -item.shape.poi.radius)
+        .map(|bbox| UniformBBoxSampler::new(bbox, item));
 
-    for _ in 0..sample_config.n_bin_samples {
-        let dt = bin_sampler.sample(rng).into();
-        let eval = evaluator.eval(dt, Some(best_samples.upperbound()));
-        best_samples.report(dt, eval);
+    if let Some(bin_sampler) = bin_sampler {
+        for _ in 0..sample_config.n_bin_samples {
+            let dt = bin_sampler.sample(rng).into();
+            let eval = evaluator.eval(dt, Some(best_samples.upperbound()));
+            best_samples.report(dt, eval);
+        }
     }
 
     if let Some(focussed_sampler) = focussed_sampler {
