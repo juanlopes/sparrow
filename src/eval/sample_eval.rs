@@ -14,23 +14,23 @@ pub enum SampleEval {
 
 impl PartialOrd for SampleEval {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        match (self, other) {
-            (Invalid, Invalid) => Some(Ordering::Equal),
-            (Invalid, _) => Some(Ordering::Greater),
-            (_, Invalid) => Some(Ordering::Less),
-            (Collision{..}, Clear{..}) => Some(Ordering::Greater),
-            (Clear{..}, Collision{..}) => Some(Ordering::Less),
-            (Collision{loss: l1}, Collision{loss: l2}) |
-            (Clear{loss: l1}, Clear { loss: l2 }) => {
-                FPA(*l1).partial_cmp(&FPA(*l2))
-            }
-        }
+        Some(self.cmp(other))
     }
 }
 
 impl Ord for SampleEval {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.partial_cmp(other).unwrap()
+        match (self, other) {
+            (Invalid, Invalid) => Ordering::Equal,
+            (Invalid, _) => Ordering::Greater,
+            (_, Invalid) => Ordering::Less,
+            (Collision{..}, Clear{..}) => Ordering::Greater,
+            (Clear{..}, Collision{..}) => Ordering::Less,
+            (Collision{loss: l1}, Collision{loss: l2}) |
+            (Clear{loss: l1}, Clear { loss: l2 }) => {
+                FPA(*l1).partial_cmp(&FPA(*l2)).expect(&*format!("Comparing {:?} and {:?} failed", l1, l2))
+            }
+        }
     }
 }
 
