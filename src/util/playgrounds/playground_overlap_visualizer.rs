@@ -1,5 +1,3 @@
-use sparrow::util::io;
-use sparrow::util::io::svg_export;
 use itertools::Itertools;
 use jagua_rs::collision_detection::hazard::HazardEntity;
 use jagua_rs::collision_detection::hazard_helpers::HazardDetector;
@@ -13,6 +11,7 @@ use jagua_rs::geometry::geo_enums::GeoRelation;
 use jagua_rs::geometry::geo_traits::{Distance, Shape, Transformable};
 use jagua_rs::geometry::primitives::aa_rectangle::AARectangle;
 use jagua_rs::geometry::primitives::circle::Circle;
+use jagua_rs::geometry::primitives::point::Point;
 use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
 use jagua_rs::io::parser::Parser;
 use jagua_rs::util::config::{CDEConfig, SPSurrogateConfig};
@@ -20,9 +19,11 @@ use jagua_rs::util::polygon_simplification::PolySimplConfig;
 use ordered_float::OrderedFloat;
 use plotly::common::{ColorScale, ColorScaleElement};
 use plotly::layout::{AspectMode, AspectRatio, LayoutScene};
+use plotly::surface::{PlaneContours, SurfaceContours};
 use plotly::{Plot, Surface};
+use sparrow::util::io;
+use sparrow::util::io::svg_export;
 use std::path::Path;
-use jagua_rs::geometry::primitives::point::Point;
 use svg::node::element::Group;
 use svg::Document;
 
@@ -32,7 +33,9 @@ const ITEM_ID_TO_SAMPLE: usize = 8;
 const OUTPUT_FOLDER: &str = "output/playground/";
 
 const RESOLUTION: usize = 500;
-const EPSILON_DIAM_FRAC: f32 = 0.00000000001;
+//const EPSILON_DIAM_FRAC: f32 = 0.0000001;
+const EPSILON_DIAM_FRAC: f32 = 0.01;
+
 
 pub fn main() {
     io::init_logger(log::LevelFilter::Info);
@@ -60,8 +63,7 @@ pub fn main() {
 
     let item_to_sample = sp_instance.item(ITEM_ID_TO_SAMPLE);
 
-    let diameter = 1200.0;
-    let bbox = AARectangle::new(-diameter, -diameter, diameter, diameter);
+    let bbox = AARectangle::new(-1200.0, -1200.0, 1200.0, 1200.0);
     let dummy_bin = Bin::from_strip(bbox.clone(), cde_config);
     let mut dummy_layout = Layout::new(0, dummy_bin);
 
@@ -142,7 +144,12 @@ pub fn main() {
     let doc = Document::new().set(
         "viewBox",
         (bbox.x_min, bbox.y_min, bbox.width(), bbox.height()),
-    );
+    ).add(svg::node::element::Rectangle::new()
+        .set("x", bbox.x_min)
+        .set("y", bbox.y_min)
+        .set("width", bbox.width())
+        .set("height", bbox.height())
+        .set("fill", "#cdffcd"));
 
 
     let item_paths = dummy_layout
@@ -152,7 +159,7 @@ pub fn main() {
             svg_export::data_to_path(
                 svg_export::simple_polygon_data(&pi.shape),
                 &[
-                    ("fill", "rgba(0, 0, 0, 0.0)"),
+                    ("fill", "none"),
                     ("stroke-width", "15"),
                     ("fill-rule", "nonzero"),
                     ("stroke", "black"),
@@ -173,7 +180,7 @@ pub fn main() {
 
         let filtered_overlaps = overlaps.iter().enumerate()
             .filter(|(_, o)| o == &&Overlap::BoundaryNone)
-            .map(|(idx,_)| idx_to_point(idx));
+            .map(|(idx, _)| idx_to_point(idx));
 
         let x_min = filtered_overlaps.clone()
             .min_by_key(|p| OrderedFloat(p.0))
@@ -200,14 +207,14 @@ pub fn main() {
                     ("stroke-width", "15"),
                     ("fill-rule", "nonzero"),
                     ("stroke", "black"),
-                    ("opacity", "0.5"),
+                    ("opacity", "0.2"),
                 ])
         }).into_iter().fold(Group::new(), |group, path| group.add(path));
 
         sample_group = [x_min, x_max, y_min, y_max].map(|p| {
             svg_export::circle(
                 &Circle::new(p, 15.0),
-                &[("fill", "black"), ("opacity", "1.0")],
+                &[("fill", "black"), ("opacity", "0.5")],
             )
         }).into_iter().fold(sample_group, |group, path| group.add(path));
 
@@ -240,30 +247,25 @@ pub fn main() {
         }
     }
 
-    for sx in 0..RESOLUTION {
-        for sy in 0..RESOLUTION {
-            let x = bbox.x_min + bbox.width() / RESOLUTION as f32 * sx as f32;
-            let y = bbox.y_min + bbox.height() / RESOLUTION as f32 * sy as f32;
-            let overlap = overlaps[sx * RESOLUTION + sy];
-            overlap_group = match overlap {
-                Overlap::BoundaryNone => {
-                    let circle = svg::node::element::Circle::new()
-                        .set("cx", x)
-                        .set("cy", y)
-                        .set("r", 2.0 * bbox.width() / RESOLUTION as f32)
-                        .set("fill", "rgb(100, 255, 100)")
-                        .set("stroke", "none");
-                    overlap_group.add(circle)
-                }
-                _ => overlap_group,
-            };
-        }
-    }
-
-
-
-
-
+    // for sx in 0..RESOLUTION {
+    //     for sy in 0..RESOLUTION {
+    //         let x = bbox.x_min + bbox.width() / RESOLUTION as f32 * sx as f32;
+    //         let y = bbox.y_min + bbox.height() / RESOLUTION as f32 * sy as f32;
+    //         let overlap = overlaps[sx * RESOLUTION + sy];
+    //         overlap_group = match overlap {
+    //             Overlap::BoundaryNone => {
+    //                 let circle = svg::node::element::Circle::new()
+    //                     .set("cx", x)
+    //                     .set("cy", y)
+    //                     .set("r", 2.0 * bbox.width() / RESOLUTION as f32)
+    //                     .set("fill", "rgb(100, 255, 100)")
+    //                     .set("stroke", "none");
+    //                 overlap_group.add(circle)
+    //             }
+    //             _ => overlap_group,
+    //         };
+    //     }
+    // }
 
     let doc = doc.add(overlap_group);
 
@@ -282,9 +284,9 @@ pub fn main() {
             .iter()
             .map(|o| match o {
                 Overlap::Items(o) => *o as f64,
-                Overlap::None => -10.0,
-                Overlap::Bin => -10.0,
-                Overlap::BoundaryNone => -10.0,
+                Overlap::None => f64::NAN,
+                Overlap::Bin => f64::NAN,
+                Overlap::BoundaryNone => 0.0,
             })
             .collect::<Vec<f64>>()
             .chunks(RESOLUTION)
@@ -303,43 +305,59 @@ pub fn main() {
             ColorScaleElement(1.0, "#ff0000".into()), // Red at max value
         ]);
 
-        // Create a surface plot
-        let surface = Surface::new(z)
-            .x(x.clone())
-            .y(y.clone())
-            .color_scale(color_scale);
-
         let green_floor_surface = {
             let color_scale = ColorScale::Vector(vec![
-                ColorScaleElement(0.0, "#cdffcd".into()), // White at 0.0
-                ColorScaleElement(1.0, "#cdffcd".into()), // Red at max value
+                ColorScaleElement(0.0, "#cdffcd".into()),
+                ColorScaleElement(1.0, "#cdffcd".into()),
             ]);
-            let z = vec![vec![-1.0; RESOLUTION]; RESOLUTION];
+            //clone the other surface and set all NANs to 0.0 and all normal values to NAN
+            let z = z
+                .iter()
+                .map(|row| {
+                    row.iter()
+                        .map(|&v| if v.is_nan() || v == 0.0 { 0.0 } else { f64::NAN })
+                        .collect::<Vec<f64>>()
+                })
+                .collect::<Vec<Vec<f64>>>();
             Surface::new(z)
                 .x(x.clone())
                 .y(y.clone())
                 .color_scale(color_scale)
+                .show_scale(false)
         };
+
+        // Create a surface plot
+        let surface = Surface::new(z)
+            .x(x.clone())
+            .y(y.clone())
+            .color_scale(color_scale)
+            .show_scale(false)
+            .lighting(plotly::surface::Lighting::new()
+                .ambient(0.8)
+                .diffuse(0.8)
+                .specular(0.05)
+                .roughness(0.5)
+            );
 
         let mut plot = Plot::new();
         plot.add_trace(surface);
         plot.add_trace(green_floor_surface);
 
-        let aspect = AspectRatio::new().x(1.0).y(1.0).z(0.3);
+        let aspect = AspectRatio::new().x(1.0).y(1.0).z(0.5);
         let scene = LayoutScene::new()
             .aspect_mode(AspectMode::Manual)
+            .x_axis(plotly::layout::Axis::new().show_tick_labels(false).title("").range(vec![-1000.0, 1000.0]))
+            .y_axis(plotly::layout::Axis::new().show_tick_labels(false).title("").range(vec![-1000.0, 1000.0]))
+            .z_axis(plotly::layout::Axis::new().show_tick_labels(false).title("").range(vec![0.0, max_overlap]))
             .aspect_ratio(aspect);
 
         let layout = plotly::Layout::new()
-            .width(1920)
-            .height(1080)
-            .title("3D visualization of overlap approximation")
-            .z_axis(plotly::layout::Axis::new().range(vec![0.0, max_overlap]))
+            .width(2160)
+            .height(2160)
             .scene(scene);
         plot.set_layout(layout);
 
         // Export the plot to an HTML file
-
         plot.write_html(&*Path::new(OUTPUT_FOLDER).join("overlap_visualizer_3d.html"));
 
         println!("Plot exported to plot.html");
@@ -398,7 +416,7 @@ pub fn poly_overlap_proxy(s1: &SimplePolygon, s2: &SimplePolygon) -> f32 {
 
 pub fn poles_overlap_proxy<'a, C>(poles_1: C, poles_2: C, epsilon: f32) -> f32
 where
-    C: Iterator<Item = &'a Circle> + Clone,
+    C: Iterator<Item=&'a Circle> + Clone,
 {
     let mut total_deficit = 0.0;
     for p1 in poles_1 {
@@ -423,10 +441,10 @@ fn distance_between_bboxes(big_bbox: &AARectangle, small_bbox: &AARectangle) -> 
         big_bbox.y_max - small_bbox.y_max,
         small_bbox.y_min - big_bbox.y_min,
     ]
-    .iter()
-    .min_by_key(|d| OrderedFloat(**d))
-    .copied()
-    .unwrap();
+        .iter()
+        .min_by_key(|d| OrderedFloat(**d))
+        .copied()
+        .unwrap();
 
     assert!(min_d >= -1.0);
 
