@@ -55,7 +55,7 @@ pub fn init_logger(level_filter: LevelFilter) {
     log!(
         Level::Info,
         "[EPOCH]: {}",
-        humantime::format_rfc3339_seconds(std::time::SystemTime::now())
+        jiff::Timestamp::now().to_string()
     );
 }
 
