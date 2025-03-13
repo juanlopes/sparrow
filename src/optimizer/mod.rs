@@ -158,7 +158,9 @@ fn swap_large_pair_of_items(sep: &mut Separator) {
         .filter(|(_, pi)| pi.item_id != pi1.item_id)
         .filter(|(_, pi)| pi.shape.surrogate().convex_hull_area > large_area_ch_area_cutoff)
         .choose(&mut sep.rng)
-        .unwrap_or(layout.placed_items.iter().choose(&mut sep.rng).unwrap());
+        .unwrap_or(layout.placed_items.iter()
+            .filter(|(pk2, _)| *pk2 != pk1)
+            .choose(&mut sep.rng).unwrap());
 
     let dt1 = pi1.d_transf;
     let dt2 = pi2.d_transf;
