@@ -47,7 +47,12 @@ cargo run --release -- \
     120
 ```
 
-If you want to view the optimization process live, open `assets/live_solution_viewer.html` in a web browser,
+To ensure maximum performance, compile with:
+```bash
+RUSTFLAGS='-C target-cpu=native'
+```
+
+If you want to monitor the optimization process live, open `assets/live_solution_viewer.html` in a web browser,
 and compile with the `live_svg` feature enabled:
 
 ```bash
@@ -59,11 +64,6 @@ cargo run --release --features=live_svg -- \
 ```
 ![Demo of the live solution viewer](assets/demo.gif)
 
-To ensure maximum performance, compile with:
-```bash
-RUSTFLAGS='-C target-cpu=native'
-```
-
 ## Input
 
 This repository uses the same JSON format as [`jagua-rs`](https://github.com/JeroenGar/jagua-rs) to represent instances.
@@ -73,8 +73,8 @@ See [`jagua-rs` README](https://github.com/JeroenGar/jagua-rs?tab=readme-ov-file
 
 ## Output
 
-Solutions are exported as SVG files in `/output` folder.
-The SVG files are both a visualization and a formal output of a solution as they define all the original shapes and the exact transformations applied to them:
+Solutions are exported as SVG files in `output` folder.
+The SVG files are both a visualization and formal output of a solution as all original shapes and their exact transformations applied to them are defined within the SVG:
 ```html
     ...
     <g id="items">
