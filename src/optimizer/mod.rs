@@ -52,7 +52,7 @@ pub fn explore(sep: &mut Separator, term: &Terminator) -> Vec<Solution> {
 
     while !term.kill() {
         let local_best = sep.separate_layout(&term);
-        let total_overlap = local_best.1.total_overlap;
+        let total_overlap = local_best.1.get_total_overlap();
 
         if total_overlap == 0.0 {
             //layout is successfully separated
@@ -136,7 +136,7 @@ fn attempt_to_compress(sep: &mut Separator, init: &Solution, r_shrink: f32, term
 
     //try to separate layout, if all overlap is eliminated, return the solution
     let (compacted_sol, ot) = sep.separate_layout(term);
-    match ot.total_overlap == 0.0 {
+    match ot.get_total_overlap() == 0.0 {
         true => Some(compacted_sol),
         false => None,
     }

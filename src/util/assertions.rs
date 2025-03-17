@@ -23,8 +23,8 @@ pub fn tracker_matches_layout(ot: &OverlapTracker, l: &Layout) -> bool {
             let stored_overlap = ot.get_pair_overlap(pk1, pk2);
             match collisions.iter().contains(&HazardEntity::from((pk2, pi2))) {
                 true => {
-                    let calc_overlap = proxy::poly_overlap_proxy(&pi1.shape, &pi2.shape);
-                    let calc_overlap2 = proxy::poly_overlap_proxy(&pi2.shape, &pi1.shape);
+                    let calc_overlap = proxy::eval_overlap_poly_poly(&pi1.shape, &pi2.shape);
+                    let calc_overlap2 = proxy::eval_overlap_poly_poly(&pi2.shape, &pi1.shape);
                     if !approx_eq!(f32,calc_overlap,stored_overlap,epsilon = 0.10 * stored_overlap) && !approx_eq!(f32,calc_overlap2,stored_overlap, epsilon = 0.10 * stored_overlap) {
                         let opposite_collisions =
                             l.cde().collect_poly_collisions(&pi2.shape, &[(pk2, pi2).into()]);
@@ -81,7 +81,7 @@ pub fn tracker_matches_layout(ot: &OverlapTracker, l: &Layout) -> bool {
                 false => {
                     if stored_overlap != 0.0 {
                         let calc_overlap =
-                            proxy::poly_overlap_proxy(&pi1.shape, &pi2.shape);
+                            proxy::eval_overlap_poly_poly(&pi1.shape, &pi2.shape);
                         let opposite_collisions =
                             l.cde().collect_poly_collisions(&pi2.shape, &[(pk2,pi2).into()]);
                         if !opposite_collisions.contains(&((pk1, pi1).into())) {
@@ -114,7 +114,7 @@ pub fn tracker_matches_layout(ot: &OverlapTracker, l: &Layout) -> bool {
         }
         if collisions.contains(&HazardEntity::BinExterior) {
             let bin_overlap = ot.get_bin_overlap(pk1);
-            let calc_overlap = proxy::bin_overlap_proxy(&pi1.shape, l.bin.bbox());
+            let calc_overlap = proxy::eval_overlap_poly_bin(&pi1.shape, l.bin.bbox());
             assert_approx_eq!(f32, calc_overlap, bin_overlap, ulps = 5);
         } else {
             assert_eq!(ot.get_bin_overlap(pk1), 0.0);

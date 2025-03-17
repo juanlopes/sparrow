@@ -14,7 +14,7 @@ impl OTPairMatrix {
         let len = size * (size + 1) / 2;
         Self {
             size,
-            data: vec![OTEntry::default(); len],
+            data: vec![OTEntry { weight: 1.0, overlap: 0.0 }; len],
         }
     }
 }

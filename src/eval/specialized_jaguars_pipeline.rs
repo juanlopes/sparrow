@@ -1,4 +1,4 @@
-use crate::overlap::proxy::{bin_overlap_proxy, poly_overlap_proxy};
+use crate::overlap::proxy::{eval_overlap_poly_bin, eval_overlap_poly_poly};
 use crate::overlap::tracker::OverlapTracker;
 use crate::util::assertions;
 use crate::util::bit_reversal_iterator::BitReversalIterator;
@@ -145,12 +145,12 @@ impl<'a> SpecializedDetectionMap<'a> {
         match haz {
             HazardEntity::PlacedItem { pk: other_pk, .. } => {
                 let other_shape = &self.layout.placed_items[*other_pk].shape;
-                let overlap = poly_overlap_proxy(shape, other_shape);
+                let overlap = eval_overlap_poly_poly(shape, other_shape);
                 let weight = self.ot.get_pair_weight(self.current_pk, *other_pk);
                 overlap * weight
             }
             HazardEntity::BinExterior => {
-                let overlap = bin_overlap_proxy(shape, self.layout.bin.bbox());
+                let overlap = eval_overlap_poly_bin(shape, self.layout.bin.bbox());
                 let weight = self.ot.get_bin_weight(self.current_pk);
                 2.0 * overlap * weight
             }
