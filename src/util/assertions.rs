@@ -124,7 +124,7 @@ pub fn tracker_matches_layout(ot: &OverlapTracker, l: &Layout) -> bool {
     true
 }
 
-pub fn cc_matches_jaguars(shape: &SimplePolygon, det: &SpecializedDetectionMap) -> bool {
+pub fn custom_pipeline_matches_jaguars(shape: &SimplePolygon, det: &SpecializedDetectionMap) -> bool {
     //Standard colllision collection, provided by jagua-rs, for comparison
     let default_dm = {
         let pi = &det.layout.placed_items[det.current_pk];

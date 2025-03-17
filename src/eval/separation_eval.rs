@@ -42,6 +42,7 @@ impl<'a> SampleEvaluator for SeparationEvaluator<'a> {
         self.n_evals += 1;
         let cde = self.layout.cde();
 
+        // evals with higher overlap loss than this will always be rejected
         let loss_bound = match upper_bound {
             Some(SampleEval::Collision { loss }) => loss,
             Some(SampleEval::Clear { .. }) => 0.0,
@@ -50,7 +51,7 @@ impl<'a> SampleEvaluator for SeparationEvaluator<'a> {
         // reload the detection map for the new query and update its loss bound
         self.detection_map.reload(loss_bound);
 
-        // store the transformed shape in the buffer
+        // use the shape buffer to store the transformed shape
         self.shape_buff.transform_from(&self.item.shape, &dt.compose());
 
         //query the CDE for collisions and eval them
@@ -60,7 +61,7 @@ impl<'a> SampleEvaluator for SeparationEvaluator<'a> {
             SampleEval::Clear { loss: 0.0 }
         } else if self.detection_map.early_terminate(&self.shape_buff) {
             //the early termination was triggered, this means potentially not all collisions were detected,
-            //and the sample will be rejected anyway.
+            //but the sample will be rejected anyway.
             SampleEval::Invalid
         } else {
             let loss = self.detection_map.loss(&self.shape_buff);

@@ -36,7 +36,7 @@ impl Ord for SampleEval {
 
 impl Eq for SampleEval {}
 
-/// Simple trait for structs that can evaluate samples
+/// Simple trait for types that can evaluate samples
 pub trait SampleEvaluator {
     fn eval(&mut self, dt: DTransformation, upper_bound: Option<SampleEval>) -> SampleEval;
 

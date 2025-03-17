@@ -13,8 +13,8 @@ use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
 use slotmap::SecondaryMap;
 
 
-/// Specialized collision collection function
-/// Should behave the same as [`CDEngine::collect_poly_collisions_in_detector`], but with early termination.
+/// Specialized collision collection function.
+/// Functionally the same as [`CDEngine::collect_poly_collisions_in_detector`], but with early termination.
 /// Saving quite a bit of CPU time since over 90% of the time is spent in this function.
 
 pub fn collect_poly_collisions_in_detector_specialized(
@@ -22,42 +22,39 @@ pub fn collect_poly_collisions_in_detector_specialized(
     shape: &SimplePolygon,
     det: &mut SpecializedDetectionMap,
 ) {
-    //check a few poles to detect obvious collisions fast
+    // Start off by checking a few poles to detect obvious collisions quickly
     for pole in shape.surrogate().ff_poles() {
         cde.quadtree.collect_collisions(pole, det);
-        if det.early_terminate(shape) {
-            return;
-        }
+        if det.early_terminate(shape) { return }
     }
 
-    //go over all the edges of the shape, in a bit-reversed order to maximize detecting new hazards
+    // Collect collisions for all edges of the shape.
+    // Iterate over them in a bit-reversed order to maximize detecting new hazards early.
     let custom_edge_iter = BitReversalIterator::new(shape.number_of_points())
         .map(|i| shape.get_edge(i));
     for edge in custom_edge_iter {
         cde.quadtree.collect_collisions(&edge, det);
-        if det.early_terminate(shape) {
-            return;
-        }
+        if det.early_terminate(shape) { return }
     }
 
-    //at this point, all hazards from edge-edge intersection are detected.
-    //the only type of collision that can remain is containment.
+    // At this point, all collisions due to edge-edge intersection are detected.
+    // The only type of collisions that possibly remain is containment.
 
     let checkpoint = det.idx_counter;
 
-    //detect all potential hazards within the bounding box.
+    // Detect all potential hazards within the bounding box of the shape.
     cde.collect_potential_hazards_within(&shape.bbox(), det);
 
     if det.idx_counter > checkpoint {
-        //there are additional hazards detected, we need to check if they are contained in the shape
+        // Additional hazards were detected, check if they are contained in each other.
+        // If they are not, remove them again from the detector, as they do not collide with the shape
         for haz in cde.all_hazards().filter(|h| h.active) {
-            //go over all hazards in the CDE
             match haz.entity {
                 HazardEntity::BinExterior => {
                     if let Some((_, idx)) = det.detected_bin {
                         if idx >= checkpoint {
-                            //if the bin was detected as a potential containment, remove it.
-                            //in this problem, an item can never be entirely outside the bin.
+                            // If the bin was detected as a potential containment, remove it.
+                            // For this specific problem, an item can never be entirely outside the bin (rectangle).
                             det.remove(&haz.entity)
                         }
                     }
@@ -65,9 +62,9 @@ pub fn collect_poly_collisions_in_detector_specialized(
                 HazardEntity::PlacedItem { pk, ..} => {
                     if let Some((_, idx)) = det.detected_pis.get(pk) {
                         if *idx >= checkpoint {
-                            //the item was not detected during the quadtree query, but was detected as a potential containment.
+                            // The item was not detected during the quadtree query, but was detected as a potential containment.
                             if !cde.poly_or_hazard_are_contained(shape, haz) {
-                                //if the item is not contained in the shape, remove it from the detector
+                                //The item is not contained in the shape, remove it from the detector
                                 det.remove(&haz.entity)
                             }
                         }
@@ -77,12 +74,13 @@ pub fn collect_poly_collisions_in_detector_specialized(
             }
         }
     }
-    debug_assert!(assertions::cc_matches_jaguars(shape, det));
+    // At this point, all collisions should be present in the detector.
+    debug_assert!(assertions::custom_pipeline_matches_jaguars(shape, det));
 }
 
 /// Modified version of [`jagua_rs::collision_detection::hazard_helpers::DetectionMap`]
 /// This struct computes the overlap incrementally, and caches the result.
-/// This allows it to terminate early if the overlap exceeds a certain upperbound.
+/// Allows it to terminate early if the overlap exceeds a certain upperbound.
 pub struct SpecializedDetectionMap<'a> {
     pub layout: &'a Layout,
     pub ot: &'a OverlapTracker,
@@ -209,9 +207,7 @@ impl<'a> HazardDetector for SpecializedDetectionMap<'a> {
     }
 
     fn iter(&self) -> impl Iterator<Item=&HazardEntity> {
-        self.detected_pis
-            .iter()
-            .map(|(_, (h, _))| h)
+        self.detected_pis.iter().map(|(_, (h, _))| h)
             .chain(self.detected_bin.iter().map(|(h, _)| h))
     }
 }

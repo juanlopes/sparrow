@@ -8,6 +8,9 @@ use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
 pub const X_MULTIPLIER: f32 = 10.0;
 pub const Y_MULTIPLIER: f32 = 1.0;
 
+/// Simple evaluator for the Left-Bottom-Fill constructor.
+/// Basically either returns [SampleEval::Invalid] in case of any collision or [SampleEval::Clear] with a loss value
+/// that rewards placements that are closer to the left-bottom corner of the bin.
 pub struct LBFEvaluator<'a> {
     layout: &'a Layout,
     item: &'a Item,
@@ -30,21 +33,19 @@ impl<'a> SampleEvaluator for LBFEvaluator<'a> {
     fn eval(&mut self, dt: DTransformation, _upper_bound: Option<SampleEval>) -> SampleEval {
         self.n_evals += 1;
         let cde = self.layout.cde();
-        let t = dt.into();
-        let irrel_hazards = &[];
-        match cde.surrogate_collides(self.item.shape.surrogate(), &t, irrel_hazards) {
-            true => SampleEval::Invalid,
+        let transf = dt.into();
+        match cde.surrogate_collides(self.item.shape.surrogate(), &transf, &[]) {
+            true => SampleEval::Invalid, // Surrogate collides with something
             false => {
-                self.shape_buff.transform_from(&self.item.shape, &t);
-                match cde.poly_collides(&self.shape_buff, irrel_hazards) {
-                    true => SampleEval::Invalid,
+                self.shape_buff.transform_from(&self.item.shape, &transf);
+                match cde.poly_collides(&self.shape_buff, &[]) {
+                    true => SampleEval::Invalid, // Exact shape collides with something
                     false => {
-                        //no collisions
+                        // No collisions
                         let poi = self.shape_buff.poi.center;
-                        let poi_eval = X_MULTIPLIER * poi.0 + Y_MULTIPLIER * poi.1;
-                        let bbox_eval =
-                            self.shape_buff.bbox().x_max + 0.1 * self.shape_buff.bbox().y_max;
-                        SampleEval::Clear{loss: poi_eval + bbox_eval}
+                        let bbox_corner = self.shape_buff.bbox().corners()[0];
+                        let loss = X_MULTIPLIER * (poi.0 + bbox_corner.0) + Y_MULTIPLIER * (poi.1 + bbox_corner.1);
+                        SampleEval::Clear{loss}
                     }
                 }
             }
