@@ -52,12 +52,12 @@ To ensure maximum performance, compile with:
 RUSTFLAGS='-C target-cpu=native'
 ```
 
-If you want to monitor the optimization process live, open `assets/live_solution_viewer.html` in a web browser,
+If you want to monitor the optimization process live, open [assets/live/live_viewer.html](assets/live/live_viewer.html) in a web browser,
 and compile with the `live_svg` feature enabled:
 
 ```bash
-rm output/.live_solution.svg
-open assets/live_solution_visualizer.html
+rm assets/live/.live_solution.svg
+open assets/live/live_viewer.html
 cargo run --release --features=live_svg -- \
     libs/jagua-rs/assets/swim.json \
     120

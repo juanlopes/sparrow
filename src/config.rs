@@ -7,6 +7,8 @@ pub const RNG_SEED: Option<usize> = None;
 
 pub const OUTPUT_DIR: &str = "output";
 
+pub const LIVE_DIR: &str = "assets/live";
+
 pub const LOG_LEVEL_FILTER_RELEASE: log::LevelFilter = log::LevelFilter::Info;
 
 pub const LOG_LEVEL_FILTER_DEBUG: log::LevelFilter = log::LevelFilter::Debug;

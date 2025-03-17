@@ -1,4 +1,4 @@
-use crate::config::{DRAW_OPTIONS, OUTPUT_DIR};
+use crate::config::{DRAW_OPTIONS, LIVE_DIR};
 use crate::optimizer::separator_worker::SeparatorWorker;
 use crate::overlap::tracker::{OTSnapshot, OverlapTracker};
 use crate::sample::search::SampleConfig;
@@ -274,7 +274,10 @@ impl Separator {
             };
 
             if EXPORT_LIVE_SVG {
-                io::write_svg(&svg, Path::new(&*format!("{}/.live_solution.svg", OUTPUT_DIR)), Level::Trace);
+                if !Path::new(LIVE_DIR).exists() {
+                    std::fs::create_dir_all(LIVE_DIR).unwrap();
+                }
+                io::write_svg(&svg, Path::new(&*format!("{}/.live_solution.svg", LIVE_DIR)), Level::Trace);
             }
 
             if !only_live {

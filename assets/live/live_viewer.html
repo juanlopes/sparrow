@@ -48,7 +48,7 @@
         <script>
             function updateSVG() {
                 const img = document.getElementById("solutionSVG");
-                img.src = "../output/.live_solution.svg?t=" + new Date().getTime(); // append a timestamp to bypass cache and force a reload
+                img.src = ".live_solution.svg?t=" + new Date().getTime(); // append a timestamp to bypass cache and force a reload
 
                 // if the image doesn't exist, hide the image
                 img.onerror = function() {
