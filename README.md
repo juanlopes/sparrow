@@ -73,7 +73,8 @@ See [`jagua-rs` README](https://github.com/JeroenGar/jagua-rs?tab=readme-ov-file
 
 ## Output
 
-Solutions are exported as SVG files in `output` folder.
+Solutions are exported as SVG files in `output` folder. The final SVG solutions is saved as `output/final_{name}.svg`.
+
 The SVG files are both a visualization and formal output of a solution as all original shapes and their exact transformations applied to them are defined within the SVG:
 ```html
     ...
@@ -85,10 +86,10 @@ The SVG files are both a visualization and formal output of a solution as all or
     </g>
     ...
 ```
-The final SVG solutions is saved as `output/final_{name}.svg`.
+The [SVG spec](https://stackoverflow.com/questions/18582935/the-applying-order-of-svg-transforms) defines that the transformations are applied from right to left.
+So here the item is first rotated and then translated.
 
-By default, a range of intermediate (and infeasible) solutions will be exported into `/output/sols_{name}`.
-
+By default, a range of intermediate (and infeasible) solutions will be exported in `/output/sols_{name}`.
 To disable this and export only a single final solution, enable the `only_final_svg` feature:
 ```bash
 cargo run --release --features=only_final_svg -- \
