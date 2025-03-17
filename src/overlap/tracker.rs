@@ -20,7 +20,7 @@ pub struct OverlapTracker {
     pub bin_overlap: Vec<OTEntry>,
 }
 
-pub(crate) type OTSnapshot = OverlapTracker;
+pub type OTSnapshot = OverlapTracker;
 
 impl OverlapTracker {
     pub fn new(l: &Layout) -> Self {

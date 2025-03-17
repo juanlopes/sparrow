@@ -1,6 +1,5 @@
 extern crate core;
 
-use chrono::Local;
 use sparrow::config::{CDE_CONFIG, DRAW_OPTIONS, LOG_LEVEL_FILTER_DEBUG, LOG_LEVEL_FILTER_RELEASE, OUTPUT_DIR, RNG_SEED};
 use sparrow::optimizer::{optimize, Terminator};
 use sparrow::util::io;
@@ -44,7 +43,7 @@ fn main() {
         }
     };
 
-    info!("[MAIN] system time: {}", Local::now());
+    info!("[MAIN] system time: {}", jiff::Timestamp::now());
 
     let json_instance = io::read_json_instance(Path::new(&input_file_path));
 

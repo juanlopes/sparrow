@@ -1,6 +1,5 @@
 extern crate core;
 
-use chrono::Local;
 use sparrow::config::{CDE_CONFIG, LBF_SAMPLE_CONFIG, DRAW_OPTIONS, OUTPUT_DIR, RNG_SEED, SEPARATOR_CONFIG_COMPRESS, SEP_CONFIG_EXPLORE};
 use sparrow::optimizer::lbf::LBFBuilder;
 use sparrow::optimizer::separator::Separator;
@@ -33,7 +32,7 @@ fn main() {
     let json_instance = io::read_json_instance(Path::new(&input_file_path));
 
     println!("[BENCH] git commit hash: {}", get_git_commit_hash());
-    println!("[BENCH] system time: {}", Local::now());
+    println!("[BENCH] system time: {}", jiff::Timestamp::now());
 
     let mut rng = match RNG_SEED {
         Some(seed) => {
