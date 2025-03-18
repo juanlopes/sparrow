@@ -81,7 +81,7 @@ impl Separator {
         let mut n_evals = 0;
         let start = Instant::now();
 
-        while n_strikes < self.config.strike_limit && !term.kill() {
+        while n_strikes < self.config.strike_limit && !term.is_kill() {
             let mut n_iter_no_improvement = 0;
 
             let initial_strike_overlap = self.ot.get_total_overlap();
@@ -132,7 +132,7 @@ impl Separator {
             }
             self.rollback(&min_overlap_sol.0, Some(&min_overlap_sol.1));
         }
-        if !term.kill() {
+        if !term.is_kill() {
             log!(self.config.log_level,"[SEP] ended due to strike limit ({}), evals/s: {}, iter/s: {}, took {:.3}s",n_strikes,FMT.fmt2(n_evals as f64 / start.elapsed().as_secs_f64()),FMT.fmt2(n_iter as f64 / start.elapsed().as_secs_f64()),start.elapsed().as_secs());
         }
         else{

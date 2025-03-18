@@ -45,6 +45,7 @@ plotly = "0.12.1"
 num_cpus = "1.16.0"
 ctrlc = "3.4.5"
 jiff = "0.2.4"
+test-case = "3.3.1"
 
 [profile.dev]
 overflow-checks=true
@@ -60,3 +61,6 @@ lto = "thin"
 strip = "debuginfo"
 codegen-units = 1
 panic = "abort"
+
+[profile.test]
+inherits = "debug-release"

@@ -8,7 +8,7 @@ use jagua_rs::entities::instances::strip_packing::SPInstance;
 use jagua_rs::entities::problems::problem_generic::ProblemGeneric;
 use jagua_rs::entities::problems::strip_packing::strip_width;
 use jagua_rs::entities::solution::Solution;
-use log::{info};
+use log::{info, warn};
 use rand::prelude::{IteratorRandom, SmallRng};
 use rand::Rng;
 use rand_distr::Distribution;
@@ -26,14 +26,13 @@ pub fn optimize(instance: SPInstance, rng: SmallRng, output_folder_path: String,
     let builder = LBFBuilder::new(instance, CDE_CONFIG, rng, LBF_SAMPLE_CONFIG).construct();
     let mut expl_separator = Separator::new(builder.instance, builder.prob, builder.rng, output_folder_path.clone(), 0, SEP_CONFIG_EXPLORE);
 
-    terminator.set_timeout(Some(explore_time_limit));
+    terminator.set_timeout(explore_time_limit);
     let solutions = explore(&mut expl_separator, &terminator);
     let final_explore_sol = solutions.last().expect("no solutions found during exploration");
 
     let mut cmpr_separator = Separator::new(expl_separator.instance, expl_separator.prob, expl_separator.rng, expl_separator.output_svg_folder, expl_separator.svg_counter, SEPARATOR_CONFIG_COMPRESS);
 
-    terminator.set_timeout(None);
-    terminator.reset_ctrlc();
+    terminator.clear_timeout().reset_ctrlc();
     let final_sol = compress(&mut cmpr_separator, final_explore_sol, &terminator);
 
     final_sol
@@ -50,7 +49,7 @@ pub fn explore(sep: &mut Separator, term: &Terminator) -> Vec<Solution> {
 
     let mut solution_pool: Vec<(Solution, f32)> = vec![];
 
-    while !term.kill() {
+    while !term.is_kill() {
         let local_best = sep.separate_layout(&term);
         let total_overlap = local_best.1.get_total_overlap();
 
@@ -105,7 +104,7 @@ pub fn compress(sep: &mut Separator, init: &Solution, term: &Terminator) -> Solu
     for (i, &r_shrink) in COMPRESS_R_SHRINKS.iter().enumerate() {
         let mut n_strikes = 0;
         info!("[CMPR] attempting to compress in steps of {}%", r_shrink * 100.0);
-        while n_strikes < COMPRESS_N_STRIKES[i] && !term.kill() {
+        while n_strikes < COMPRESS_N_STRIKES[i] && !term.is_kill() {
             match attempt_to_compress(sep, &best, r_shrink, &term) {
                 Some(compacted_sol) => {
                     info!("[CMPR] compressed to {:.3} ({:.3}%)", strip_width(&compacted_sol), compacted_sol.usage * 100.0);
@@ -178,16 +177,46 @@ pub struct Terminator {
 }
 
 impl Terminator {
-    pub fn kill(&self) -> bool {
+    /// Creates a dummy terminator that will never terminate
+    pub fn dummy() -> Self {
+        Terminator {
+            timeout: None,
+            ctrlc: Arc::new(AtomicBool::new(false)),
+        }
+    }
+
+    /// Only call this function once, it will set up a handler for Ctrl-C
+    pub fn new_with_ctrlc_handler() -> Self {
+        let ctrlc = Arc::new(AtomicBool::new(false));
+        let c = ctrlc.clone();
+
+        ctrlc::set_handler(move || {
+            warn!(" terminating...");
+            c.store(true, Ordering::SeqCst);
+        }).expect("Error setting Ctrl-C handler");
+
+        Terminator {
+            timeout: None,
+            ctrlc,
+        }
+    }
+    pub fn is_kill(&self) -> bool {
         self.timeout.map_or(false, |timeout| Instant::now() > timeout)
             || self.ctrlc.load(Ordering::SeqCst)
     }
 
-    pub fn reset_ctrlc(&self) {
+    pub fn reset_ctrlc(&self) -> &Self {
         self.ctrlc.store(false, Ordering::SeqCst);
+        self
     }
 
-    pub fn set_timeout(&mut self, timeout: Option<Duration>) {
-        self.timeout = timeout.map(|t| Instant::now() + t);
+    pub fn set_timeout(&mut self, timeout: Duration) -> &mut Self {
+        self.timeout = Some(Instant::now() + timeout);
+        self
+    }
+
+    pub fn clear_timeout(&mut self) -> &mut Self {
+        self.timeout = None;
+        self
     }
 }

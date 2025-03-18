@@ -13,8 +13,6 @@ use rand::prelude::SmallRng;
 use rand::{Rng, SeedableRng};
 use std::fs;
 use std::path::Path;
-use std::sync::Arc;
-use std::sync::atomic::AtomicBool;
 use std::time::{Duration, Instant};
 
 fn main() {
@@ -63,10 +61,7 @@ fn main() {
 
     let mut final_solutions = vec![];
 
-    let dummy_terminator = Terminator {
-        timeout: None,
-        ctrlc: Arc::new(AtomicBool::new(false)),
-    };
+    let dummy_terminator = Terminator::dummy();
 
     for i in 0..n_batches {
         println!("[BENCH] batch {}/{}", i + 1, n_batches);
@@ -83,14 +78,13 @@ fn main() {
                     let builder = LBFBuilder::new(instance.clone(), CDE_CONFIG, rng, LBF_SAMPLE_CONFIG).construct();
                     let mut expl_separator = Separator::new(builder.instance, builder.prob, builder.rng, output_folder_path, 0, SEP_CONFIG_EXPLORE);
 
-                    terminator.set_timeout(Some(explore_time_limit));
+                    terminator.set_timeout(explore_time_limit);
                     let solutions = explore(&mut expl_separator, &terminator);
                     let final_explore_sol = solutions.last().expect("no solutions found during exploration");
 
                     let start_comp = Instant::now();
 
-                    terminator.set_timeout(None);
-                    terminator.reset_ctrlc();
+                    terminator.clear_timeout().reset_ctrlc();
                     let mut cmpr_separator = Separator::new(expl_separator.instance, expl_separator.prob, expl_separator.rng, expl_separator.output_svg_folder, expl_separator.svg_counter, SEPARATOR_CONFIG_COMPRESS);
                     let final_sol = compress(&mut cmpr_separator, final_explore_sol, &terminator);
 

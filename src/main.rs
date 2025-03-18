@@ -7,15 +7,12 @@ use sparrow::util::io::layout_to_svg::s_layout_to_svg;
 use jagua_rs::entities::instances::instance::Instance;
 use jagua_rs::entities::instances::instance_generic::InstanceGeneric;
 use jagua_rs::io::parser::Parser;
-use jagua_rs::util::polygon_simplification::PolySimplConfig;
 use log::{info, warn, Level};
 use rand::prelude::SmallRng;
 use rand::SeedableRng;
 use std::env::args;
 use std::fs;
 use std::path::Path;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration};
 
 fn main() {
@@ -57,20 +54,7 @@ fn main() {
 
     let output_folder_path = format!("{OUTPUT_DIR}/sols_{}", json_instance.name);
 
-    let terminator = {
-        //set up Ctrl-C handler
-        let ctrlc = Arc::new(AtomicBool::new(false));
-        let c = ctrlc.clone();
-
-        ctrlc::set_handler(move || {
-            warn!(" terminating...");
-            c.store(true, Ordering::SeqCst);
-        }).expect("Error setting Ctrl-C handler");
-        Terminator{
-            timeout: None,
-            ctrlc,
-        }
-    };
+    let terminator = Terminator::new_with_ctrlc_handler();
 
     let solution = optimize(instance.clone(), rng, output_folder_path, terminator, explore_time_limit);
 
