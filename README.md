@@ -1,4 +1,4 @@
-# sparrow 🪶🪺
+# sparrow
 ### State-of-the-art nesting heuristic for 2D irregular strip packing
 <p align="left">
     <img src="assets/sparrow_logo.png" alt="logo" height=100>
