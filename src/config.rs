@@ -2,6 +2,7 @@ use crate::optimizer::separator::SeparatorConfig;
 use crate::sample::search::SampleConfig;
 use crate::util::io::svg_util::{SvgDrawOptions, SvgLayoutTheme};
 use jagua_rs::util::config::{CDEConfig, SPSurrogateConfig};
+use jagua_rs::util::polygon_simplification::PolySimplConfig;
 
 pub const RNG_SEED: Option<usize> = None;
 
@@ -31,6 +32,8 @@ pub const CDE_CONFIG: CDEConfig = CDEConfig {
         n_ff_piers: 0,
     },
 };
+
+pub const SIMPLIFICATION_CONFIG: PolySimplConfig = PolySimplConfig::Disabled;
 
 pub const LBF_SAMPLE_CONFIG: SampleConfig = SampleConfig {
     n_bin_samples: 1000,

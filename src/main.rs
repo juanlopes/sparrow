@@ -1,6 +1,6 @@
 extern crate core;
 
-use sparrow::config::{CDE_CONFIG, DRAW_OPTIONS, LOG_LEVEL_FILTER_DEBUG, LOG_LEVEL_FILTER_RELEASE, OUTPUT_DIR, RNG_SEED};
+use sparrow::config::{CDE_CONFIG, DRAW_OPTIONS, LOG_LEVEL_FILTER_DEBUG, LOG_LEVEL_FILTER_RELEASE, OUTPUT_DIR, RNG_SEED, SIMPLIFICATION_CONFIG};
 use sparrow::optimizer::{optimize, Terminator};
 use sparrow::util::io;
 use sparrow::util::io::layout_to_svg::s_layout_to_svg;
@@ -47,7 +47,7 @@ fn main() {
 
     let json_instance = io::read_json_instance(Path::new(&input_file_path));
 
-    let parser = Parser::new(PolySimplConfig::Disabled, CDE_CONFIG, true);
+    let parser = Parser::new(SIMPLIFICATION_CONFIG, CDE_CONFIG, true);
     let instance = match parser.parse(&json_instance){
         Instance::SP(spi) => spi,
         _ => panic!("expected strip packing instance"),

@@ -1,6 +1,6 @@
 extern crate core;
 
-use sparrow::config::{CDE_CONFIG, LBF_SAMPLE_CONFIG, DRAW_OPTIONS, OUTPUT_DIR, RNG_SEED, SEPARATOR_CONFIG_COMPRESS, SEP_CONFIG_EXPLORE};
+use sparrow::config::{CDE_CONFIG, LBF_SAMPLE_CONFIG, DRAW_OPTIONS, OUTPUT_DIR, RNG_SEED, SEPARATOR_CONFIG_COMPRESS, SEP_CONFIG_EXPLORE, SIMPLIFICATION_CONFIG};
 use sparrow::optimizer::lbf::LBFBuilder;
 use sparrow::optimizer::separator::Separator;
 use sparrow::optimizer::{compress, explore, Terminator};
@@ -8,7 +8,6 @@ use sparrow::util::io;
 use sparrow::util::io::layout_to_svg::s_layout_to_svg;
 use jagua_rs::entities::instances::instance::Instance;
 use jagua_rs::io::parser::Parser;
-use jagua_rs::util::polygon_simplification::PolySimplConfig;
 use ordered_float::OrderedFloat;
 use rand::prelude::SmallRng;
 use rand::{Rng, SeedableRng};
@@ -54,7 +53,7 @@ fn main() {
         json_instance.name, n_batches, n_runs_per_iter, num_cpus::get_physical(), explore_time_limit
     );
 
-    let parser = Parser::new(PolySimplConfig::Disabled, CDE_CONFIG, true);
+    let parser = Parser::new(SIMPLIFICATION_CONFIG, CDE_CONFIG, true);
     let instance = parser.parse(&json_instance);
 
     let instance = match instance {
