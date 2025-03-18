@@ -26,7 +26,7 @@ pub fn coordinate_descent(
         step_limit: min_dim * CD_STEP_LIMIT_RATIO,
     };
 
-    while let Some([c0, c1]) = cd_state.gen_candidates() {
+    while let Some([c0, c1]) = cd_state.ask() {
         let c0_eval = evaluator.eval(DTransformation::new(rot, c0.into()), Some(cd_state.eval));
         let c1_eval = evaluator.eval(DTransformation::new(rot, c1.into()), Some(cd_state.eval));
 
@@ -37,7 +37,7 @@ pub fn coordinate_descent(
             .min_by_key(|(_, e)| *e)
             .unwrap();
 
-        cd_state.evolve(min_state, rng);
+        cd_state.tell(min_state, rng);
         trace!("CD: {:?}", cd_state);
 
         debug_assert!(counter < 10_000);
@@ -59,45 +59,44 @@ struct CDState {
 }
 
 impl CDState {
-    pub fn evolve(&mut self, evolved_state: (Point, SampleEval), rng: &mut impl Rng) {
-        match evolved_state.1.cmp(&self.eval){
-            Ordering::Less => {
-                (self.pos, self.eval) = evolved_state;
-                self.adjust_steps_and_axis(true, rng);
-            },
-            Ordering::Equal => {
-                (self.pos, self.eval) = evolved_state;
-                self.adjust_steps_and_axis(false, rng);
-            },
-            Ordering::Greater => {
-                self.adjust_steps_and_axis(false, rng);
-            },
+    pub fn tell(&mut self, (pos, eval): (Point, SampleEval), rng: &mut impl Rng) {
+        let eval_cmp = eval.cmp(&self.eval);
+
+        if eval_cmp != Ordering::Greater {
+            // Update the state if not worse
+            (self.pos, self.eval) = (pos, eval);
         }
-    }
 
-    fn adjust_steps_and_axis(&mut self, improved: bool, rng: &mut impl Rng) {
-        let m = if improved { CD_STEP_SUCCESS } else { CD_STEP_FAIL };
-        let (sx, sy) = self.steps;
-
-        self.steps = match self.axis {
-            CDAxis::Horizontal => (sx * m, sy),
-            CDAxis::Vertical => (sx, sy * m),
-            //since both axis are involved, adjust both steps but less severely
-            CDAxis::ForwardDiag | CDAxis::BackwardDiag => (sx * m.sqrt(), sy * m.sqrt()),
+        // Multiply step size of active axis
+        let m = match eval_cmp {
+            Ordering::Less => CD_STEP_SUCCESS,
+            _ => CD_STEP_FAIL,
         };
-        if !improved {
-            //if not improved, change the axis
+
+        match self.axis {
+            CDAxis::Horizontal => self.steps.0 *= m,
+            CDAxis::Vertical => self.steps.1 *= m,
+            CDAxis::ForwardDiag | CDAxis::BackwardDiag => {
+                //since both axis are involved, adjust both steps but less severely
+                self.steps.0 *= m.sqrt();
+                self.steps.1 *= m.sqrt();
+            }
+        };
+
+        // Change axis if not improved
+        if eval_cmp != Ordering::Less {
             self.axis = CDAxis::random(rng);
         }
     }
 
-    pub fn gen_candidates(&self) -> Option<[Point; 2]> {
+    pub fn ask(&self) -> Option<[Point; 2]> {
         let (sx, sy) = self.steps;
 
         if sx < self.step_limit && sy < self.step_limit {
             // Stop generating candidates if both steps have reached the limit
             None
         } else {
+            // Generate two candidates on either side of the current position
             let p = self.pos;
             let c = match self.axis {
                 CDAxis::Horizontal => [Point(p.0 + sx, p.1), Point(p.0 - sx, p.1)],
@@ -128,7 +127,8 @@ impl CDAxis {
             0 => CDAxis::Horizontal,
             1 => CDAxis::Vertical,
             2 => CDAxis::ForwardDiag,
-            _ => CDAxis::BackwardDiag,
+            3 => CDAxis::BackwardDiag,
+            _ => unreachable!(),
         }
     }
 }
