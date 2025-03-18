@@ -37,7 +37,7 @@ pub fn coordinate_descent(
             .min_by_key(|(_, e)| *e)
             .unwrap();
 
-        cd_state.evolve(min_state);
+        cd_state.evolve(min_state, rng);
         trace!("CD: {:?}", cd_state);
 
         debug_assert!(counter < 10_000);
@@ -59,23 +59,23 @@ struct CDState {
 }
 
 impl CDState {
-    pub fn evolve(&mut self, evolved_state: (Point, SampleEval)) {
+    pub fn evolve(&mut self, evolved_state: (Point, SampleEval), rng: &mut impl Rng) {
         match evolved_state.1.cmp(&self.eval){
             Ordering::Less => {
                 (self.pos, self.eval) = evolved_state;
-                self.adjust_steps_and_axis(true);
+                self.adjust_steps_and_axis(true, rng);
             },
             Ordering::Equal => {
                 (self.pos, self.eval) = evolved_state;
-                self.adjust_steps_and_axis(false);
+                self.adjust_steps_and_axis(false, rng);
             },
             Ordering::Greater => {
-                self.adjust_steps_and_axis(false);
+                self.adjust_steps_and_axis(false, rng);
             },
         }
     }
 
-    fn adjust_steps_and_axis(&mut self, improved: bool) {
+    fn adjust_steps_and_axis(&mut self, improved: bool, rng: &mut impl Rng) {
         let m = if improved { CD_STEP_SUCCESS } else { CD_STEP_FAIL };
         let (sx, sy) = self.steps;
 
@@ -86,7 +86,7 @@ impl CDState {
             CDAxis::ForwardDiag | CDAxis::BackwardDiag => (sx * m.sqrt(), sy * m.sqrt()),
         };
         if !improved {
-            self.axis.cycle();
+            self.axis.cycle(rng);
         }
     }
 
@@ -129,12 +129,18 @@ enum CDAxis {
 }
 
 impl CDAxis {
-    fn cycle(&mut self) {
-        *self = match self {
-            CDAxis::Horizontal => CDAxis::Vertical,
-            CDAxis::Vertical => CDAxis::ForwardDiag,
-            CDAxis::ForwardDiag => CDAxis::BackwardDiag,
-            CDAxis::BackwardDiag => CDAxis::Horizontal,
-        }
+    fn cycle(&mut self, rng: &mut impl Rng) {
+        // *self = match self {
+        //     CDAxis::Horizontal => CDAxis::Vertical,
+        //     CDAxis::Vertical => CDAxis::ForwardDiag,
+        //     CDAxis::ForwardDiag => CDAxis::BackwardDiag,
+        //     CDAxis::BackwardDiag => CDAxis::Horizontal,
+        // }
+        *self = match rng.random_range(0..4) {
+            0 => CDAxis::Horizontal,
+            1 => CDAxis::Vertical,
+            2 => CDAxis::ForwardDiag,
+            _ => CDAxis::BackwardDiag,
+        };
     }
 }
