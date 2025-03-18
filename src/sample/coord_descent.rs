@@ -21,7 +21,7 @@ pub fn coordinate_descent(
     let mut cd_state = CDState {
         pos: init_pos,
         eval: init_eval,
-        axis: AXES[rng.random_range(0..4)],
+        axis: CDAxis::random(rng),
         steps: (min_dim * CD_STEP_INIT_RATIO, min_dim * CD_STEP_INIT_RATIO),
         step_limit: min_dim * CD_STEP_LIMIT_RATIO,
     };
@@ -86,18 +86,19 @@ impl CDState {
             CDAxis::ForwardDiag | CDAxis::BackwardDiag => (sx * m.sqrt(), sy * m.sqrt()),
         };
         if !improved {
-            self.axis.cycle(rng);
+            //if not improved, change the axis
+            self.axis = CDAxis::random(rng);
         }
     }
 
     pub fn gen_candidates(&self) -> Option<[Point; 2]> {
-        let p = self.pos;
         let (sx, sy) = self.steps;
 
         if sx < self.step_limit && sy < self.step_limit {
             // Stop generating candidates if both steps have reached the limit
             None
         } else {
+            let p = self.pos;
             let c = match self.axis {
                 CDAxis::Horizontal => [Point(p.0 + sx, p.1), Point(p.0 - sx, p.1)],
                 CDAxis::Vertical => [Point(p.0, p.1 + sy), Point(p.0, p.1 - sy)],
@@ -108,13 +109,6 @@ impl CDState {
         }
     }
 }
-
-const AXES: [CDAxis; 4] = [
-    CDAxis::Horizontal,
-    CDAxis::Vertical,
-    CDAxis::ForwardDiag,
-    CDAxis::BackwardDiag,
-];
 
 #[derive(Clone, Debug, Copy)]
 enum CDAxis {
@@ -129,18 +123,12 @@ enum CDAxis {
 }
 
 impl CDAxis {
-    fn cycle(&mut self, rng: &mut impl Rng) {
-        // *self = match self {
-        //     CDAxis::Horizontal => CDAxis::Vertical,
-        //     CDAxis::Vertical => CDAxis::ForwardDiag,
-        //     CDAxis::ForwardDiag => CDAxis::BackwardDiag,
-        //     CDAxis::BackwardDiag => CDAxis::Horizontal,
-        // }
-        *self = match rng.random_range(0..4) {
+    fn random(rng: &mut impl Rng) -> Self {
+        match rng.random_range(0..4) {
             0 => CDAxis::Horizontal,
             1 => CDAxis::Vertical,
             2 => CDAxis::ForwardDiag,
             _ => CDAxis::BackwardDiag,
-        };
+        }
     }
 }
