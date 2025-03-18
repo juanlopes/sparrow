@@ -109,8 +109,8 @@ cargo run --profile debug-release -- \
 ## Development
 
 This repo is meant to remain a faithful representation of the algorithm described in [...].
-Therefore, only pull requests containing performance improvements and bug fixes will be accepted.
-Feel free to fork the repository if you want to experiment with different heuristics.
+Therefore, only pull requests containing bug fixes and performance improvements which do not change the fundamental algorithm will be accepted.
+Feel free to fork the repository if you want to experiment with different heuristics or want to expand the functionality.
 
 ## License
 

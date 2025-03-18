@@ -56,17 +56,15 @@ struct CoordinateDescent {
 impl CoordinateDescent {
     pub fn tell(&mut self, (pos, eval): (Point, SampleEval), rng: &mut impl Rng) {
         let eval_cmp = eval.cmp(&self.eval);
+        let better = eval_cmp == Ordering::Less;
+        let worse = eval_cmp == Ordering::Greater;
 
-        if eval_cmp != Ordering::Greater {
-            // Update the state if not worse
+        if !worse {
             (self.pos, self.eval) = (pos, eval);
         }
 
         // Multiply step size of active axis
-        let m = match eval_cmp {
-            Ordering::Less => CD_STEP_SUCCESS,
-            _ => CD_STEP_FAIL,
-        };
+        let m = if better { CD_STEP_SUCCESS } else { CD_STEP_FAIL };
 
         match self.axis {
             CDAxis::Horizontal => self.steps.0 *= m,
@@ -76,10 +74,9 @@ impl CoordinateDescent {
                 self.steps.0 *= m.sqrt();
                 self.steps.1 *= m.sqrt();
             }
-        };
+        }
 
-        // Change axis if not improved
-        if eval_cmp != Ordering::Less {
+        if !better {
             self.axis = CDAxis::random(rng);
         }
     }
