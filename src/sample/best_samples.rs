@@ -4,8 +4,8 @@ use itertools::Itertools;
 use jagua_rs::geometry::d_transformation::DTransformation;
 use std::fmt::Debug;
 
-//datastructure that stores the N best samples, automatically keeps them sorted and evicts the worst.
-//it also makes sure that no two samples in its list are too similar
+/// Datastructure to store the N best samples, automatically keeps them sorted and evicts the worst.
+/// It makes sure that no two included samples are too similar.
 #[derive(Debug, Clone)]
 pub struct BestSamples {
     pub size: usize,
@@ -53,7 +53,7 @@ impl BestSamples {
         self.samples[0].clone()
     }
 
-    pub fn upperbound(&self) -> SampleEval {
+    pub fn worst(&self) -> SampleEval {
         self.samples.last().unwrap().1
     }
 }

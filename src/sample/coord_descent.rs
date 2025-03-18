@@ -7,18 +7,18 @@ use rand::Rng;
 use std::cmp::Ordering;
 use std::fmt::Debug;
 
-/// todo: write docs for this function
 pub fn coordinate_descent(
     (init_dt, init_eval): (DTransformation, SampleEval),
     evaluator: &mut impl SampleEvaluator,
     min_dim: f32,
     rng: &mut impl Rng,
 ) -> (DTransformation, SampleEval) {
-    let mut counter = 0;
+    let mut n_evals = 0;
     let init_pos = init_dt.translation().into();
     let rot = init_dt.rotation.into();
 
-    let mut cd_state = CDState {
+    // Initialize the coordinate descent algorithm
+    let mut cd = CoordinateDescent {
         pos: init_pos,
         eval: init_eval,
         axis: CDAxis::random(rng),
@@ -26,31 +26,26 @@ pub fn coordinate_descent(
         step_limit: min_dim * CD_STEP_LIMIT_RATIO,
     };
 
-    while let Some([c0, c1]) = cd_state.ask() {
-        let c0_eval = evaluator.eval(DTransformation::new(rot, c0.into()), Some(cd_state.eval));
-        let c1_eval = evaluator.eval(DTransformation::new(rot, c1.into()), Some(cd_state.eval));
+    // As long as new candidates are available, evaluate them and update the state
+    while let Some([c0, c1]) = cd.ask() {
+        let c0_eval = evaluator.eval(DTransformation::new(rot, c0.into()), Some(cd.eval));
+        let c1_eval = evaluator.eval(DTransformation::new(rot, c1.into()), Some(cd.eval));
 
-        counter += 2;
+        n_evals += 2;
 
-        let min_state = [(c0, c0_eval), (c1, c1_eval)]
-            .into_iter()
-            .min_by_key(|(_, e)| *e)
-            .unwrap();
+        let best = [(c0, c0_eval), (c1, c1_eval)].into_iter()
+            .min_by_key(|(_, e)| *e).unwrap();
 
-        cd_state.tell(min_state, rng);
-        trace!("CD: {:?}", cd_state);
-
-        debug_assert!(counter < 10_000);
+        cd.tell(best, rng);
+        trace!("CD: {:?}", cd);
+        debug_assert!(n_evals < 1000, "coordinate descent exceeded 1000 evals");
     }
-    trace!(
-        "CD: {} evals, t: ({:.3}, {:.3}) -> ({:.3}, {:.3}), eval: {:?}",
-        counter, init_pos.0, init_pos.1, cd_state.pos.0, cd_state.pos.1, cd_state.eval
-    );
-    (DTransformation::new(rot, cd_state.pos.into()), cd_state.eval)
+    trace!("CD: {} evals, t: ({:.3}, {:.3}) -> ({:.3}, {:.3}), eval: {:?}",n_evals, init_pos.0, init_pos.1, cd.pos.0, cd.pos.1, cd.eval);
+    (DTransformation::new(rot, cd.pos.into()), cd.eval)
 }
 
 #[derive(Debug)]
-struct CDState {
+struct CoordinateDescent {
     pub pos: Point,
     pub eval: SampleEval,
     pub axis: CDAxis,
@@ -58,7 +53,7 @@ struct CDState {
     pub step_limit: f32,
 }
 
-impl CDState {
+impl CoordinateDescent {
     pub fn tell(&mut self, (pos, eval): (Point, SampleEval), rng: &mut impl Rng) {
         let eval_cmp = eval.cmp(&self.eval);
 
@@ -111,13 +106,13 @@ impl CDState {
 
 #[derive(Clone, Debug, Copy)]
 enum CDAxis {
-    ///left and right
+    /// Left and right
     Horizontal,
-    ///up and down
+    /// Up and down
     Vertical,
-    ///up-right and down-left
+    /// Up-right and down-left
     ForwardDiag,
-    ///up-left and down-right
+    /// Up-left and down-right
     BackwardDiag,
 }
 

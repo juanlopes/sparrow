@@ -26,6 +26,7 @@ impl OverlapTracker {
     pub fn new(l: &Layout) -> Self {
         let size = l.placed_items.len();
 
+        // Create the overlap tracker
         let mut ot = Self {
             size,
             pk_idx_map: l.placed_items.keys().enumerate()
@@ -39,6 +40,7 @@ impl OverlapTracker {
         l.placed_items.keys().for_each(|pk| {
             ot.recompute_overlap_for_item(pk, l)
         });
+
         debug_assert!(tracker_matches_layout(&ot, l));
 
         ot

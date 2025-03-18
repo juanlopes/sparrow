@@ -26,7 +26,7 @@ pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, mut e
         Some(ref_pk) => {
             //report the current placement (and eval)
             let dt = l.placed_items[ref_pk].d_transf;
-            let eval = evaluator.eval(dt, Some(best_samples.upperbound()));
+            let eval = evaluator.eval(dt, Some(best_samples.worst()));
 
             best_samples.report(dt, eval);
 
@@ -44,7 +44,7 @@ pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, mut e
     if let Some(bin_sampler) = bin_sampler {
         for _ in 0..sample_config.n_bin_samples {
             let dt = bin_sampler.sample(rng).into();
-            let eval = evaluator.eval(dt, Some(best_samples.upperbound()));
+            let eval = evaluator.eval(dt, Some(best_samples.worst()));
             best_samples.report(dt, eval);
         }
     }
@@ -52,7 +52,7 @@ pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, mut e
     if let Some(focussed_sampler) = focussed_sampler {
         for _ in 0..sample_config.n_focussed_samples {
             let dt = focussed_sampler.sample(rng);
-            let eval = evaluator.eval(dt, Some(best_samples.upperbound()));
+            let eval = evaluator.eval(dt, Some(best_samples.worst()));
             best_samples.report(dt, eval);
         }
     }
