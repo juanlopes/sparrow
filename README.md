@@ -7,7 +7,7 @@
 This optimization algorithm can be used to solve 2D irregular strip packing problems, also commonly referred to as nesting problems.
 It builds on [`jagua-rs`](https://github.com/JeroenGar/jagua-rs): *a collision detection engine for 2D irregular cutting & packing problems*.
 
-## Example solutions
+## Some example solutions
 <p align="center">
     <img src="assets/records/final_best_trousers.svg" height=200/>
     <img src="assets/records/final_best_mao.svg" height=200/>
@@ -23,10 +23,8 @@ It builds on [`jagua-rs`](https://github.com/JeroenGar/jagua-rs): *a collision d
 </p>
 
 ## Requirements
-- Rust ≥ 1.85
-
-This repository includes `jagua-rs` as a submodule.
-Make sure it is initialized and up to date:
+- [Rust](https://www.rust-lang.org/tools/install) ≥ 1.85
+- [`jagua-rs`](https://github.com/JeroenGar/jagua-rs) submodule initialized and up to date:
 ```bash
 git submodule update --init
 ```
@@ -52,8 +50,8 @@ To ensure maximum performance, compile with:
 RUSTFLAGS='-C target-cpu=native'
 ```
 
-If you want to monitor the optimization process live, open [assets/live/live_viewer.html](assets/live/live_viewer.html) in a web browser,
-and compile with the `live_svg` feature enabled:
+This repo also contains a simple visualizer to monitor the optimization process live, open [live_viewer.html](assets/live/live_viewer.html) in a web browser,
+and compile `sparrow` with the `live_svg` feature enabled:
 
 ```bash
 rm assets/live/.live_solution.svg
@@ -89,8 +87,8 @@ The SVG files are both a visualization and formal output of a solution as all or
 The [SVG spec](https://stackoverflow.com/questions/18582935/the-applying-order-of-svg-transforms) defines that the transformations are applied from right to left.
 So here the item is first rotated and then translated.
 
-By default, a range of intermediate (and infeasible) solutions will be exported in `/output/sols_{name}`.
-To disable this and export only a single final solution, enable the `only_final_svg` feature:
+By default, a range of intermediate (and infeasible) solutions will be exported in `output/sols_{name}`.
+To disable this and export only a single final solution, compile with the `only_final_svg` feature:
 ```bash
 cargo run --release --features=only_final_svg -- \
     libs/jagua-rs/assets/swim.json \
@@ -98,8 +96,14 @@ cargo run --release --features=only_final_svg -- \
 ```
 
 ## Testing
-The codebase contains a suite of `debug_assert!` checks to verify the correctness of the heuristic.
-These assertions are omitted in release builds to maximize performance, but can be enabled by running the algorithm in the `debug-release` profile:
+A suite of `debug_assert!()` checks are included throughout the codebase to verify the correctness of the heuristic.
+These assertions are omitted in release builds to maximize performance, but are active in test builds.
+Some basic integration tests are included that run the heuristic on a few example instances while all assertions are active:
+```bash
+  cargo test
+```
+
+Alternatively you can enable all `debug_assert!()` checks in release builds by running the tests with the `debug-release` profile:
 ```bash
 cargo run --profile debug-release -- \
     libs/jagua-rs/assets/swim.json \
@@ -109,7 +113,8 @@ cargo run --profile debug-release -- \
 ## Development
 
 This repo is meant to remain a faithful representation of the algorithm described in [...].
-Therefore, only pull requests containing bug fixes and performance improvements which do not change the fundamental algorithm will be accepted.
+Therefore, only pull requests containing bug fixes and performance improvements which do not change the algorithm too significantly will be accepted.
+
 Feel free to fork the repository if you want to experiment with different heuristics or want to expand the functionality.
 
 ## License
