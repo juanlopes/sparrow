@@ -16,6 +16,8 @@ use slotmap::SecondaryMap;
 use crate::overlap::simd::circles_soa::CirclesSoA;
 #[cfg(feature = "simd")]
 use crate::overlap::simd::proxy_simd::eval_overlap_poly_poly_simd;
+#[cfg(not(feature = "simd"))]
+use crate::overlap::proxy::eval_overlap_poly_poly;
 
 /// Specialized collision collection function.
 /// Functionally the same as [`CDEngine::collect_poly_collisions_in_detector`], but with early termination.
