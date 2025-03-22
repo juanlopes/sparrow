@@ -36,7 +36,7 @@ pub fn collect_poly_collisions_in_detector_specialized(
     let shape = shape_buffer;
 
     #[cfg(feature = "simd")]
-    det.poles_soa.transform_from(&reference_shape.surrogate().poles, &t);
+    det.poles_soa.load(&shape.surrogate().poles);
 
     // Start off by checking a few poles to detect obvious collisions quickly
     for pole in shape.surrogate().ff_poles() {

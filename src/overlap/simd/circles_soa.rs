@@ -23,18 +23,17 @@ impl CirclesSoA {
             r: Vec::new(),
         }
     }
-    pub fn transform_from(&mut self, reference: &Vec<Circle>, t: &Transformation) -> &mut Self {
-        self.x.resize(reference.len(), 0.0);
-        self.y.resize(reference.len(), 0.0);
-        self.r.resize(reference.len(), 0.0);
+    pub fn load(&mut self, circles: &[Circle]) -> &mut Self {
+        self.x.resize(circles.len(), 0.0);
+        self.y.resize(circles.len(), 0.0);
+        self.r.resize(circles.len(), 0.0);
 
         //transform poles
         izip!(self.x.iter_mut(), self.y.iter_mut(), self.r.iter_mut())
-            .zip(reference.iter())
+            .zip(circles.iter())
             .for_each(|((x,y,r),ref_c)| {
-                let Point(xt, yt) = ref_c.center.transform_clone(t);
-                *x = xt;
-                *y = yt;
+                *x = ref_c.center.0;
+                *y = ref_c.center.1;
                 *r = ref_c.radius;
             });
 
