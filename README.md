@@ -35,7 +35,7 @@ General usage:
 ```bash
 cargo run --release  -- \
     [path to input JSON] \
-    [timelimit exploration phase in seconds]
+    [timelimit in seconds]
 ```
 
 Concrete example:
@@ -56,6 +56,8 @@ cargo run --release --features=live_svg -- \
     120
 ```
 ![Demo of the live solution viewer](assets/demo.gif)
+
+You can advance the algorithm to the next phase manually by pressing 'Ctrl + C' in the terminal.
 
 ## Input
 
@@ -89,10 +91,9 @@ cargo run --release --features=only_final_svg -- \
     libs/jagua-rs/assets/swim.json \
     120
 ```
-## Ultimate performance
+## Targeting maximum performance
 
-Set the `target-cpu=native` compiler flag and
-compile the [SIMD](https://doc.rust-lang.org/std/simd/index.html) version of the code:
+To build a binary with maximum performance, set the `target-cpu=native` compiler flag, switch to the nightly toolchain (required for [SIMD](https://doc.rust-lang.org/std/simd/index.html) support) and enable the `simd` feature:
 
 ```bash
   export RUSTFLAGS='-C target-cpu=native'
