@@ -14,7 +14,7 @@ name = "sparrow"
 path = "src/main.rs"
 
 [[bin]]
-name = "sparrow_bench"
+name = "bench"
 path = "src/bench.rs"
 
 [dependencies]
