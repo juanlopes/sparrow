@@ -42,7 +42,7 @@ pub const LBF_SAMPLE_CONFIG: SampleConfig = SampleConfig {
 };
 
 pub const EXPLORE_SOL_DISTR_STDDEV: f32 = 0.25;
-pub const EXPLORE_R_SHRINK: f32 = 0.005;
+pub const EXPLORE_SHRINK_STEP: f32 = 0.005;
 
 pub const SEP_CONFIG_EXPLORE: SeparatorConfig = SeparatorConfig {
     iter_no_imprv_limit: 100,
@@ -61,8 +61,12 @@ pub const WEIGHT_MAX_INC_RATIO: f32 = 2.0;
 pub const WEIGHT_MIN_INC_RATIO: f32 = 1.2;
 pub const WEIGHT_OVERLAP_DECAY: f32 = 0.95;
 pub const OVERLAP_PROXY_EPSILON_DIAM_RATIO: f32 = 0.01;
-pub const COMPRESS_R_SHRINKS: [f32; 2] = [0.0005, 0.0001];
-pub const COMPRESS_N_STRIKES: [usize; 2] = [5,5];
+
+pub const COMPRESS_STAGES: usize = 2;
+pub const COMPRESS_STEPS: [f32; COMPRESS_STAGES] = [0.0005, 0.0001];
+pub const EXPLORE_TIME_RATIO: f32 = 0.75;
+
+pub const COMPRESS_TIME_RATIOS: [f32; COMPRESS_STAGES] = [0.125,0.125];
 
 pub const SEPARATOR_CONFIG_COMPRESS: SeparatorConfig = SeparatorConfig {
     iter_no_imprv_limit: 100,

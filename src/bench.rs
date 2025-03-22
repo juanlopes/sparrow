@@ -1,9 +1,10 @@
 extern crate core;
 
-use sparrow::config::{CDE_CONFIG, LBF_SAMPLE_CONFIG, DRAW_OPTIONS, OUTPUT_DIR, RNG_SEED, SEPARATOR_CONFIG_COMPRESS, SEP_CONFIG_EXPLORE, SIMPLIFICATION_CONFIG};
+use std::env::args;
+use sparrow::config::{CDE_CONFIG, LBF_SAMPLE_CONFIG, DRAW_OPTIONS, OUTPUT_DIR, RNG_SEED, SEPARATOR_CONFIG_COMPRESS, SEP_CONFIG_EXPLORE, SIMPLIFICATION_CONFIG, EXPLORE_TIME_RATIO, COMPRESS_STEPS, COMPRESS_TIME_RATIOS};
 use sparrow::optimizer::lbf::LBFBuilder;
 use sparrow::optimizer::separator::Separator;
-use sparrow::optimizer::{compress, explore, Terminator};
+use sparrow::optimizer::{compress2, explore, Terminator};
 use sparrow::util::io;
 use sparrow::util::io::layout_to_svg::s_layout_to_svg;
 use jagua_rs::entities::instances::instance::Instance;
@@ -18,9 +19,9 @@ use std::time::{Duration, Instant};
 fn main() {
     //the input file is the first argument
     let input_file_path = std::env::args().nth(1).expect("first argument must be the input file");
-    let explore_time_limit: u64 = std::env::args().nth(2).unwrap().parse()
-        .expect("second argument must be the time limit in seconds");
-    let explore_time_limit = Duration::from_secs(explore_time_limit);
+    let time_limit: Duration = args().nth(2).unwrap().parse::<u64>()
+        .map(|s| Duration::from_secs(s))
+        .expect("second argument must be the time limit [s]");
     let n_runs_total = std::env::args().nth(3).expect("third argument must be the number of runs")
         .parse().expect("third argument must be the number of runs");
 
@@ -47,8 +48,8 @@ fn main() {
     let n_batches = (n_runs_total as f32 / n_runs_per_iter as f32).ceil() as usize;
 
     println!(
-        "[BENCH] starting bench for {} ({}x{} runs across {} cores, {:?} explore timelimit)",
-        json_instance.name, n_batches, n_runs_per_iter, num_cpus::get_physical(), explore_time_limit
+        "[BENCH] starting bench for {} ({}x{} runs across {} cores, {:?} timelimit)",
+        json_instance.name, n_batches, n_runs_per_iter, num_cpus::get_physical(), time_limit
     );
 
     let parser = Parser::new(SIMPLIFICATION_CONFIG, CDE_CONFIG, true);
@@ -78,7 +79,7 @@ fn main() {
                     let builder = LBFBuilder::new(instance.clone(), CDE_CONFIG, rng, LBF_SAMPLE_CONFIG).construct();
                     let mut expl_separator = Separator::new(builder.instance, builder.prob, builder.rng, output_folder_path, 0, SEP_CONFIG_EXPLORE);
 
-                    terminator.set_timeout(explore_time_limit);
+                    terminator.set_timeout_from_now(time_limit.mul_f32(EXPLORE_TIME_RATIO));
                     let solutions = explore(&mut expl_separator, &terminator);
                     let final_explore_sol = solutions.last().expect("no solutions found during exploration");
 
@@ -86,23 +87,28 @@ fn main() {
 
                     terminator.clear_timeout().reset_ctrlc();
                     let mut cmpr_separator = Separator::new(expl_separator.instance, expl_separator.prob, expl_separator.rng, expl_separator.output_svg_folder, expl_separator.svg_counter, SEPARATOR_CONFIG_COMPRESS);
-                    let final_sol = compress(&mut cmpr_separator, final_explore_sol, &terminator);
+                    let mut best_sol = final_explore_sol.clone();
+                    for (step,time_ratio) in COMPRESS_STEPS.iter().zip(COMPRESS_TIME_RATIOS.iter()) {
+                        terminator.set_timeout_from_now(time_limit.mul_f32(*time_ratio)).reset_ctrlc();
+                        let cmpr_sol = compress2(&mut cmpr_separator, &best_sol, &terminator, *step);
+                        best_sol = cmpr_sol;
+                    }
 
                     println!("[BENCH] [id:{:>3}] finished, expl: {:.3}% ({}s), cmpr: {:.3}% (+{:.3}%) ({}s)",
                              bench_idx,
-                             final_explore_sol.usage * 100.0, explore_time_limit.as_secs(),
-                             final_sol.usage * 100.0,
-                             final_sol.usage * 100.0 - final_explore_sol.usage * 100.0,
+                             final_explore_sol.usage * 100.0, time_limit.mul_f32(EXPLORE_TIME_RATIO).as_secs(),
+                             best_sol.usage * 100.0,
+                             best_sol.usage * 100.0 - final_explore_sol.usage * 100.0,
                              start_comp.elapsed().as_secs()
                     );
 
                     io::write_svg(
-                        &s_layout_to_svg(&final_sol.layout_snapshots[0], &instance, DRAW_OPTIONS, &*format!("final_bench_{}", bench_idx)),
+                        &s_layout_to_svg(&best_sol.layout_snapshots[0], &instance, DRAW_OPTIONS, &*format!("final_bench_{}", bench_idx)),
                         Path::new(&format!("{OUTPUT_DIR}/final_bench_{}.svg", bench_idx)),
                         log::Level::Info,
                     );
 
-                    *sol_slice = Some(final_sol);
+                    *sol_slice = Some(best_sol);
                 })
             }
         });
@@ -150,6 +156,7 @@ fn main() {
     println!("stddev: {:.3}", calculate_stddev(&final_usages));
     println!("======================");
 }
+
 
 //mimics Excel's percentile function
 pub fn calculate_percentile(v: &[f32], pct: f32) -> f32 {

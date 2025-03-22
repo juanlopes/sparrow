@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
-use crate::config::{CDE_CONFIG, COMPRESS_N_STRIKES, COMPRESS_R_SHRINKS, LBF_SAMPLE_CONFIG, EXPLORE_R_SHRINK, EXPLORE_SOL_DISTR_STDDEV, LARGE_AREA_CH_AREA_CUTOFF_RATIO, SEPARATOR_CONFIG_COMPRESS, SEP_CONFIG_EXPLORE};
+use crate::config::*;
 use crate::optimizer::lbf::LBFBuilder;
 use crate::optimizer::separator::Separator;
 use crate::FMT;
@@ -8,7 +8,7 @@ use jagua_rs::entities::instances::strip_packing::SPInstance;
 use jagua_rs::entities::problems::problem_generic::ProblemGeneric;
 use jagua_rs::entities::problems::strip_packing::strip_width;
 use jagua_rs::entities::solution::Solution;
-use log::{info, warn};
+use log::{debug, info, warn};
 use rand::prelude::{IteratorRandom, SmallRng};
 use rand::Rng;
 use rand_distr::Distribution;
@@ -22,20 +22,23 @@ pub mod separator;
 mod separator_worker;
 
 // All high-level heuristic logic
-pub fn optimize(instance: SPInstance, rng: SmallRng, output_folder_path: String, mut terminator: Terminator, explore_time_limit: Duration) -> Solution {
+pub fn optimize(instance: SPInstance, rng: SmallRng, output_folder_path: String, mut terminator: Terminator, time_limit: Duration) -> Solution {
     let builder = LBFBuilder::new(instance, CDE_CONFIG, rng, LBF_SAMPLE_CONFIG).construct();
     let mut expl_separator = Separator::new(builder.instance, builder.prob, builder.rng, output_folder_path.clone(), 0, SEP_CONFIG_EXPLORE);
 
-    terminator.set_timeout(explore_time_limit);
+    terminator.set_timeout_from_now(time_limit.mul_f32(EXPLORE_TIME_RATIO));
     let solutions = explore(&mut expl_separator, &terminator);
-    let final_explore_sol = solutions.last().expect("no solutions found during exploration");
+    let mut best_sol = solutions.last().unwrap().clone();
 
     let mut cmpr_separator = Separator::new(expl_separator.instance, expl_separator.prob, expl_separator.rng, expl_separator.output_svg_folder, expl_separator.svg_counter, SEPARATOR_CONFIG_COMPRESS);
 
-    terminator.clear_timeout().reset_ctrlc();
-    let final_sol = compress(&mut cmpr_separator, final_explore_sol, &terminator);
+    for (step,time_ratio) in COMPRESS_STEPS.iter().zip(COMPRESS_TIME_RATIOS.iter()) {
+        terminator.set_timeout_from_now(time_limit.mul_f32(*time_ratio)).reset_ctrlc();
+        let cmpr_sol = compress2(&mut cmpr_separator, &best_sol, &terminator, *step);
+        best_sol = cmpr_sol;
+    }
 
-    final_sol
+    best_sol
 }
 
 pub fn explore(sep: &mut Separator, term: &Terminator) -> Vec<Solution> {
@@ -61,8 +64,8 @@ pub fn explore(sep: &mut Separator, term: &Terminator) -> Vec<Solution> {
                 feasible_solutions.push(local_best.0.clone());
                 sep.export_svg(Some(local_best.0.clone()), "f", false);
             }
-            let next_width = current_width * (1.0 - EXPLORE_R_SHRINK);
-            info!("[EXPL] shrinking width by {}%: {:.3} -> {:.3}", EXPLORE_R_SHRINK * 100.0, current_width, next_width);
+            let next_width = current_width * (1.0 - EXPLORE_SHRINK_STEP);
+            info!("[EXPL] shrinking width by {}%: {:.3} -> {:.3}", EXPLORE_SHRINK_STEP * 100.0, current_width, next_width);
             sep.change_strip_width(next_width, None);
             current_width = next_width;
             solution_pool.clear();
@@ -99,30 +102,51 @@ pub fn explore(sep: &mut Separator, term: &Terminator) -> Vec<Solution> {
     feasible_solutions
 }
 
-pub fn compress(sep: &mut Separator, init: &Solution, term: &Terminator) -> Solution {
+// pub fn compress(sep: &mut Separator, init: &Solution, term: &Terminator) -> Solution {
+//     let mut best = init.clone();
+//     for (i, &r_shrink) in COMPRESS_R_SHRINKS.iter().enumerate() {
+//         let mut n_strikes = 0;
+//         info!("[CMPR] attempting to compress in steps of {}%", r_shrink * 100.0);
+//         while n_strikes < COMPRESS_N_STRIKES[i] && !term.is_kill() {
+//             match attempt_to_compress(sep, &best, r_shrink, &term) {
+//                 Some(compacted_sol) => {
+//                     info!("[CMPR] compressed to {:.3} ({:.3}%)", strip_width(&compacted_sol), compacted_sol.usage * 100.0);
+//                     sep.export_svg(Some(compacted_sol.clone()), "p", false);
+//                     best = compacted_sol;
+//                     n_strikes = 0;
+//                 }
+//                 None => {
+//                     n_strikes += 1;
+//                     info!("[CMPR] strike {}/{}", n_strikes, COMPRESS_N_STRIKES[i]);
+//                 }
+//             }
+//         }
+//         term.reset_ctrlc();
+//     }
+//     info!("[CMPR] finished compression, improved from {:.3}% to {:.3}% (+{:.3}%)", init.usage * 100.0, best.usage * 100.0, (best.usage - init.usage) * 100.0);
+//     best
+// }
+
+pub fn compress2(sep: &mut Separator, init: &Solution, term: &Terminator, shrink_ratio_step: f32) -> Solution {
+    info!("[CMPR] attempting to compress in steps of {}%", shrink_ratio_step * 100.0);
     let mut best = init.clone();
-    for (i, &r_shrink) in COMPRESS_R_SHRINKS.iter().enumerate() {
-        let mut n_strikes = 0;
-        info!("[CMPR] attempting to compress in steps of {}%", r_shrink * 100.0);
-        while n_strikes < COMPRESS_N_STRIKES[i] && !term.is_kill() {
-            match attempt_to_compress(sep, &best, r_shrink, &term) {
-                Some(compacted_sol) => {
-                    info!("[CMPR] compressed to {:.3} ({:.3}%)", strip_width(&compacted_sol), compacted_sol.usage * 100.0);
-                    sep.export_svg(Some(compacted_sol.clone()), "p", false);
-                    best = compacted_sol;
-                    n_strikes = 0;
-                }
-                None => {
-                    n_strikes += 1;
-                    info!("[CMPR] strike {}/{}", n_strikes, COMPRESS_N_STRIKES[i]);
-                }
+    while !term.is_kill() {
+        match attempt_to_compress(sep, &best, shrink_ratio_step, &term) {
+            Some(compacted_sol) => {
+                info!("[CMPR] compressed to {:.3} ({:.3}%)", strip_width(&compacted_sol), compacted_sol.usage * 100.0);
+                sep.export_svg(Some(compacted_sol.clone()), "p", false);
+                best = compacted_sol;
+            }
+            None => {
+                debug!("[CMPR] no improvement found");
             }
         }
-        term.reset_ctrlc();
     }
     info!("[CMPR] finished compression, improved from {:.3}% to {:.3}% (+{:.3}%)", init.usage * 100.0, best.usage * 100.0, (best.usage - init.usage) * 100.0);
     best
 }
+
+
 fn attempt_to_compress(sep: &mut Separator, init: &Solution, r_shrink: f32, term: &Terminator) -> Option<Solution> {
     //restore to the initial solution and width
     sep.change_strip_width(strip_width(&init), None);
@@ -210,7 +234,7 @@ impl Terminator {
         self
     }
 
-    pub fn set_timeout(&mut self, timeout: Duration) -> &mut Self {
+    pub fn set_timeout_from_now(&mut self, timeout: Duration) -> &mut Self {
         self.timeout = Some(Instant::now() + timeout);
         self
     }
