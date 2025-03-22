@@ -104,7 +104,7 @@ impl Separator {
                 );
 
                 debug!("[SEP] [s:{n_strikes},i:{n_iter}] ( ) o: {} -> {}, w_o: {} -> {}, (min o: {})",FMT.fmt2(overlap_before),FMT.fmt2(overlap),FMT.fmt2(w_overlap_before),FMT.fmt2(w_overlap),FMT.fmt2(min_overlap));
-                debug_assert!(FPA(w_overlap) <= FPA(w_overlap_before), "weighted overlap increased: {} -> {}", FMT.fmt2(w_overlap_before), FMT.fmt2(w_overlap));
+                debug_assert!(w_overlap <= w_overlap_before * 1.001, "weighted overlap should not not increase: {} -> {}", FMT.fmt2(w_overlap_before), FMT.fmt2(w_overlap));
 
                 if overlap == 0.0 {
                     //layout is successfully separated

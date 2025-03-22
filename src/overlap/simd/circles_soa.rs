@@ -1,8 +1,5 @@
 use itertools::izip;
-use jagua_rs::geometry::geo_traits::{Transformable};
 use jagua_rs::geometry::primitives::circle::Circle;
-use jagua_rs::geometry::primitives::point::Point;
-use jagua_rs::geometry::transformation::Transformation;
 
 /// Collection of circles, but with a memory layout that's more suitable for SIMD operations.
 /// SoA (Structure of Arrays) instead of AoS (Array of Structures).
