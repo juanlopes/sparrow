@@ -48,13 +48,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@nightly
       - name: Run bench for ${{ inputs.instance }}
         env:
           RUSTFLAGS: '-C target-cpu=native -Awarnings'
         run: |
-          echo RUSTFLAGS=$RUSTFLAGS
-          output=$(cargo run --profile release --features=only_final_svg --bin bench -- libs/jagua-rs/assets/${{ inputs.instance }}.json ${{ inputs.run_time_s}} ${{ inputs.n_runs }} | tee /dev/stderr)
+          export RUSTFLAGS=$RUSTFLAGS
+          output=$(cargo run --profile release --features=only_final_svg,simd --bin bench -- libs/jagua-rs/assets/${{ inputs.instance }}.json ${{ inputs.run_time_s}} ${{ inputs.n_runs }} | tee /dev/stderr)
           echo "$output" > "output/${{ inputs.instance }}_bench_stdout.log"
           {
             echo "## Benchmark Output for \`${{ inputs.instance }}\`"

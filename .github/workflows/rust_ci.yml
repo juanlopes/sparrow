@@ -19,7 +19,7 @@ env:
 
 jobs:
   tests:
-    name: Run tests
+    name: Run tests (no SIMD)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,12 +29,12 @@ jobs:
       - run: cargo test
 
   tests-simd:
-    name: Run tests with SIMD
+    name: Run tests (SIMD)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
       - uses: dtolnay/rust-toolchain@nightly
-      - run: cargo test --features="simd"
+      - run: cargo test --features=simd
 

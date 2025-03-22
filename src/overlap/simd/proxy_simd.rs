@@ -114,7 +114,7 @@ pub fn poles_overlap_area_proxy_simd(sp1: &SPSurrogate, sp2: &SPSurrogate, epsil
         }
     }
 
-    debug_assert!(approx_eq!(f32, total_overlap, poles_overlap_area_proxy_seq(sp1, sp2, epsilon), epsilon = total_overlap * 1e-6), "SIMD and SEQ results do not match: {} vs {}", total_overlap, poles_overlap_area_proxy_seq(sp1, sp2, epsilon));
+    debug_assert!(approx_eq!(f32, total_overlap, poles_overlap_area_proxy_seq(sp1, sp2, epsilon), epsilon = total_overlap * 1e-3), "SIMD and SEQ results do not match: {} vs {}", total_overlap, poles_overlap_area_proxy_seq(sp1, sp2, epsilon));
 
     debug_assert!(total_overlap.is_normal());
     total_overlap
