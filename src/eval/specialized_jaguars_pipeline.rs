@@ -1,4 +1,4 @@
-use crate::overlap::proxy::{eval_overlap_poly_bin, eval_overlap_poly_poly};
+use crate::overlap::proxy::{eval_overlap_poly_bin};
 use crate::overlap::tracker::OverlapTracker;
 use crate::util::assertions;
 use crate::util::bit_reversal_iterator::BitReversalIterator;
@@ -8,10 +8,14 @@ use jagua_rs::collision_detection::hazard::HazardEntity;
 use jagua_rs::collision_detection::hazard_helpers::{HazardDetector, HazardIgnorer};
 use jagua_rs::entities::layout::Layout;
 use jagua_rs::entities::placed_item::PItemKey;
-use jagua_rs::geometry::geo_traits::Shape;
+use jagua_rs::geometry::d_transformation::DTransformation;
+use jagua_rs::geometry::geo_traits::{Shape, TransformableFrom};
 use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
 use slotmap::SecondaryMap;
-
+#[cfg(feature = "simd")]
+use crate::overlap::simd::circles_soa::CirclesSoA;
+#[cfg(feature = "simd")]
+use crate::overlap::simd::proxy_simd::eval_overlap_poly_poly_simd;
 
 /// Specialized collision collection function.
 /// Functionally the same as [`CDEngine::collect_poly_collisions_in_detector`], but with early termination.
@@ -19,9 +23,19 @@ use slotmap::SecondaryMap;
 
 pub fn collect_poly_collisions_in_detector_specialized(
     cde: &CDEngine,
-    shape: &SimplePolygon,
+    dt: &DTransformation,
+    shape_buffer: &mut SimplePolygon,
+    reference_shape: &SimplePolygon,
     det: &mut SpecializedDetectionMap,
 ) {
+    let t = dt.compose();
+    // transform the shape buffer to the new position
+    shape_buffer.transform_from(reference_shape, &t);
+    let shape = shape_buffer;
+
+    #[cfg(feature = "simd")]
+    det.poles_soa.transform_from(&reference_shape.surrogate().poles, &t);
+
     // Start off by checking a few poles to detect obvious collisions quickly
     for pole in shape.surrogate().ff_poles() {
         cde.quadtree.collect_collisions(pole, det);
@@ -90,6 +104,8 @@ pub struct SpecializedDetectionMap<'a> {
     pub idx_counter: usize,
     pub loss_cache: (usize, f32),
     pub loss_bound: f32,
+    #[cfg(feature = "simd")]
+    pub poles_soa: CirclesSoA,
 }
 
 impl<'a> SpecializedDetectionMap<'a> {
@@ -107,8 +123,11 @@ impl<'a> SpecializedDetectionMap<'a> {
             idx_counter: 0,
             loss_cache: (0, 0.0),
             loss_bound : f32::INFINITY,
+            #[cfg(feature = "simd")]
+            poles_soa: CirclesSoA::new(),
         }
     }
+
     pub fn reload(&mut self, loss_bound: f32) {
         self.detected_pis.clear();
         self.detected_bin = None;
@@ -143,7 +162,12 @@ impl<'a> SpecializedDetectionMap<'a> {
         match haz {
             HazardEntity::PlacedItem { pk: other_pk, .. } => {
                 let other_shape = &self.layout.placed_items[*other_pk].shape;
-                let overlap = eval_overlap_poly_poly(shape, other_shape);
+
+                #[cfg(not(feature = "simd"))]
+                let overlap = eval_overlap_poly_poly(other_shape, shape);
+                #[cfg(feature = "simd")]
+                let overlap = eval_overlap_poly_poly_simd(other_shape, shape, &self.poles_soa);
+
                 let weight = self.ot.get_pair_weight(self.current_pk, *other_pk);
                 overlap * weight
             }

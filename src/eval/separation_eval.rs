@@ -7,7 +7,6 @@ use jagua_rs::entities::layout::Layout;
 use jagua_rs::entities::placed_item::PItemKey;
 use jagua_rs::fsize;
 use jagua_rs::geometry::d_transformation::DTransformation;
-use jagua_rs::geometry::geo_traits::TransformableFrom;
 use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
 
 pub struct SeparationEvaluator<'a> {
@@ -51,11 +50,8 @@ impl<'a> SampleEvaluator for SeparationEvaluator<'a> {
         // reload the detection map for the new query and update its loss bound
         self.detection_map.reload(loss_bound);
 
-        // use the shape buffer to store the transformed shape
-        self.shape_buff.transform_from(&self.item.shape, &dt.compose());
-
         //query the CDE for collisions and eval them
-        collect_poly_collisions_in_detector_specialized(cde, &self.shape_buff, &mut self.detection_map);
+        collect_poly_collisions_in_detector_specialized(cde, &dt, &mut self.shape_buff, self.item.shape.as_ref(), &mut self.detection_map);
 
         if self.detection_map.is_empty() {
             SampleEval::Clear { loss: 0.0 }
