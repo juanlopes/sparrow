@@ -1,5 +1,3 @@
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
 use crate::config::*;
 use crate::optimizer::lbf::LBFBuilder;
 use crate::optimizer::separator::Separator;
@@ -8,40 +6,38 @@ use jagua_rs::entities::instances::strip_packing::SPInstance;
 use jagua_rs::entities::problems::problem_generic::ProblemGeneric;
 use jagua_rs::entities::problems::strip_packing::strip_width;
 use jagua_rs::entities::solution::Solution;
-use log::{debug, info, warn};
+use log::{info};
 use rand::prelude::{IteratorRandom, SmallRng};
 use rand::Rng;
 use rand_distr::Distribution;
 use rand_distr::Normal;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use jagua_rs::entities::instances::instance_generic::InstanceGeneric;
 use ordered_float::OrderedFloat;
+pub use crate::optimizer::terminator::Terminator;
 
 pub mod lbf;
 pub mod separator;
 mod separator_worker;
+pub mod terminator;
 
 // All high-level heuristic logic
 pub fn optimize(instance: SPInstance, rng: SmallRng, output_folder_path: String, mut terminator: Terminator, time_limit: Duration) -> Solution {
     let builder = LBFBuilder::new(instance, CDE_CONFIG, rng, LBF_SAMPLE_CONFIG).construct();
-    let mut expl_separator = Separator::new(builder.instance, builder.prob, builder.rng, output_folder_path.clone(), 0, SEP_CONFIG_EXPLORE);
 
     terminator.set_timeout_from_now(time_limit.mul_f32(EXPLORE_TIME_RATIO));
-    let solutions = explore(&mut expl_separator, &terminator);
-    let mut best_sol = solutions.last().unwrap().clone();
+    let mut expl_separator = Separator::new(builder.instance, builder.prob, builder.rng, output_folder_path.clone(), 0, SEP_CONFIG_EXPLORE);
+    let solutions = exploration_phase(&mut expl_separator, &terminator);
+    let final_explore_sol = solutions.last().unwrap().clone();
 
+    terminator.set_timeout_from_now(time_limit.mul_f32(COMPRESS_TIME_RATIO)).reset_ctrlc();
     let mut cmpr_separator = Separator::new(expl_separator.instance, expl_separator.prob, expl_separator.rng, expl_separator.output_svg_folder, expl_separator.svg_counter, SEPARATOR_CONFIG_COMPRESS);
+    let cmpr_sol = compression_phase(&mut cmpr_separator, &final_explore_sol, &terminator);
 
-    for (step,time_ratio) in COMPRESS_STEPS.iter().zip(COMPRESS_TIME_RATIOS.iter()) {
-        terminator.set_timeout_from_now(time_limit.mul_f32(*time_ratio)).reset_ctrlc();
-        let cmpr_sol = compress(&mut cmpr_separator, &best_sol, &terminator, *step);
-        best_sol = cmpr_sol;
-    }
-
-    best_sol
+    cmpr_sol
 }
 
-pub fn explore(sep: &mut Separator, term: &Terminator) -> Vec<Solution> {
+pub fn exploration_phase(sep: &mut Separator, term: &Terminator) -> Vec<Solution> {
     let mut current_width = sep.prob.occupied_width();
     let mut best_width = current_width;
 
@@ -102,18 +98,20 @@ pub fn explore(sep: &mut Separator, term: &Terminator) -> Vec<Solution> {
     feasible_solutions
 }
 
-pub fn compress(sep: &mut Separator, init: &Solution, term: &Terminator, shrink_ratio_step: f32) -> Solution {
-    info!("[CMPR] attempting to compress in steps of {}%", shrink_ratio_step * 100.0);
+pub fn compression_phase(sep: &mut Separator, init: &Solution, term: &Terminator) -> Solution {
     let mut best = init.clone();
+    let mut ratio = EXPLORE_SHRINK_STEP / 10.0;
     while !term.is_kill() {
-        match attempt_to_compress(sep, &best, shrink_ratio_step, &term) {
+        info!("[CMPR] attempting to compress by {:.5}%", ratio * 100.0);
+        match attempt_to_compress(sep, &best, ratio, &term) {
             Some(compacted_sol) => {
                 info!("[CMPR] compressed to {:.3} ({:.3}%)", strip_width(&compacted_sol), compacted_sol.usage * 100.0);
                 sep.export_svg(Some(compacted_sol.clone()), "p", false);
                 best = compacted_sol;
+                ratio *= COMPRESS_STEP_MULTIPLIER;
             }
             None => {
-                info!("[CMPR] compression unsuccessful");
+                ratio /= COMPRESS_STEP_MULTIPLIER;
             }
         }
     }
@@ -167,55 +165,4 @@ fn swap_large_pair_of_items(sep: &mut Separator) {
 
     sep.move_item(pk1, dt2);
     sep.move_item(pk2, dt1);
-}
-
-#[derive(Debug, Clone)]
-pub struct Terminator {
-    pub timeout: Option<Instant>,
-    pub ctrlc: Arc<AtomicBool>,
-}
-
-impl Terminator {
-    /// Creates a dummy terminator that will never terminate
-    pub fn dummy() -> Self {
-        Terminator {
-            timeout: None,
-            ctrlc: Arc::new(AtomicBool::new(false)),
-        }
-    }
-
-    /// Only call this function once, it will set up a handler for Ctrl-C
-    pub fn new_with_ctrlc_handler() -> Self {
-        let ctrlc = Arc::new(AtomicBool::new(false));
-        let c = ctrlc.clone();
-
-        ctrlc::set_handler(move || {
-            warn!(" terminating...");
-            c.store(true, Ordering::SeqCst);
-        }).expect("Error setting Ctrl-C handler");
-
-        Terminator {
-            timeout: None,
-            ctrlc,
-        }
-    }
-    pub fn is_kill(&self) -> bool {
-        self.timeout.map_or(false, |timeout| Instant::now() > timeout)
-            || self.ctrlc.load(Ordering::SeqCst)
-    }
-
-    pub fn reset_ctrlc(&self) -> &Self {
-        self.ctrlc.store(false, Ordering::SeqCst);
-        self
-    }
-
-    pub fn set_timeout_from_now(&mut self, timeout: Duration) -> &mut Self {
-        self.timeout = Some(Instant::now() + timeout);
-        self
-    }
-
-    pub fn clear_timeout(&mut self) -> &mut Self {
-        self.timeout = None;
-        self
-    }
 }

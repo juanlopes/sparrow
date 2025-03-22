@@ -8,7 +8,7 @@ mod integration_tests {
     use rand::prelude::SmallRng;
     use rand::SeedableRng;
     use sparrow::config::{CDE_CONFIG, COMPRESS_STEPS, COMPRESS_TIME_RATIOS, EXPLORE_TIME_RATIO, LBF_SAMPLE_CONFIG, OUTPUT_DIR, SEP_CONFIG_EXPLORE, SIMPLIFICATION_CONFIG};
-    use sparrow::optimizer::{compress, explore, Terminator};
+    use sparrow::optimizer::{compression_phase, exploration_phase, Terminator};
     use sparrow::optimizer::lbf::LBFBuilder;
     use sparrow::optimizer::separator::Separator;
     use sparrow::util::io;
@@ -48,17 +48,17 @@ mod integration_tests {
             }
         };
 
-        let mut terminator = Terminator::dummy();
+        let mut terminator = Terminator::new_without_ctrlc();
         terminator.set_timeout_from_now(EXPLORE_TIMEOUT);
 
         let builder = LBFBuilder::new(instance.clone(), CDE_CONFIG, rng, LBF_SAMPLE_CONFIG).construct();
         let mut separator = Separator::new(builder.instance, builder.prob, builder.rng, output_folder_path, 0, SEP_CONFIG_EXPLORE);
 
-        let sols = explore(&mut separator, &terminator);
+        let sols = exploration_phase(&mut separator, &terminator);
         let final_explore_sol = sols.last().expect("no solutions found during exploration");
 
         terminator.set_timeout_from_now(COMPRESS_TIMEOUT);
-        compress(&mut separator, final_explore_sol, &terminator, COMPRESS_STEPS[0]);
+        compression_phase(&mut separator, final_explore_sol, &terminator, COMPRESS_STEPS[0]);
     }
 
     #[test]
