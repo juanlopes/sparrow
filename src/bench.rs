@@ -4,7 +4,7 @@ use std::env::args;
 use sparrow::config::{CDE_CONFIG, LBF_SAMPLE_CONFIG, DRAW_OPTIONS, OUTPUT_DIR, RNG_SEED, SEPARATOR_CONFIG_COMPRESS, SEP_CONFIG_EXPLORE, SIMPLIFICATION_CONFIG, EXPLORE_TIME_RATIO, COMPRESS_STEPS, COMPRESS_TIME_RATIOS};
 use sparrow::optimizer::lbf::LBFBuilder;
 use sparrow::optimizer::separator::Separator;
-use sparrow::optimizer::{compress2, explore, Terminator};
+use sparrow::optimizer::{compress, explore, Terminator};
 use sparrow::util::io;
 use sparrow::util::io::layout_to_svg::s_layout_to_svg;
 use jagua_rs::entities::instances::instance::Instance;
@@ -90,7 +90,7 @@ fn main() {
                     let mut best_sol = final_explore_sol.clone();
                     for (step,time_ratio) in COMPRESS_STEPS.iter().zip(COMPRESS_TIME_RATIOS.iter()) {
                         terminator.set_timeout_from_now(time_limit.mul_f32(*time_ratio)).reset_ctrlc();
-                        let cmpr_sol = compress2(&mut cmpr_separator, &best_sol, &terminator, *step);
+                        let cmpr_sol = compress(&mut cmpr_separator, &best_sol, &terminator, *step);
                         best_sol = cmpr_sol;
                     }
 
@@ -158,7 +158,6 @@ fn main() {
 }
 
 
-//mimics Excel's percentile function
 pub fn calculate_percentile(v: &[f32], pct: f32) -> f32 {
     // Validate input
     assert!(!v.is_empty(), "Cannot compute percentile of an empty slice");

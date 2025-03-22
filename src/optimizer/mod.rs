@@ -34,7 +34,7 @@ pub fn optimize(instance: SPInstance, rng: SmallRng, output_folder_path: String,
 
     for (step,time_ratio) in COMPRESS_STEPS.iter().zip(COMPRESS_TIME_RATIOS.iter()) {
         terminator.set_timeout_from_now(time_limit.mul_f32(*time_ratio)).reset_ctrlc();
-        let cmpr_sol = compress2(&mut cmpr_separator, &best_sol, &terminator, *step);
+        let cmpr_sol = compress(&mut cmpr_separator, &best_sol, &terminator, *step);
         best_sol = cmpr_sol;
     }
 
@@ -102,32 +102,7 @@ pub fn explore(sep: &mut Separator, term: &Terminator) -> Vec<Solution> {
     feasible_solutions
 }
 
-// pub fn compress(sep: &mut Separator, init: &Solution, term: &Terminator) -> Solution {
-//     let mut best = init.clone();
-//     for (i, &r_shrink) in COMPRESS_R_SHRINKS.iter().enumerate() {
-//         let mut n_strikes = 0;
-//         info!("[CMPR] attempting to compress in steps of {}%", r_shrink * 100.0);
-//         while n_strikes < COMPRESS_N_STRIKES[i] && !term.is_kill() {
-//             match attempt_to_compress(sep, &best, r_shrink, &term) {
-//                 Some(compacted_sol) => {
-//                     info!("[CMPR] compressed to {:.3} ({:.3}%)", strip_width(&compacted_sol), compacted_sol.usage * 100.0);
-//                     sep.export_svg(Some(compacted_sol.clone()), "p", false);
-//                     best = compacted_sol;
-//                     n_strikes = 0;
-//                 }
-//                 None => {
-//                     n_strikes += 1;
-//                     info!("[CMPR] strike {}/{}", n_strikes, COMPRESS_N_STRIKES[i]);
-//                 }
-//             }
-//         }
-//         term.reset_ctrlc();
-//     }
-//     info!("[CMPR] finished compression, improved from {:.3}% to {:.3}% (+{:.3}%)", init.usage * 100.0, best.usage * 100.0, (best.usage - init.usage) * 100.0);
-//     best
-// }
-
-pub fn compress2(sep: &mut Separator, init: &Solution, term: &Terminator, shrink_ratio_step: f32) -> Solution {
+pub fn compress(sep: &mut Separator, init: &Solution, term: &Terminator, shrink_ratio_step: f32) -> Solution {
     info!("[CMPR] attempting to compress in steps of {}%", shrink_ratio_step * 100.0);
     let mut best = init.clone();
     while !term.is_kill() {
@@ -138,7 +113,7 @@ pub fn compress2(sep: &mut Separator, init: &Solution, term: &Terminator, shrink
                 best = compacted_sol;
             }
             None => {
-                debug!("[CMPR] no improvement found");
+                info!("[CMPR] compression unsuccessful");
             }
         }
     }
