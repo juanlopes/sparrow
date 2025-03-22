@@ -1,6 +1,6 @@
 extern crate core;
 
-use sparrow::config::{CDE_CONFIG, DRAW_OPTIONS, LOG_LEVEL_FILTER_DEBUG, LOG_LEVEL_FILTER_RELEASE, OUTPUT_DIR, RNG_SEED, SIMPLIFICATION_CONFIG};
+use sparrow::config::{CDE_CONFIG, DRAW_OPTIONS, LIVE_DIR, LOG_LEVEL_FILTER_DEBUG, LOG_LEVEL_FILTER_RELEASE, OUTPUT_DIR, RNG_SEED, SIMPLIFICATION_CONFIG};
 use sparrow::optimizer::{optimize, Terminator};
 use sparrow::util::io;
 use sparrow::util::io::layout_to_svg::s_layout_to_svg;
@@ -61,6 +61,8 @@ fn main() {
     {
         let svg = s_layout_to_svg(&solution.layout_snapshots[0], &instance, DRAW_OPTIONS, "final");
         io::write_svg(&svg, Path::new(format!("{OUTPUT_DIR}/final_{}.svg", json_instance.name).as_str()), Level::Info);
-        io::write_svg(&svg, Path::new(format!("{OUTPUT_DIR}/.live_solution.svg").as_str()), Level::Trace);
+        if cfg!(feature = "live_svg") {
+            io::write_svg(&svg, Path::new(format!("{LIVE_DIR}/.live_solution.svg").as_str()), Level::Trace);
+        }
     }
 }
