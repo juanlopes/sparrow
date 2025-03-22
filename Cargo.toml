@@ -2,7 +2,7 @@
 name = "sparrow"
 version = "0.1.0"
 edition = "2024"
-default-run = "main"
+default-run = "sparrow"
 
 [features]
 live_svg = []
@@ -10,11 +10,11 @@ only_final_svg = []
 simd = []
 
 [[bin]]
-name = "main"
+name = "sparrow"
 path = "src/main.rs"
 
 [[bin]]
-name = "bench"
+name = "sparrow_bench"
 path = "src/bench.rs"
 
 [dependencies]

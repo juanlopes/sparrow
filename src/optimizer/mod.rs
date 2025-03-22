@@ -11,7 +11,7 @@ use rand::prelude::{IteratorRandom, SmallRng};
 use rand::Rng;
 use rand_distr::Distribution;
 use rand_distr::Normal;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use jagua_rs::entities::instances::instance_generic::InstanceGeneric;
 use ordered_float::OrderedFloat;
 pub use crate::optimizer::terminator::Terminator;
@@ -100,19 +100,26 @@ pub fn exploration_phase(sep: &mut Separator, term: &Terminator) -> Vec<Solution
 
 pub fn compression_phase(sep: &mut Separator, init: &Solution, term: &Terminator) -> Solution {
     let mut best = init.clone();
-    let mut ratio = EXPLORE_SHRINK_STEP / 10.0;
+    let start = Instant::now();
+    let end = term.timeout.expect("compression running without timeout");
+    let step_size = || -> f32 {
+        //map the range [COMPRESS_SHRINK_RANGE.0, COMPRESS_SHRINK_RANGE.1] to timeout
+        let range = COMPRESS_SHRINK_RANGE.1 - COMPRESS_SHRINK_RANGE.0;
+        let elapsed = start.elapsed();
+        let remaining = end.duration_since(Instant::now());
+        let ratio = elapsed.as_secs_f32() / (elapsed + remaining).as_secs_f32();
+        COMPRESS_SHRINK_RANGE.0 + ratio * range
+    };
     while !term.is_kill() {
-        info!("[CMPR] attempting to compress by {:.5}%", ratio * 100.0);
-        match attempt_to_compress(sep, &best, ratio, &term) {
+        let step = step_size();
+        info!("[CMPR] attempting {:.3}%", step * 100.0);
+        match attempt_to_compress(sep, &best, step, &term) {
             Some(compacted_sol) => {
                 info!("[CMPR] compressed to {:.3} ({:.3}%)", strip_width(&compacted_sol), compacted_sol.usage * 100.0);
                 sep.export_svg(Some(compacted_sol.clone()), "p", false);
                 best = compacted_sol;
-                ratio *= COMPRESS_STEP_MULTIPLIER;
             }
-            None => {
-                ratio /= COMPRESS_STEP_MULTIPLIER;
-            }
+            None => {}
         }
     }
     info!("[CMPR] finished compression, improved from {:.3}% to {:.3}% (+{:.3}%)", init.usage * 100.0, best.usage * 100.0, (best.usage - init.usage) * 100.0);
