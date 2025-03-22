@@ -5,7 +5,7 @@
 </p>
 
 This optimization algorithm can be used to solve 2D irregular strip packing problems, also commonly referred to as nesting problems.
-It builds on [`jagua-rs`](https://github.com/JeroenGar/jagua-rs): *a collision detection engine for 2D irregular cutting & packing problems*.
+It builds on [`jagua-rs`](https://github.com/JeroenGar/jagua-rs), a collision detection engine for 2D irregular cutting & packing problems.
 
 ## Some example solutions
 <p align="center">
