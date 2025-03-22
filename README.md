@@ -45,11 +45,6 @@ cargo run --release -- \
     120
 ```
 
-To ensure maximum performance, compile with:
-```bash
-RUSTFLAGS='-C target-cpu=native'
-```
-
 This repo also contains a simple visualizer to monitor the optimization process live, open [live_viewer.html](assets/live/live_viewer.html) in a web browser,
 and compile `sparrow` with the `live_svg` feature enabled:
 
@@ -93,6 +88,18 @@ To disable this and export only a single final solution, compile with the `only_
 cargo run --release --features=only_final_svg -- \
     libs/jagua-rs/assets/swim.json \
     120
+```
+## Ultimate performance
+
+Set the `target-cpu=native` compiler flag and
+compile the [SIMD](https://doc.rust-lang.org/std/simd/index.html) version of the code:
+
+```bash
+  export RUSTFLAGS='-C target-cpu=native'
+  export RUSTUP_TOOLCHAIN=nightly
+  cargo run --release --features=simd,only_final_svg -- \
+      libs/jagua-rs/assets/swim.json \
+      120
 ```
 
 ## Testing

@@ -1,3 +1,4 @@
+#![cfg_attr(feature = "simd", feature(portable_simd))]
 #![allow(const_item_mutation)]
 
 use numfmt::{Formatter, Precision, Scales};
