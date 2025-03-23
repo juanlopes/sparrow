@@ -4,7 +4,7 @@ mod integration_tests {
     use jagua_rs::io::parser::Parser;
     use rand::prelude::SmallRng;
     use rand::SeedableRng;
-    use sparrow::config::{CDE_CONFIG, LBF_SAMPLE_CONFIG, OUTPUT_DIR, SEP_CONFIG_EXPLORE, SIMPLIFICATION_CONFIG};
+    use sparrow::config::{CDE_CONFIG, LBF_SAMPLE_CONFIG, OUTPUT_DIR, SEP_CFG_EXPLORE, SIMPLIFICATION_CONFIG};
     use sparrow::optimizer::lbf::LBFBuilder;
     use sparrow::optimizer::separator::Separator;
     use sparrow::optimizer::{compression_phase, exploration_phase, Terminator};
@@ -51,7 +51,7 @@ mod integration_tests {
         terminator.set_timeout_from_now(EXPLORE_TIMEOUT);
 
         let builder = LBFBuilder::new(instance.clone(), CDE_CONFIG, rng, LBF_SAMPLE_CONFIG).construct();
-        let mut separator = Separator::new(builder.instance, builder.prob, builder.rng, output_folder_path, 0, SEP_CONFIG_EXPLORE);
+        let mut separator = Separator::new(builder.instance, builder.prob, builder.rng, output_folder_path, 0, SEP_CFG_EXPLORE);
 
         let sols = exploration_phase(&mut separator, &terminator);
         let final_explore_sol = sols.last().expect("no solutions found during exploration");

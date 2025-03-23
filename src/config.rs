@@ -32,7 +32,7 @@ pub const WEIGHT_OVERLAP_DECAY: f32 = 0.95;
 
 pub const OVERLAP_PROXY_EPSILON_DIAM_RATIO: f32 = 0.01;
 
-pub const SEP_CONFIG_EXPLORE: SeparatorConfig = SeparatorConfig {
+pub const SEP_CFG_EXPLORE: SeparatorConfig = SeparatorConfig {
     iter_no_imprv_limit: 200,
     strike_limit: 3,
     log_level: log::Level::Info,
@@ -44,7 +44,7 @@ pub const SEP_CONFIG_EXPLORE: SeparatorConfig = SeparatorConfig {
     }
 };
 
-pub const SEPARATOR_CONFIG_COMPRESS: SeparatorConfig = SeparatorConfig {
+pub const SEP_CFG_COMPRESS: SeparatorConfig = SeparatorConfig {
     iter_no_imprv_limit: 100,
     strike_limit: 5,
     log_level: log::Level::Debug,

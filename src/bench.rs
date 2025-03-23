@@ -5,7 +5,7 @@ use jagua_rs::io::parser::Parser;
 use ordered_float::OrderedFloat;
 use rand::prelude::SmallRng;
 use rand::{Rng, SeedableRng};
-use sparrow::config::{CDE_CONFIG, COMPRESS_TIME_RATIO, DRAW_OPTIONS, EXPLORE_TIME_RATIO, LBF_SAMPLE_CONFIG, OUTPUT_DIR, RNG_SEED, SEPARATOR_CONFIG_COMPRESS, SEP_CONFIG_EXPLORE, SIMPLIFICATION_CONFIG};
+use sparrow::config::{CDE_CONFIG, COMPRESS_TIME_RATIO, DRAW_OPTIONS, EXPLORE_TIME_RATIO, LBF_SAMPLE_CONFIG, OUTPUT_DIR, RNG_SEED, SEP_CFG_COMPRESS, SEP_CFG_EXPLORE, SIMPLIFICATION_CONFIG};
 use sparrow::optimizer::lbf::LBFBuilder;
 use sparrow::optimizer::separator::Separator;
 use sparrow::optimizer::{compression_phase, exploration_phase, Terminator};
@@ -44,7 +44,7 @@ fn main() {
         }
     };
 
-    let n_runs_per_iter = (num_cpus::get_physical() / SEP_CONFIG_EXPLORE.n_workers).min(n_runs_total);
+    let n_runs_per_iter = (num_cpus::get_physical() / SEP_CFG_EXPLORE.n_workers).min(n_runs_total);
     let n_batches = (n_runs_total as f32 / n_runs_per_iter as f32).ceil() as usize;
 
     println!(
@@ -77,7 +77,7 @@ fn main() {
 
                 s.spawn(move |_| {
                     let builder = LBFBuilder::new(instance.clone(), CDE_CONFIG, rng, LBF_SAMPLE_CONFIG).construct();
-                    let mut expl_separator = Separator::new(builder.instance, builder.prob, builder.rng, output_folder_path, 0, SEP_CONFIG_EXPLORE);
+                    let mut expl_separator = Separator::new(builder.instance, builder.prob, builder.rng, output_folder_path, 0, SEP_CFG_EXPLORE);
 
                     terminator.set_timeout_from_now(time_limit.mul_f32(EXPLORE_TIME_RATIO));
                     let solutions = exploration_phase(&mut expl_separator, &terminator);
@@ -86,7 +86,7 @@ fn main() {
                     let start_comp = Instant::now();
 
                     terminator.set_timeout_from_now(time_limit.mul_f32(COMPRESS_TIME_RATIO)).reset_ctrlc();
-                    let mut cmpr_separator = Separator::new(expl_separator.instance, expl_separator.prob, expl_separator.rng, expl_separator.output_svg_folder, expl_separator.svg_counter, SEPARATOR_CONFIG_COMPRESS);
+                    let mut cmpr_separator = Separator::new(expl_separator.instance, expl_separator.prob, expl_separator.rng, expl_separator.output_svg_folder, expl_separator.svg_counter, SEP_CFG_COMPRESS);
                     let cmpr_sol = compression_phase(&mut cmpr_separator, final_explore_sol, &terminator);
 
                     println!("[BENCH] [id:{:>3}] finished, expl: {:.3}% ({}s), cmpr: {:.3}% (+{:.3}%) ({}s)",

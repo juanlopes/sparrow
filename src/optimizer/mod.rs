@@ -26,12 +26,12 @@ pub fn optimize(instance: SPInstance, rng: SmallRng, output_folder_path: String,
     let builder = LBFBuilder::new(instance, CDE_CONFIG, rng, LBF_SAMPLE_CONFIG).construct();
 
     terminator.set_timeout_from_now(time_limit.mul_f32(EXPLORE_TIME_RATIO));
-    let mut expl_separator = Separator::new(builder.instance, builder.prob, builder.rng, output_folder_path.clone(), 0, SEP_CONFIG_EXPLORE);
+    let mut expl_separator = Separator::new(builder.instance, builder.prob, builder.rng, output_folder_path.clone(), 0, SEP_CFG_EXPLORE);
     let solutions = exploration_phase(&mut expl_separator, &terminator);
     let final_explore_sol = solutions.last().unwrap().clone();
 
     terminator.set_timeout_from_now(time_limit.mul_f32(COMPRESS_TIME_RATIO)).reset_ctrlc();
-    let mut cmpr_separator = Separator::new(expl_separator.instance, expl_separator.prob, expl_separator.rng, expl_separator.output_svg_folder, expl_separator.svg_counter, SEPARATOR_CONFIG_COMPRESS);
+    let mut cmpr_separator = Separator::new(expl_separator.instance, expl_separator.prob, expl_separator.rng, expl_separator.output_svg_folder, expl_separator.svg_counter, SEP_CFG_COMPRESS);
     let cmpr_sol = compression_phase(&mut cmpr_separator, &final_explore_sol, &terminator);
 
     cmpr_sol
