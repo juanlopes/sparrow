@@ -2,12 +2,11 @@
 mod integration_tests {
     use std::path::Path;
     use std::time::{Duration};
-    use float_cmp::assert_approx_eq;
     use jagua_rs::entities::instances::instance::Instance;
     use jagua_rs::io::parser::Parser;
     use rand::prelude::SmallRng;
     use rand::SeedableRng;
-    use sparrow::config::{CDE_CONFIG, COMPRESS_STEPS, COMPRESS_TIME_RATIOS, EXPLORE_TIME_RATIO, LBF_SAMPLE_CONFIG, OUTPUT_DIR, SEP_CONFIG_EXPLORE, SIMPLIFICATION_CONFIG};
+    use sparrow::config::{CDE_CONFIG, LBF_SAMPLE_CONFIG, OUTPUT_DIR, SEP_CONFIG_EXPLORE, SIMPLIFICATION_CONFIG};
     use sparrow::optimizer::{compression_phase, exploration_phase, Terminator};
     use sparrow::optimizer::lbf::LBFBuilder;
     use sparrow::optimizer::separator::Separator;
@@ -58,12 +57,6 @@ mod integration_tests {
         let final_explore_sol = sols.last().expect("no solutions found during exploration");
 
         terminator.set_timeout_from_now(COMPRESS_TIMEOUT);
-        compression_phase(&mut separator, final_explore_sol, &terminator, COMPRESS_STEPS[0]);
+        compression_phase(&mut separator, final_explore_sol, &terminator);
     }
-
-    #[test]
-    fn check_time_ratios() {
-        assert_approx_eq!(f32, EXPLORE_TIME_RATIO + COMPRESS_TIME_RATIOS.iter().sum::<f32>(), 1.0)
-    }
-
 }
