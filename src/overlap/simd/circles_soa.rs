@@ -25,7 +25,7 @@ impl CirclesSoA {
         self.y.resize(circles.len(), 0.0);
         self.r.resize(circles.len(), 0.0);
 
-        //transform poles
+        //load the circles into the SoA format
         izip!(self.x.iter_mut(), self.y.iter_mut(), self.r.iter_mut())
             .zip(circles.iter())
             .for_each(|((x,y,r),ref_c)| {

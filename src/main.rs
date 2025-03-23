@@ -17,9 +17,9 @@ use std::time::{Duration};
 
 fn main() {
     let input_file_path = args().nth(1).expect("first argument must be the input file");
-    let explore_time_limit: u64 = args().nth(2).unwrap().parse()
-        .expect("second argument must be the time limit for the first phase [s]");
-    let explore_time_limit = Duration::from_secs(explore_time_limit);
+    let time_limit: Duration = args().nth(2).unwrap().parse::<u64>()
+        .map(|s| Duration::from_secs(s))
+        .expect("second argument must be the time limit [s]");
 
     fs::create_dir_all(OUTPUT_DIR).expect("could not create output directory");
 
@@ -56,7 +56,7 @@ fn main() {
 
     let terminator = Terminator::new_with_ctrlc_handler();
 
-    let solution = optimize(instance.clone(), rng, output_folder_path, terminator, explore_time_limit);
+    let solution = optimize(instance.clone(), rng, output_folder_path, terminator, time_limit);
 
     {
         let svg = s_layout_to_svg(&solution.layout_snapshots[0], &instance, DRAW_OPTIONS, "final");

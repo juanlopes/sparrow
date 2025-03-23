@@ -1,6 +1,4 @@
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
-use crate::config::{CDE_CONFIG, COMPRESS_N_STRIKES, COMPRESS_R_SHRINKS, LBF_SAMPLE_CONFIG, EXPLORE_R_SHRINK, EXPLORE_SOL_DISTR_STDDEV, LARGE_AREA_CH_AREA_CUTOFF_RATIO, SEPARATOR_CONFIG_COMPRESS, SEP_CONFIG_EXPLORE};
+use crate::config::*;
 use crate::optimizer::lbf::LBFBuilder;
 use crate::optimizer::separator::Separator;
 use crate::FMT;
@@ -8,7 +6,7 @@ use jagua_rs::entities::instances::strip_packing::SPInstance;
 use jagua_rs::entities::problems::problem_generic::ProblemGeneric;
 use jagua_rs::entities::problems::strip_packing::strip_width;
 use jagua_rs::entities::solution::Solution;
-use log::{info, warn};
+use log::{info};
 use rand::prelude::{IteratorRandom, SmallRng};
 use rand::Rng;
 use rand_distr::Distribution;
@@ -16,29 +14,30 @@ use rand_distr::Normal;
 use std::time::{Duration, Instant};
 use jagua_rs::entities::instances::instance_generic::InstanceGeneric;
 use ordered_float::OrderedFloat;
+pub use crate::optimizer::terminator::Terminator;
 
 pub mod lbf;
 pub mod separator;
 mod separator_worker;
+pub mod terminator;
 
 // All high-level heuristic logic
-pub fn optimize(instance: SPInstance, rng: SmallRng, output_folder_path: String, mut terminator: Terminator, explore_time_limit: Duration) -> Solution {
+pub fn optimize(instance: SPInstance, rng: SmallRng, output_folder_path: String, mut terminator: Terminator, time_limit: Duration) -> Solution {
     let builder = LBFBuilder::new(instance, CDE_CONFIG, rng, LBF_SAMPLE_CONFIG).construct();
+
+    terminator.set_timeout_from_now(time_limit.mul_f32(EXPLORE_TIME_RATIO));
     let mut expl_separator = Separator::new(builder.instance, builder.prob, builder.rng, output_folder_path.clone(), 0, SEP_CONFIG_EXPLORE);
+    let solutions = exploration_phase(&mut expl_separator, &terminator);
+    let final_explore_sol = solutions.last().unwrap().clone();
 
-    terminator.set_timeout(explore_time_limit);
-    let solutions = explore(&mut expl_separator, &terminator);
-    let final_explore_sol = solutions.last().expect("no solutions found during exploration");
-
+    terminator.set_timeout_from_now(time_limit.mul_f32(COMPRESS_TIME_RATIO)).reset_ctrlc();
     let mut cmpr_separator = Separator::new(expl_separator.instance, expl_separator.prob, expl_separator.rng, expl_separator.output_svg_folder, expl_separator.svg_counter, SEPARATOR_CONFIG_COMPRESS);
+    let cmpr_sol = compression_phase(&mut cmpr_separator, &final_explore_sol, &terminator);
 
-    terminator.clear_timeout().reset_ctrlc();
-    let final_sol = compress(&mut cmpr_separator, final_explore_sol, &terminator);
-
-    final_sol
+    cmpr_sol
 }
 
-pub fn explore(sep: &mut Separator, term: &Terminator) -> Vec<Solution> {
+pub fn exploration_phase(sep: &mut Separator, term: &Terminator) -> Vec<Solution> {
     let mut current_width = sep.prob.occupied_width();
     let mut best_width = current_width;
 
@@ -61,8 +60,8 @@ pub fn explore(sep: &mut Separator, term: &Terminator) -> Vec<Solution> {
                 feasible_solutions.push(local_best.0.clone());
                 sep.export_svg(Some(local_best.0.clone()), "f", false);
             }
-            let next_width = current_width * (1.0 - EXPLORE_R_SHRINK);
-            info!("[EXPL] shrinking width by {}%: {:.3} -> {:.3}", EXPLORE_R_SHRINK * 100.0, current_width, next_width);
+            let next_width = current_width * (1.0 - EXPLORE_SHRINK_STEP);
+            info!("[EXPL] shrinking width by {}%: {:.3} -> {:.3}", EXPLORE_SHRINK_STEP * 100.0, current_width, next_width);
             sep.change_strip_width(next_width, None);
             current_width = next_width;
             solution_pool.clear();
@@ -99,30 +98,35 @@ pub fn explore(sep: &mut Separator, term: &Terminator) -> Vec<Solution> {
     feasible_solutions
 }
 
-pub fn compress(sep: &mut Separator, init: &Solution, term: &Terminator) -> Solution {
+pub fn compression_phase(sep: &mut Separator, init: &Solution, term: &Terminator) -> Solution {
     let mut best = init.clone();
-    for (i, &r_shrink) in COMPRESS_R_SHRINKS.iter().enumerate() {
-        let mut n_strikes = 0;
-        info!("[CMPR] attempting to compress in steps of {}%", r_shrink * 100.0);
-        while n_strikes < COMPRESS_N_STRIKES[i] && !term.is_kill() {
-            match attempt_to_compress(sep, &best, r_shrink, &term) {
-                Some(compacted_sol) => {
-                    info!("[CMPR] compressed to {:.3} ({:.3}%)", strip_width(&compacted_sol), compacted_sol.usage * 100.0);
-                    sep.export_svg(Some(compacted_sol.clone()), "p", false);
-                    best = compacted_sol;
-                    n_strikes = 0;
-                }
-                None => {
-                    n_strikes += 1;
-                    info!("[CMPR] strike {}/{}", n_strikes, COMPRESS_N_STRIKES[i]);
-                }
+    let start = Instant::now();
+    let end = term.timeout.expect("compression running without timeout");
+    let step_size = || -> f32 {
+        //map the range [COMPRESS_SHRINK_RANGE.0, COMPRESS_SHRINK_RANGE.1] to timeout
+        let range = COMPRESS_SHRINK_RANGE.1 - COMPRESS_SHRINK_RANGE.0;
+        let elapsed = start.elapsed();
+        let remaining = end.duration_since(Instant::now());
+        let ratio = elapsed.as_secs_f32() / (elapsed + remaining).as_secs_f32();
+        COMPRESS_SHRINK_RANGE.0 + ratio * range
+    };
+    while !term.is_kill() {
+        let step = step_size();
+        info!("[CMPR] attempting {:.3}%", step * 100.0);
+        match attempt_to_compress(sep, &best, step, &term) {
+            Some(compacted_sol) => {
+                info!("[CMPR] compressed to {:.3} ({:.3}%)", strip_width(&compacted_sol), compacted_sol.usage * 100.0);
+                sep.export_svg(Some(compacted_sol.clone()), "p", false);
+                best = compacted_sol;
             }
+            None => {}
         }
-        term.reset_ctrlc();
     }
     info!("[CMPR] finished compression, improved from {:.3}% to {:.3}% (+{:.3}%)", init.usage * 100.0, best.usage * 100.0, (best.usage - init.usage) * 100.0);
     best
 }
+
+
 fn attempt_to_compress(sep: &mut Separator, init: &Solution, r_shrink: f32, term: &Terminator) -> Option<Solution> {
     //restore to the initial solution and width
     sep.change_strip_width(strip_width(&init), None);
@@ -168,55 +172,4 @@ fn swap_large_pair_of_items(sep: &mut Separator) {
 
     sep.move_item(pk1, dt2);
     sep.move_item(pk2, dt1);
-}
-
-#[derive(Debug, Clone)]
-pub struct Terminator {
-    pub timeout: Option<Instant>,
-    pub ctrlc: Arc<AtomicBool>,
-}
-
-impl Terminator {
-    /// Creates a dummy terminator that will never terminate
-    pub fn dummy() -> Self {
-        Terminator {
-            timeout: None,
-            ctrlc: Arc::new(AtomicBool::new(false)),
-        }
-    }
-
-    /// Only call this function once, it will set up a handler for Ctrl-C
-    pub fn new_with_ctrlc_handler() -> Self {
-        let ctrlc = Arc::new(AtomicBool::new(false));
-        let c = ctrlc.clone();
-
-        ctrlc::set_handler(move || {
-            warn!(" terminating...");
-            c.store(true, Ordering::SeqCst);
-        }).expect("Error setting Ctrl-C handler");
-
-        Terminator {
-            timeout: None,
-            ctrlc,
-        }
-    }
-    pub fn is_kill(&self) -> bool {
-        self.timeout.map_or(false, |timeout| Instant::now() > timeout)
-            || self.ctrlc.load(Ordering::SeqCst)
-    }
-
-    pub fn reset_ctrlc(&self) -> &Self {
-        self.ctrlc.store(false, Ordering::SeqCst);
-        self
-    }
-
-    pub fn set_timeout(&mut self, timeout: Duration) -> &mut Self {
-        self.timeout = Some(Instant::now() + timeout);
-        self
-    }
-
-    pub fn clear_timeout(&mut self) -> &mut Self {
-        self.timeout = None;
-        self
-    }
 }
