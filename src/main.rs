@@ -17,8 +17,8 @@ use std::time::Duration;
 
 fn main() {
     let input_file_path = args().nth(1).expect("first argument must be the input file");
-    let time_limit: Duration = args().nth(2).unwrap().parse::<u64>()
-        .map(|s| Duration::from_secs(s))
+    let time_limit: Duration = args().nth(2).expect("second argument must be the time limit [s]")
+        .parse::<u64>().map(|s| Duration::from_secs(s))
         .expect("second argument must be the time limit [s]");
 
     fs::create_dir_all(OUTPUT_DIR).expect("could not create output directory");

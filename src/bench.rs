@@ -18,11 +18,11 @@ use std::time::{Duration, Instant};
 
 fn main() {
     //the input file is the first argument
-    let input_file_path = std::env::args().nth(1).expect("first argument must be the input file");
-    let time_limit: Duration = args().nth(2).unwrap().parse::<u64>()
-        .map(|s| Duration::from_secs(s))
+    let input_file_path = args().nth(1).expect("first argument must be the input file");
+    let time_limit: Duration = args().nth(2).expect("second argument must be the time limit [s]")
+        .parse::<u64>().map(|s| Duration::from_secs(s))
         .expect("second argument must be the time limit [s]");
-    let n_runs_total = std::env::args().nth(3).expect("third argument must be the number of runs")
+    let n_runs_total = args().nth(3).expect("third argument must be the number of runs")
         .parse().expect("third argument must be the number of runs");
 
     fs::create_dir_all(OUTPUT_DIR).expect("could not create output directory");
