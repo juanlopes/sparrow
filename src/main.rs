@@ -1,19 +1,19 @@
 extern crate core;
 
-use sparrow::config::{CDE_CONFIG, DRAW_OPTIONS, LIVE_DIR, LOG_LEVEL_FILTER_DEBUG, LOG_LEVEL_FILTER_RELEASE, OUTPUT_DIR, RNG_SEED, SIMPLIFICATION_CONFIG};
-use sparrow::optimizer::{optimize, Terminator};
-use sparrow::util::io;
-use sparrow::util::io::layout_to_svg::s_layout_to_svg;
 use jagua_rs::entities::instances::instance::Instance;
 use jagua_rs::entities::instances::instance_generic::InstanceGeneric;
 use jagua_rs::io::parser::Parser;
 use log::{info, warn, Level};
 use rand::prelude::SmallRng;
 use rand::SeedableRng;
+use sparrow::config::{CDE_CONFIG, DRAW_OPTIONS, LIVE_DIR, LOG_LEVEL_FILTER_DEBUG, LOG_LEVEL_FILTER_RELEASE, OUTPUT_DIR, RNG_SEED, SIMPLIFICATION_CONFIG};
+use sparrow::optimizer::{optimize, Terminator};
+use sparrow::util::io;
+use sparrow::util::io::layout_to_svg::s_layout_to_svg;
 use std::env::args;
 use std::fs;
 use std::path::Path;
-use std::time::{Duration};
+use std::time::Duration;
 
 fn main() {
     let input_file_path = args().nth(1).expect("first argument must be the input file");

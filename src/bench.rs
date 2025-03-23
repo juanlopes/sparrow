@@ -1,17 +1,17 @@
 extern crate core;
 
-use std::env::args;
-use sparrow::config::{CDE_CONFIG, LBF_SAMPLE_CONFIG, DRAW_OPTIONS, OUTPUT_DIR, RNG_SEED, SEPARATOR_CONFIG_COMPRESS, SEP_CONFIG_EXPLORE, SIMPLIFICATION_CONFIG, EXPLORE_TIME_RATIO, COMPRESS_TIME_RATIO};
-use sparrow::optimizer::lbf::LBFBuilder;
-use sparrow::optimizer::separator::Separator;
-use sparrow::optimizer::{compression_phase, exploration_phase, Terminator};
-use sparrow::util::io;
-use sparrow::util::io::layout_to_svg::s_layout_to_svg;
 use jagua_rs::entities::instances::instance::Instance;
 use jagua_rs::io::parser::Parser;
 use ordered_float::OrderedFloat;
 use rand::prelude::SmallRng;
 use rand::{Rng, SeedableRng};
+use sparrow::config::{CDE_CONFIG, COMPRESS_TIME_RATIO, DRAW_OPTIONS, EXPLORE_TIME_RATIO, LBF_SAMPLE_CONFIG, OUTPUT_DIR, RNG_SEED, SEPARATOR_CONFIG_COMPRESS, SEP_CONFIG_EXPLORE, SIMPLIFICATION_CONFIG};
+use sparrow::optimizer::lbf::LBFBuilder;
+use sparrow::optimizer::separator::Separator;
+use sparrow::optimizer::{compression_phase, exploration_phase, Terminator};
+use sparrow::util::io;
+use sparrow::util::io::layout_to_svg::s_layout_to_svg;
+use std::env::args;
 use std::fs;
 use std::path::Path;
 use std::time::{Duration, Instant};

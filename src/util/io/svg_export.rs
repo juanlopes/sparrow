@@ -4,10 +4,10 @@ use svg::node::element::{Circle, Path};
 use jagua_rs::collision_detection::hazard::HazardEntity;
 use jagua_rs::collision_detection::quadtree::qt_hazard::QTHazPresence;
 use jagua_rs::collision_detection::quadtree::qt_node::QTNode;
+use jagua_rs::geometry;
 use jagua_rs::geometry::primitives::edge::Edge;
 use jagua_rs::geometry::primitives::point::Point;
 use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
-use jagua_rs::geometry;
 
 pub fn simple_polygon_data(s_poly: &SimplePolygon) -> Data {
     let mut data = Data::new().move_to::<(f32, f32)>(s_poly.get_point(0).into());

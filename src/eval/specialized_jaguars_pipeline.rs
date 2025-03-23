@@ -1,4 +1,10 @@
-use crate::overlap::proxy::{eval_overlap_poly_bin};
+use crate::overlap::proxy::eval_overlap_poly_bin;
+#[cfg(not(feature = "simd"))]
+use crate::overlap::proxy::eval_overlap_poly_poly;
+#[cfg(feature = "simd")]
+use crate::overlap::simd::circles_soa::CirclesSoA;
+#[cfg(feature = "simd")]
+use crate::overlap::simd::proxy_simd::eval_overlap_poly_poly_simd;
 use crate::overlap::tracker::OverlapTracker;
 use crate::util::assertions;
 use crate::util::bit_reversal_iterator::BitReversalIterator;
@@ -6,24 +12,19 @@ use float_cmp::approx_eq;
 use jagua_rs::collision_detection::cd_engine::CDEngine;
 use jagua_rs::collision_detection::hazard::HazardEntity;
 use jagua_rs::collision_detection::hazard_helpers::{HazardDetector, HazardIgnorer};
+use jagua_rs::collision_detection::quadtree::qt_hazard::QTHazPresence;
+use jagua_rs::collision_detection::quadtree::qt_node::QTNode;
+use jagua_rs::collision_detection::quadtree::qt_traits::QTQueryable;
 use jagua_rs::entities::layout::Layout;
 use jagua_rs::entities::placed_item::PItemKey;
 use jagua_rs::geometry::d_transformation::DTransformation;
-use jagua_rs::geometry::geo_traits::{Shape, TransformableFrom};
+use jagua_rs::geometry::geo_traits::{CollidesWith, Shape, TransformableFrom};
 use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
 use slotmap::SecondaryMap;
-#[cfg(feature = "simd")]
-use crate::overlap::simd::circles_soa::CirclesSoA;
-#[cfg(feature = "simd")]
-use crate::overlap::simd::proxy_simd::eval_overlap_poly_poly_simd;
-#[cfg(not(feature = "simd"))]
-use crate::overlap::proxy::eval_overlap_poly_poly;
 
-/// Specialized collision collection function.
 /// Functionally the same as [`CDEngine::collect_poly_collisions_in_detector`], but with early termination.
 /// Saving quite a bit of CPU time since over 90% of the time is spent in this function.
-
-pub fn collect_poly_collisions_in_detector_specialized(
+pub fn collect_poly_collisions_in_detector_custom(
     cde: &CDEngine,
     dt: &DTransformation,
     shape_buffer: &mut SimplePolygon,
@@ -40,8 +41,8 @@ pub fn collect_poly_collisions_in_detector_specialized(
 
     // Start off by checking a few poles to detect obvious collisions quickly
     for pole in shape.surrogate().ff_poles() {
-        cde.quadtree.collect_collisions(pole, det);
-        if det.early_terminate(shape) { return }
+        collect_collisions_custom(&cde.quadtree, pole, det);
+        if det.early_terminate(shape) { return; }
     }
 
     // Collect collisions for all edges of the shape.
@@ -49,8 +50,8 @@ pub fn collect_poly_collisions_in_detector_specialized(
     let custom_edge_iter = BitReversalIterator::new(shape.number_of_points())
         .map(|i| shape.get_edge(i));
     for edge in custom_edge_iter {
-        cde.quadtree.collect_collisions(&edge, det);
-        if det.early_terminate(shape) { return }
+        collect_collisions_custom(&cde.quadtree, &edge, det);
+        if det.early_terminate(shape) { return; }
     }
 
     // At this point, all collisions due to edge-edge intersection are detected.
@@ -75,7 +76,7 @@ pub fn collect_poly_collisions_in_detector_specialized(
                         }
                     }
                 }
-                HazardEntity::PlacedItem { pk, ..} => {
+                HazardEntity::PlacedItem { pk, .. } => {
                     if let Some((_, idx)) = det.detected_pis.get(pk) {
                         if *idx >= checkpoint {
                             // The item was not detected during the quadtree query, but was detected as a potential containment.
@@ -124,7 +125,7 @@ impl<'a> SpecializedDetectionMap<'a> {
             detected_bin: None,
             idx_counter: 0,
             loss_cache: (0, 0.0),
-            loss_bound : f32::INFINITY,
+            loss_bound: f32::INFINITY,
             #[cfg(feature = "simd")]
             poles_soa: CirclesSoA::new(),
         }
@@ -202,7 +203,7 @@ impl<'a> HazardDetector for SpecializedDetectionMap<'a> {
             }
             HazardEntity::BinExterior => {
                 self.detected_bin = Some((HazardEntity::BinExterior, self.idx_counter))
-            },
+            }
             _ => unreachable!("unsupported hazard entity"),
         }
         self.idx_counter += 1;
@@ -240,5 +241,42 @@ impl<'a> HazardDetector for SpecializedDetectionMap<'a> {
 impl<'a> HazardIgnorer for SpecializedDetectionMap<'a> {
     fn is_irrelevant(&self, haz: &HazardEntity) -> bool {
         self.contains(haz)
+    }
+}
+
+
+/// Mirrors ['QTNode::collect_collisions'] but slightly faster for this specific use case.
+pub fn collect_collisions_custom<T>(qtn: &QTNode, entity: &T, detector: &mut SpecializedDetectionMap)
+where
+    T: QTQueryable,
+{
+    match entity.collides_with(&qtn.bbox) {
+        false => return, //Entity does not collide with the node
+        true => match qtn.children.as_ref() {
+            Some(children) => {
+                //Do not perform any CD on this level, check the children
+                children.iter().for_each(|child| collect_collisions_custom(child, entity, detector));
+            }
+            None => {
+                //No children, detect all Entire hazards and check the Partial ones
+                for hz in qtn.hazards.active_hazards().iter() {
+                    match &hz.presence {
+                        QTHazPresence::None => (),
+                        QTHazPresence::Entire => {
+                            if !detector.contains(&hz.entity) {
+                                detector.push(hz.entity)
+                            }
+                        }
+                        QTHazPresence::Partial(p_haz) => {
+                            if !detector.contains(&hz.entity) {
+                                if p_haz.collides_with(entity) {
+                                    detector.push(hz.entity);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }

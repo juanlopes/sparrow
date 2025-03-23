@@ -1,5 +1,5 @@
 use crate::eval::sample_eval::{SampleEval, SampleEvaluator};
-use crate::eval::specialized_jaguars_pipeline::{collect_poly_collisions_in_detector_specialized, SpecializedDetectionMap};
+use crate::eval::specialized_jaguars_pipeline::{collect_poly_collisions_in_detector_custom, SpecializedDetectionMap};
 use crate::overlap::tracker::OverlapTracker;
 use jagua_rs::collision_detection::hazard_helpers::HazardDetector;
 use jagua_rs::entities::item::Item;
@@ -51,7 +51,7 @@ impl<'a> SampleEvaluator for SeparationEvaluator<'a> {
         self.detection_map.reload(loss_bound);
 
         //query the CDE for collisions and eval them
-        collect_poly_collisions_in_detector_specialized(cde, &dt, &mut self.shape_buff, self.item.shape.as_ref(), &mut self.detection_map);
+        collect_poly_collisions_in_detector_custom(cde, &dt, &mut self.shape_buff, self.item.shape.as_ref(), &mut self.detection_map);
 
         if self.detection_map.is_empty() {
             SampleEval::Clear { loss: 0.0 }

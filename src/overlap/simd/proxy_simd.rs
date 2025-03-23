@@ -1,14 +1,14 @@
-use std::simd::{f32x4, StdFloat};
-use std::simd::prelude::{SimdFloat, SimdPartialOrd};
-use float_cmp::{approx_eq};
+use crate::config::OVERLAP_PROXY_EPSILON_DIAM_RATIO;
+use crate::overlap::proxy::poles_overlap_area_proxy;
+use crate::overlap::simd::circles_soa::CirclesSoA;
+use float_cmp::approx_eq;
 use jagua_rs::geometry::fail_fast::sp_surrogate::SPSurrogate;
 use jagua_rs::geometry::geo_traits::{Distance, Shape};
 use jagua_rs::geometry::primitives::circle::Circle;
 use jagua_rs::geometry::primitives::point::Point;
 use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
-use crate::config::OVERLAP_PROXY_EPSILON_DIAM_RATIO;
-use crate::overlap::proxy::poles_overlap_area_proxy;
-use crate::overlap::simd::circles_soa::CirclesSoA;
+use std::simd::prelude::{SimdFloat, SimdPartialOrd};
+use std::simd::{f32x4, StdFloat};
 
 #[inline(always)]
 pub fn eval_overlap_poly_poly_simd(s1: &SimplePolygon, s2: &SimplePolygon, poles2: &CirclesSoA) -> f32 {

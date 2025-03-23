@@ -1,20 +1,20 @@
 use crate::config::*;
 use crate::optimizer::lbf::LBFBuilder;
 use crate::optimizer::separator::Separator;
+pub use crate::optimizer::terminator::Terminator;
 use crate::FMT;
+use jagua_rs::entities::instances::instance_generic::InstanceGeneric;
 use jagua_rs::entities::instances::strip_packing::SPInstance;
 use jagua_rs::entities::problems::problem_generic::ProblemGeneric;
 use jagua_rs::entities::problems::strip_packing::strip_width;
 use jagua_rs::entities::solution::Solution;
-use log::{info};
+use log::info;
+use ordered_float::OrderedFloat;
 use rand::prelude::{IteratorRandom, SmallRng};
 use rand::Rng;
 use rand_distr::Distribution;
 use rand_distr::Normal;
 use std::time::{Duration, Instant};
-use jagua_rs::entities::instances::instance_generic::InstanceGeneric;
-use ordered_float::OrderedFloat;
-pub use crate::optimizer::terminator::Terminator;
 
 pub mod lbf;
 pub mod separator;

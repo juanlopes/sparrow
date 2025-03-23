@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use crate::eval::specialized_jaguars_pipeline::SpecializedDetectionMap;
 use crate::overlap::proxy;
 use crate::overlap::tracker::OverlapTracker;
 use crate::util::io::svg_util::SvgDrawOptions;
@@ -10,7 +10,7 @@ use jagua_rs::entities::layout::Layout;
 use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
 use jagua_rs::util::assertions;
 use log::warn;
-use crate::eval::specialized_jaguars_pipeline::SpecializedDetectionMap;
+use std::collections::HashSet;
 
 pub fn tracker_matches_layout(ot: &OverlapTracker, l: &Layout) -> bool {
     assert!(l.placed_items.keys().all(|k| ot.pk_idx_map.contains_key(k)));

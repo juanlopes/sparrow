@@ -1,5 +1,6 @@
 use crate::config::{DRAW_OPTIONS, LIVE_DIR};
 use crate::optimizer::separator_worker::SeparatorWorker;
+use crate::optimizer::Terminator;
 use crate::overlap::tracker::{OTSnapshot, OverlapTracker};
 use crate::sample::search::SampleConfig;
 use crate::util::assertions::tracker_matches_layout;
@@ -23,10 +24,9 @@ use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 use rayon::iter::IntoParallelRefMutIterator;
 use rayon::iter::ParallelIterator;
+use rayon::ThreadPool;
 use std::path::Path;
 use std::time::Instant;
-use rayon::ThreadPool;
-use crate::optimizer::Terminator;
 
 pub struct SeparatorConfig {
     pub iter_no_imprv_limit: usize,

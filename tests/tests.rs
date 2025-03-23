@@ -1,16 +1,16 @@
 #[cfg(test)]
 mod integration_tests {
-    use std::path::Path;
-    use std::time::{Duration};
     use jagua_rs::entities::instances::instance::Instance;
     use jagua_rs::io::parser::Parser;
     use rand::prelude::SmallRng;
     use rand::SeedableRng;
     use sparrow::config::{CDE_CONFIG, LBF_SAMPLE_CONFIG, OUTPUT_DIR, SEP_CONFIG_EXPLORE, SIMPLIFICATION_CONFIG};
-    use sparrow::optimizer::{compression_phase, exploration_phase, Terminator};
     use sparrow::optimizer::lbf::LBFBuilder;
     use sparrow::optimizer::separator::Separator;
+    use sparrow::optimizer::{compression_phase, exploration_phase, Terminator};
     use sparrow::util::io;
+    use std::path::Path;
+    use std::time::Duration;
     use test_case::test_case;
 
     const EXPLORE_TIMEOUT: Duration = Duration::from_secs(20);
