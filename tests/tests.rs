@@ -13,7 +13,7 @@ mod integration_tests {
     use std::time::Duration;
     use test_case::test_case;
 
-    const EXPLORE_TIMEOUT: Duration = Duration::from_secs(20);
+    const EXPLORE_TIMEOUT: Duration = Duration::from_secs(10);
     const COMPRESS_TIMEOUT: Duration = Duration::from_secs(10);
     const INSTANCE_BASE_PATH: &str = "libs/jagua-rs/assets";
     const RNG_SEED: Option<usize> = Some(0); // fix seed for reproducibility
