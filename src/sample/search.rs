@@ -9,6 +9,7 @@ use jagua_rs::geometry::d_transformation::DTransformation;
 use jagua_rs::geometry::geo_traits::Shape;
 use log::debug;
 use rand::Rng;
+use crate::config::UNIQUE_SAMPLE_THRESHOLD;
 
 #[derive(Debug, Clone, Copy)]
 pub struct SampleConfig {
@@ -20,7 +21,7 @@ pub struct SampleConfig {
 pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, mut evaluator: impl SampleEvaluator, sample_config: SampleConfig, rng: &mut impl Rng) -> (DTransformation, SampleEval, usize) {
     let item_min_dim = f32::min(item.shape.bbox().width(), item.shape.bbox().height());
 
-    let mut best_samples = BestSamples::new(sample_config.n_coord_descents, item_min_dim * 0.1);
+    let mut best_samples = BestSamples::new(sample_config.n_coord_descents, item_min_dim * UNIQUE_SAMPLE_THRESHOLD);
 
     let focussed_sampler = match ref_pk {
         Some(ref_pk) => {
