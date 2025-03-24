@@ -54,8 +54,10 @@ impl SeparatorWorker {
                 let evaluator = SeparationEvaluator::new(&self.prob.layout, item, pk, &self.ot);
 
                 // search for a better position for the item
-                let (new_dt, _, n_evals) =
+                let (best_sample, n_evals) =
                     search::search_placement(&self.prob.layout, item, Some(pk), evaluator, self.sample_config, &mut self.rng);
+
+                let (new_dt, _eval) = best_sample.expect("search_placement should always return a sample");
 
                 // move the item to the new position
                 self.move_item(pk, new_dt);

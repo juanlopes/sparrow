@@ -1,8 +1,9 @@
-use std::f32::consts::PI;
 use crate::eval::sample_eval::SampleEval;
 use itertools::Itertools;
 use jagua_rs::geometry::d_transformation::DTransformation;
+use std::f32::consts::PI;
 use std::fmt::Debug;
+use rand_distr::num_traits::FloatConst;
 
 /// Datastructure to store the N best samples, automatically keeps them sorted and evicts the worst.
 /// It makes sure that no two included samples are too similar.
@@ -17,44 +18,72 @@ impl BestSamples {
     pub fn new(size: usize, unique_thresh: f32) -> Self {
         Self {
             size,
-            samples: vec![(DTransformation::empty(), SampleEval::Invalid); size],
+            samples: vec![],
             unique_thresh,
         }
     }
 
     pub fn report(&mut self, dt: DTransformation, eval: SampleEval) -> bool {
-        let accepted = match eval < self.samples[self.size - 1].1 {
-            false => false, //worse than worst
+        let accept = match eval < self.upper_bound() {
+            false => false,
             true => {
-                let similar_sample_idx = self.samples.iter()
-                    .find_position(|(d, _)| dtransfs_are_similar(*d, dt, self.unique_thresh, self.unique_thresh));
-                match similar_sample_idx {
-                    None => { //no similar sample found, replace worst
-                        self.samples[self.size - 1] = (dt, eval);
+                let any_similar = self.samples.iter()
+                    .any(|(d, _)| dtransfs_are_similar(*d, dt, self.unique_thresh, self.unique_thresh));
+
+                match any_similar {
+                    false => { //no similar sample found, evict worst and accept
+                        if self.samples.len() == self.size {
+                            self.samples.pop();
+                        }
                         true
                     }
-                    Some((idx, (_sim_dt, sim_eval))) => {
-                        match eval < *sim_eval {
-                            true => { //better than similar, replace
-                                self.samples[idx] = (dt, eval);
-                                true
-                            }
-                            false => false
+                    true => { //at least one similar sample exists
+                        let better_than_all_similar = self.samples.iter()
+                            .filter(|(d, _)| dtransfs_are_similar(*d, dt, self.unique_thresh, self.unique_thresh))
+                            .all(|(_, sim_eval)| eval < *sim_eval);
+
+                        if better_than_all_similar {
+                            //evict all similar samples
+                            self.samples.retain(|(d, _)| !dtransfs_are_similar(*d, dt, self.unique_thresh, self.unique_thresh));
+                            true
+                        }
+                        else {
+                            false
                         }
                     }
                 }
             }
         };
-        if accepted { self.samples.sort_by_key(|(_, eval)| *eval); }
-        accepted
+        if accept {
+            self.samples.push((dt, eval));
+            self.samples.sort_by_key(|(_, eval)| *eval);
+            debug_assert!(
+                self.samples.iter()
+                    .filter(|(_, eval)| *eval != SampleEval::Invalid)
+                    .tuple_combinations().all(|(a, b)| {
+                        !dtransfs_are_similar(a.0, b.0, self.unique_thresh, self.unique_thresh)
+                    }
+                ),
+                "BestSamples: samples are not unique: {:?}", &self.samples
+            );
+            true
+        }
+        else{
+            debug_assert!(self.samples.is_sorted_by_key(|(_, eval)| *eval));
+            false
+        }
     }
 
-    pub fn best(&self) -> (DTransformation, SampleEval) {
-        self.samples[0].clone()
+    pub fn best(&self) -> Option<(DTransformation, SampleEval)> {
+        self.samples.first().cloned()
     }
 
-    pub fn worst(&self) -> SampleEval {
-        self.samples.last().unwrap().1
+    pub fn upper_bound(&self) -> SampleEval {
+        if let Some((_, eval)) = self.samples.get(self.size - 1) {
+            *eval
+        } else {
+            SampleEval::Invalid
+        }
     }
 }
 
