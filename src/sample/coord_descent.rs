@@ -13,7 +13,7 @@ pub fn coordinate_descent(
     min_dim: f32,
     rng: &mut impl Rng,
 ) -> (DTransformation, SampleEval) {
-    let mut n_evals = 0;
+    let n_evals_init = evaluator.n_evals();
     let init_pos = init_dt.translation().into();
     let rot = init_dt.rotation.into();
 
@@ -27,20 +27,18 @@ pub fn coordinate_descent(
     };
 
     // As long as new candidates are available, evaluate them and update the state
-    while let Some([c0, c1]) = cd.ask() {
-        let c0_eval = evaluator.eval(DTransformation::new(rot, c0.into()), Some(cd.eval));
-        let c1_eval = evaluator.eval(DTransformation::new(rot, c1.into()), Some(cd.eval));
+    while let Some([p0, p1]) = cd.ask() {
+        let p0_eval = evaluator.eval(DTransformation::new(rot, p0.into()), Some(cd.eval));
+        let p1_eval = evaluator.eval(DTransformation::new(rot, p1.into()), Some(cd.eval));
 
-        n_evals += 2;
-
-        let best = [(c0, c0_eval), (c1, c1_eval)].into_iter()
+        let best = [(p0, p0_eval), (p1, p1_eval)].into_iter()
             .min_by_key(|(_, e)| *e).unwrap();
 
         cd.tell(best, rng);
         trace!("CD: {:?}", cd);
-        debug_assert!(n_evals < 1000, "coordinate descent exceeded 1000 evals");
+        debug_assert!(evaluator.n_evals() - n_evals_init < 1000, "coordinate descent exceeded 1000 evals");
     }
-    trace!("CD: {} evals, t: ({:.3}, {:.3}) -> ({:.3}, {:.3}), eval: {:?}",n_evals, init_pos.0, init_pos.1, cd.pos.0, cd.pos.1, cd.eval);
+    trace!("CD: {} evals, t: ({:.3}, {:.3}) -> ({:.3}, {:.3}), eval: {:?}",evaluator.n_evals() - n_evals_init, init_pos.0, init_pos.1, cd.pos.0, cd.pos.1, cd.eval);
     (DTransformation::new(rot, cd.pos.into()), cd.eval)
 }
 

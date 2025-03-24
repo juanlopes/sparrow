@@ -10,8 +10,8 @@ pub const CDE_CONFIG: CDEConfig = CDEConfig {
     quadtree_depth: 4,
     hpg_n_cells: 0,
     item_surrogate_config: SPSurrogateConfig {
-        pole_coverage_goal: 0.9,
-        max_poles: 20,
+        n_pole_limits: [(20, 0.0), (20, 0.0), (0, 0.9)],
+        //n_pole_limits: [(10, 0.8), (5, 0.9), (2, 0.95)],
         n_ff_poles: 2,
         n_ff_piers: 0,
     },

@@ -9,7 +9,7 @@ use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
 pub fn eval_overlap_poly_poly(s1: &SimplePolygon, s2: &SimplePolygon) -> f32 {
     let epsilon = f32::max(s1.diameter(), s2.diameter()) * OVERLAP_PROXY_EPSILON_DIAM_RATIO;
 
-    let overlap_proxy = poles_overlap_area_proxy(&s1.surrogate(), &s2.surrogate(), epsilon);
+    let overlap_proxy = poles_overlap_area_proxy(&s1.surrogate(), &s2.surrogate(), epsilon) + epsilon.powi(2);
 
     debug_assert!(overlap_proxy.is_normal());
 
