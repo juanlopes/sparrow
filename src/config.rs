@@ -73,7 +73,7 @@ pub const CD_STEP_INIT_RATIO: f32 = 0.25; //25%
 pub const CD_STEP_LIMIT_RATIO: f32 = 0.001; //0.1%
 
 /// If two samples are closer than this ratio of the item's min dimension, they are considered duplicates
-pub const UNIQUE_SAMPLE_THRESHOLD: f32 = 0.1;
+pub const UNIQUE_SAMPLE_THRESHOLD: f32 = 0.5;
 
 pub const OUTPUT_DIR: &str = "output";
 
