@@ -38,6 +38,14 @@ pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, mut e
         None => None,
     };
 
+    if let Some(focussed_sampler) = focussed_sampler {
+        for _ in 0..sample_config.n_focussed_samples {
+            let dt = focussed_sampler.sample(rng);
+            let eval = evaluator.eval(dt, Some(best_samples.upper_bound()));
+            best_samples.report(dt, eval);
+        }
+    }
+
     let bin_sampler = l.bin.bbox()
         .resize_by(-item.shape.poi.radius, -item.shape.poi.radius)
         .map(|bbox| UniformBBoxSampler::new(bbox, item));
@@ -45,14 +53,6 @@ pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, mut e
     if let Some(bin_sampler) = bin_sampler {
         for _ in 0..sample_config.n_bin_samples {
             let dt = bin_sampler.sample(rng).into();
-            let eval = evaluator.eval(dt, Some(best_samples.upper_bound()));
-            best_samples.report(dt, eval);
-        }
-    }
-
-    if let Some(focussed_sampler) = focussed_sampler {
-        for _ in 0..sample_config.n_focussed_samples {
-            let dt = focussed_sampler.sample(rng);
             let eval = evaluator.eval(dt, Some(best_samples.upper_bound()));
             best_samples.report(dt, eval);
         }
