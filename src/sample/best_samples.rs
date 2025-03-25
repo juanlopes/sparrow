@@ -3,7 +3,6 @@ use itertools::Itertools;
 use jagua_rs::geometry::d_transformation::DTransformation;
 use std::f32::consts::PI;
 use std::fmt::Debug;
-use rand_distr::num_traits::FloatConst;
 
 /// Datastructure to store the N best samples, automatically keeps them sorted and evicts the worst.
 /// It makes sure that no two included samples are too similar.
