@@ -1,11 +1,10 @@
-# sparrow
-### State-of-the-art nesting heuristic for 2D irregular strip packing
+# sparrow 🪶
+### State-of-the-art nesting 🪺 heuristic for 2D irregular strip packing
+This optimization algorithm can be used to solve 2D irregular strip packing problems, also commonly referred to as nesting problems.
+It builds on [`jagua-rs`](https://github.com/JeroenGar/jagua-rs), a collision detection engine for 2D irregular cutting & packing problems.
 <p align="left">
     <img src="assets/sparrow_logo.png" alt="logo" height=100>
 </p>
-
-This optimization algorithm can be used to solve 2D irregular strip packing problems, also commonly referred to as nesting problems.
-It builds on [`jagua-rs`](https://github.com/JeroenGar/jagua-rs), a collision detection engine for 2D irregular cutting & packing problems.
 
 ## Some example solutions
 <p align="center">
@@ -120,7 +119,7 @@ cargo run --profile debug-release -- \
 
 ## Development
 
-This repo is meant to remain a faithful representation of the algorithm described in [...].
+This repo is meant to remain a faithful representation of the algorithm described in [TBA].
 Therefore, only pull requests containing bug fixes and performance improvements which do not change the algorithm too significantly will be accepted.
 
 Feel free to fork the repository if you want to experiment with different heuristics or want to expand the functionality.
