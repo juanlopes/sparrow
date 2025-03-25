@@ -33,7 +33,7 @@ pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, mut e
 
             //create a sampler around the current placement
             let pi_bbox = l.placed_items[ref_pk].shape.bbox();
-            Some(UniformBBoxSampler::new(pi_bbox, item))
+            UniformBBoxSampler::new(pi_bbox, item, l.bin.bbox())
         }
         None => None,
     };
@@ -46,9 +46,7 @@ pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, mut e
         }
     }
 
-    let bin_sampler = l.bin.bbox()
-        .resize_by(-item.shape.poi.radius, -item.shape.poi.radius)
-        .map(|bbox| UniformBBoxSampler::new(bbox, item));
+    let bin_sampler = UniformBBoxSampler::new(l.bin.bbox(), item, l.bin.bbox());
 
     if let Some(bin_sampler) = bin_sampler {
         for _ in 0..sample_config.n_bin_samples {

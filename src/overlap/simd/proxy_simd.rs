@@ -7,8 +7,7 @@ use jagua_rs::geometry::geo_traits::{Distance, Shape};
 use jagua_rs::geometry::primitives::circle::Circle;
 use jagua_rs::geometry::primitives::point::Point;
 use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
-use std::simd::prelude::{SimdFloat, SimdPartialOrd};
-use std::simd::{Simd, StdFloat};
+use std::simd::Simd;
 
 #[inline(always)]
 pub fn eval_overlap_poly_poly_simd(s1: &SimplePolygon, s2: &SimplePolygon, poles2: &CirclesSoA) -> f32 {
