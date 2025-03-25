@@ -10,7 +10,7 @@ pub const CDE_CONFIG: CDEConfig = CDEConfig {
     quadtree_depth: 4,
     hpg_n_cells: 0,
     item_surrogate_config: SPSurrogateConfig {
-        n_pole_limits: [(20, 0.0), (20, 0.0), (0, 0.9)],
+        n_pole_limits: [(64, 0.0), (16, 0.8), (8, 0.9)],
         //n_pole_limits: [(10, 0.8), (5, 0.9), (2, 0.95)],
         n_ff_poles: 2,
         n_ff_piers: 0,
@@ -27,7 +27,7 @@ pub const EXPLORE_SHRINK_STEP: f32 = 0.001;
 pub const EXPLORE_SOL_DISTR_STDDEV: f32 = 0.25;
 pub const EXPLORE_TIME_RATIO: f32 = 0.8;
 
-pub const COMPRESS_SHRINK_RANGE: (f32, f32) = (0.001, 0.00001);
+pub const COMPRESS_SHRINK_RANGE: (f32, f32) = (0.0005, 0.00001);
 pub const COMPRESS_TIME_RATIO: f32 = 1.0 - EXPLORE_TIME_RATIO;
 
 pub const WEIGHT_MAX_INC_RATIO: f32 = 2.0;
@@ -73,7 +73,7 @@ pub const CD_STEP_INIT_RATIO: f32 = 0.25; //25%
 pub const CD_STEP_LIMIT_RATIO: f32 = 0.001; //0.1%
 
 /// If two samples are closer than this ratio of the item's min dimension, they are considered duplicates
-pub const UNIQUE_SAMPLE_THRESHOLD: f32 = 0.1;
+pub const UNIQUE_SAMPLE_THRESHOLD: f32 = 0.05;
 
 pub const OUTPUT_DIR: &str = "output";
 

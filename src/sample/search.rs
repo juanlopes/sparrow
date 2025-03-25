@@ -1,3 +1,4 @@
+use crate::config::UNIQUE_SAMPLE_THRESHOLD;
 use crate::eval::sample_eval::{SampleEval, SampleEvaluator};
 use crate::sample::best_samples::BestSamples;
 use crate::sample::coord_descent::coordinate_descent;
@@ -9,7 +10,6 @@ use jagua_rs::geometry::d_transformation::DTransformation;
 use jagua_rs::geometry::geo_traits::Shape;
 use log::debug;
 use rand::Rng;
-use crate::config::UNIQUE_SAMPLE_THRESHOLD;
 
 #[derive(Debug, Clone, Copy)]
 pub struct SampleConfig {
@@ -18,7 +18,7 @@ pub struct SampleConfig {
     pub n_coord_descents: usize,
 }
 
-pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, mut evaluator: impl SampleEvaluator, sample_config: SampleConfig, rng: &mut impl Rng) -> (DTransformation, SampleEval, usize) {
+pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, mut evaluator: impl SampleEvaluator, sample_config: SampleConfig, rng: &mut impl Rng) -> (Option<(DTransformation, SampleEval)>, usize) {
     let item_min_dim = f32::min(item.shape.bbox().width(), item.shape.bbox().height());
 
     let mut best_samples = BestSamples::new(sample_config.n_coord_descents, item_min_dim * UNIQUE_SAMPLE_THRESHOLD);
@@ -27,33 +27,31 @@ pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, mut e
         Some(ref_pk) => {
             //report the current placement (and eval)
             let dt = l.placed_items[ref_pk].d_transf;
-            let eval = evaluator.eval(dt, Some(best_samples.worst()));
+            let eval = evaluator.eval(dt, Some(best_samples.upper_bound()));
 
             best_samples.report(dt, eval);
 
             //create a sampler around the current placement
             let pi_bbox = l.placed_items[ref_pk].shape.bbox();
-            Some(UniformBBoxSampler::new(pi_bbox, item))
+            UniformBBoxSampler::new(pi_bbox, item, l.bin.bbox())
         }
         None => None,
     };
 
-    let bin_sampler = l.bin.bbox()
-        .resize_by(-item.shape.poi.radius, -item.shape.poi.radius)
-        .map(|bbox| UniformBBoxSampler::new(bbox, item));
-
-    if let Some(bin_sampler) = bin_sampler {
-        for _ in 0..sample_config.n_bin_samples {
-            let dt = bin_sampler.sample(rng).into();
-            let eval = evaluator.eval(dt, Some(best_samples.worst()));
+    if let Some(focussed_sampler) = focussed_sampler {
+        for _ in 0..sample_config.n_focussed_samples {
+            let dt = focussed_sampler.sample(rng);
+            let eval = evaluator.eval(dt, Some(best_samples.upper_bound()));
             best_samples.report(dt, eval);
         }
     }
 
-    if let Some(focussed_sampler) = focussed_sampler {
-        for _ in 0..sample_config.n_focussed_samples {
-            let dt = focussed_sampler.sample(rng);
-            let eval = evaluator.eval(dt, Some(best_samples.worst()));
+    let bin_sampler = UniformBBoxSampler::new(l.bin.bbox(), item, l.bin.bbox());
+
+    if let Some(bin_sampler) = bin_sampler {
+        for _ in 0..sample_config.n_bin_samples {
+            let dt = bin_sampler.sample(rng).into();
+            let eval = evaluator.eval(dt, Some(best_samples.upper_bound()));
             best_samples.report(dt, eval);
         }
     }
@@ -63,8 +61,7 @@ pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, mut e
         best_samples.report(descended.0, descended.1);
     }
 
-    debug!("[S] {} samples evaluated, best: {:?}, {}",evaluator.n_evals(),best_samples.best().1,best_samples.best().0);
 
-    let best_sample = best_samples.best();
-    (best_sample.0, best_sample.1, evaluator.n_evals())
+    debug!("[S] {} samples evaluated, best: {:?}",evaluator.n_evals(),best_samples.best());
+    (best_samples.best(), evaluator.n_evals())
 }
