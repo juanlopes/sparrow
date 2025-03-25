@@ -68,10 +68,14 @@ impl OverlapTracker {
                     let shape_other = &l.placed_items[*other_pk].shape;
                     let idx_other = self.pk_idx_map[*other_pk];
 
-                    self.pair_overlap[(idx, idx_other)].overlap = proxy::eval_overlap_poly_poly(shape, shape_other);
+                    let overlap = proxy::eval_overlap_poly_poly(shape, shape_other);
+                    assert!(overlap > 0.0, "overlap for a collision should be > 0.0");
+                    self.pair_overlap[(idx, idx_other)].overlap = overlap;
                 }
                 HazardEntity::BinExterior => {
-                    self.bin_overlap[idx].overlap = proxy::eval_overlap_poly_bin(shape, l.bin.bbox());
+                    let overlap = proxy::eval_overlap_poly_bin(shape, l.bin.bbox());
+                    assert!(overlap > 0.0, "overlap for a collision should be > 0.0");
+                    self.bin_overlap[idx].overlap = overlap;
                 }
                 _ => unimplemented!("unsupported hazard entity"),
             }
@@ -191,8 +195,8 @@ impl OverlapTracker {
 
 #[derive(Debug, Clone, Copy)]
 pub struct OTEntry {
-    pub weight: f32,
     pub overlap: f32,
+    pub weight: f32,
 }
 
 impl OTEntry {

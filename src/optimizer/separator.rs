@@ -1,5 +1,5 @@
 use crate::config::{DRAW_OPTIONS, LIVE_DIR};
-use crate::optimizer::separator_worker::SeparatorWorker;
+use crate::optimizer::separator_worker::{SepStats, SeparatorWorker};
 use crate::optimizer::Terminator;
 use crate::overlap::tracker::{OTSnapshot, OverlapTracker};
 use crate::sample::search::SampleConfig;
@@ -33,7 +33,7 @@ pub struct SeparatorConfig {
     pub strike_limit: usize,
     pub n_workers: usize,
     pub log_level: Level,
-    pub sample_config: SampleConfig
+    pub sample_config: SampleConfig,
 }
 
 pub struct Separator {
@@ -75,17 +75,17 @@ impl Separator {
         }
     }
 
-    pub fn separate_layout(&mut self, term: &Terminator) -> (Solution, OTSnapshot) {
+    pub fn separate(&mut self, term: &Terminator) -> (Solution, OTSnapshot) {
         let mut min_overlap_sol: (Solution, OTSnapshot) = (self.prob.create_solution(None), self.ot.create_snapshot());
         let mut min_overlap = self.ot.get_total_overlap();
         log!(self.config.log_level,"[SEP] separating at width: {:.3} and overlap: {} ", self.prob.strip_width(), FMT.fmt2(min_overlap));
 
         let mut n_strikes = 0;
         let mut n_iter = 0;
-        let mut n_evals = 0;
+        let mut sep_stats = SepStats { total_moves: 0, total_evals: 0 };
         let start = Instant::now();
 
-        while n_strikes < self.config.strike_limit && !term.is_kill() {
+        'outer: while n_strikes < self.config.strike_limit && !term.is_kill() {
             let mut n_iter_no_improvement = 0;
 
             let initial_strike_overlap = self.ot.get_total_overlap();
@@ -96,30 +96,29 @@ impl Separator {
                     self.ot.get_total_overlap(),
                     self.ot.get_total_weighted_overlap(),
                 );
-                n_evals += self.modify();
+                sep_stats += self.move_colliding_items();
                 let (overlap, w_overlap) = (
                     self.ot.get_total_overlap(),
                     self.ot.get_total_weighted_overlap(),
                 );
 
-                debug!("[SEP] [s:{n_strikes},i:{n_iter}] ( ) o: {} -> {}, w_o: {} -> {}, (min o: {})",FMT.fmt2(overlap_before),FMT.fmt2(overlap),FMT.fmt2(w_overlap_before),FMT.fmt2(w_overlap),FMT.fmt2(min_overlap));
+                debug!("[SEP] [s:{n_strikes},i:{n_iter}] ( ) o: {} -> {}, w_o: {} -> {}, (min o: {})", FMT.fmt2(overlap_before), FMT.fmt2(overlap), FMT.fmt2(w_overlap_before), FMT.fmt2(w_overlap), FMT.fmt2(min_overlap));
                 debug_assert!(w_overlap <= w_overlap_before * 1.001, "weighted overlap should not not increase: {} -> {}", FMT.fmt2(w_overlap_before), FMT.fmt2(w_overlap));
 
                 if overlap == 0.0 {
                     //layout is successfully separated
                     log!(self.config.log_level,"[SEP] [s:{n_strikes},i:{n_iter}] (S)  min_o: {}",FMT.fmt2(overlap));
-                    return (self.prob.create_solution(None), self.ot.create_snapshot());
+                    min_overlap_sol = (self.prob.create_solution(None), self.ot.create_snapshot());
+                    break 'outer;
                 } else if overlap < min_overlap {
                     //layout is not separated, but absolute overlap is better than before
-                    let sol = self.prob.create_solution(None);
-
                     log!(self.config.log_level,"[SEP] [s:{n_strikes},i:{n_iter}] (*) min_o: {}",FMT.fmt2(overlap));
                     self.export_svg(None, "i", true);
                     if overlap < min_overlap * 0.98 {
                         //only reset the iter_no_improvement counter if the overlap improved significantly
                         n_iter_no_improvement = 0;
                     }
-                    min_overlap_sol = (sol, self.ot.create_snapshot());
+                    min_overlap_sol = (self.prob.create_solution(None), self.ot.create_snapshot());
                     min_overlap = overlap;
                 } else {
                     n_iter_no_improvement += 1;
@@ -136,21 +135,23 @@ impl Separator {
             }
             self.rollback(&min_overlap_sol.0, Some(&min_overlap_sol.1));
         }
-        if !term.is_kill() {
-            log!(self.config.log_level,"[SEP] ended due to strike limit ({}), evals/s: {}, iter/s: {}, took {:.3}s",n_strikes,FMT.fmt2(n_evals as f64 / start.elapsed().as_secs_f64()),FMT.fmt2(n_iter as f64 / start.elapsed().as_secs_f64()),start.elapsed().as_secs());
-        }
-        else{
-            log!(self.config.log_level,"[SEP] ended due to termination, evals/s: {}, iter/s: {}, took {:.3}s",FMT.fmt2(n_evals as f64 / start.elapsed().as_secs_f64()),FMT.fmt2(n_iter as f64 / start.elapsed().as_secs_f64()),start.elapsed().as_secs());
-        }
+        let secs = start.elapsed().as_secs_f32();
+        log!(self.config.log_level, "[SEP] finished, evals/s: {}, moves/s: {}, iter/s: {}, #workers: {}, total {:.3}s",
+            FMT.fmt2(sep_stats.total_evals as f32 / secs),
+            FMT.fmt2(sep_stats.total_moves as f32 / secs),
+            FMT.fmt2(n_iter as f32 / secs),
+            self.workers.len(),
+            FMT.fmt2(secs),
+        );
 
         (min_overlap_sol.0, min_overlap_sol.1)
     }
 
-    fn modify(&mut self) -> usize {
+    fn move_colliding_items(&mut self) -> SepStats {
         let master_sol = self.prob.create_solution(None);
 
         // Use the local thread pool (instead of global one) to maximize cache locality
-        let n_evals = self.pool.install(|| {
+        let sep_report = self.pool.install(|| {
             self.workers.par_iter_mut().map(|worker| {
                 // Sync the workers with the master
                 worker.load(&master_sol, &self.ot);
@@ -171,7 +172,7 @@ impl Separator {
         self.prob.restore_to_solution(&best_opt.0);
         self.ot = best_opt.1.clone();
 
-        n_evals
+        sep_report
     }
 
     pub fn rollback(&mut self, sol: &Solution, ots: Option<&OTSnapshot>) {
@@ -213,7 +214,8 @@ impl Separator {
         let new_overlap = self.ot.get_overlap(new_pk);
         let new_weighted_overlap = self.ot.get_weighted_overlap(new_pk);
 
-        debug!("[MV] moved item {} from from o: {}, wo: {} to o+1: {}, w_o+1: {}",item_id,FMT.fmt2(old_overlap),FMT.fmt2(old_weighted_overlap),FMT.fmt2(new_overlap),FMT.fmt2(new_weighted_overlap));
+        debug!("[MV] moved item {} from from o: {}, wo: {} to o+1: {}, w_o+1: {}"
+            ,item_id,FMT.fmt2(old_overlap),FMT.fmt2(old_weighted_overlap),FMT.fmt2(new_overlap),FMT.fmt2(new_weighted_overlap));
 
         debug_assert!(tracker_matches_layout(&self.ot, &self.prob.layout));
 

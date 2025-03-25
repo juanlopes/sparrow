@@ -41,7 +41,7 @@ pub fn collect_poly_collisions_in_detector_custom(
 
     // Start off by checking a few poles to detect obvious collisions quickly
     for pole in shape.surrogate().ff_poles() {
-        collect_collisions_custom(&cde.quadtree, pole, det);
+        qt_collect_collisions_custom(&cde.quadtree, pole, det);
         if det.early_terminate(shape) { return; }
     }
 
@@ -50,7 +50,7 @@ pub fn collect_poly_collisions_in_detector_custom(
     let custom_edge_iter = BitReversalIterator::new(shape.number_of_points())
         .map(|i| shape.get_edge(i));
     for edge in custom_edge_iter {
-        collect_collisions_custom(&cde.quadtree, &edge, det);
+        qt_collect_collisions_custom(&cde.quadtree, &edge, det);
         if det.early_terminate(shape) { return; }
     }
 
@@ -244,9 +244,8 @@ impl<'a> HazardIgnorer for SpecializedDetectionMap<'a> {
     }
 }
 
-
 /// Mirrors ['QTNode::collect_collisions'] but slightly faster for this specific use case.
-pub fn collect_collisions_custom<T>(qtn: &QTNode, entity: &T, detector: &mut SpecializedDetectionMap)
+pub fn qt_collect_collisions_custom<T>(qtn: &QTNode, entity: &T, detector: &mut SpecializedDetectionMap)
 where
     T: QTQueryable,
 {
@@ -255,7 +254,7 @@ where
         true => match qtn.children.as_ref() {
             Some(children) => {
                 //Do not perform any CD on this level, check the children
-                children.iter().for_each(|child| collect_collisions_custom(child, entity, detector));
+                children.iter().for_each(|child| qt_collect_collisions_custom(child, entity, detector));
             }
             None => {
                 //No children, detect all Entire hazards and check the Partial ones

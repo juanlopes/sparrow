@@ -1,3 +1,5 @@
+use std::iter::Sum;
+use std::ops::AddAssign;
 use crate::eval::separation_eval::SeparationEvaluator;
 use crate::overlap::tracker::OverlapTracker;
 use crate::sample::search;
@@ -26,7 +28,6 @@ pub struct SeparatorWorker {
 }
 
 impl SeparatorWorker {
-
     pub fn load(&mut self, sol: &Solution, ot: &OverlapTracker) {
         // restores the state of the worker to the given solution and accompanying overlap tracker
         debug_assert!(strip_width(sol) == self.prob.strip_width());
@@ -34,13 +35,14 @@ impl SeparatorWorker {
         self.ot = ot.clone();
     }
 
-    pub fn separate(&mut self) -> usize {
+    pub fn separate(&mut self) -> SepStats {
         //collect all overlapping items and shuffle them
         let candidates = self.prob.layout.placed_items().keys()
             .filter(|pk| self.ot.get_overlap(*pk) > 0.0)
             .collect_vec()
             .tap_mut(|v| v.shuffle(&mut self.rng));
 
+        let mut total_moves = 0;
         let mut total_evals = 0;
 
         //give each item a chance to move to a better (less weighted overlapping) position
@@ -61,10 +63,11 @@ impl SeparatorWorker {
 
                 // move the item to the new position
                 self.move_item(pk, new_dt);
+                total_moves += 1;
                 total_evals += n_evals;
             }
         }
-        total_evals
+        SepStats { total_moves, total_evals }
     }
 
     pub fn move_item(&mut self, pk: PItemKey, d_transf: DTransformation) -> PItemKey {
@@ -92,5 +95,31 @@ impl SeparatorWorker {
         debug_assert!(tracker_matches_layout(&self.ot, &self.prob.layout));
 
         new_pk
+    }
+}
+
+pub struct SepStats {
+    pub total_moves: usize,
+    pub total_evals: usize,
+}
+
+impl Sum for SepStats {
+    fn sum<I: Iterator<Item=SepStats>>(iter: I) -> Self {
+        let mut total_moves = 0;
+        let mut total_evals = 0;
+
+        for report in iter {
+            total_moves += report.total_moves;
+            total_evals += report.total_evals;
+        }
+
+        SepStats { total_moves, total_evals }
+    }
+}
+
+impl AddAssign for SepStats {
+    fn add_assign(&mut self, other: Self) {
+        self.total_moves += other.total_moves;
+        self.total_evals += other.total_evals;
     }
 }
