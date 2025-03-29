@@ -21,7 +21,7 @@ on:
         description: 'Instance'
         required: true
         type: choice
-        options: [ swim, shirts, trousers, shirts, marques, dagli, albano, fu, jakobs1, jakobs2, blaz1, shapes0, shapes1 ]
+        options: [ swim, trousers, shirts, mao, dagli, albano, marques, blaz1, fu, shapes0, shapes1, jakobs1, jakobs2 ]
       n_runs:
         description: 'Number of times to run the instance'
         default: 16
