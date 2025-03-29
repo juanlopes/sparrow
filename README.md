@@ -3,22 +3,22 @@
 This optimization algorithm can be used to solve 2D irregular strip packing problems, also commonly referred to as nesting problems.
 It builds on [`jagua-rs`](https://github.com/JeroenGar/jagua-rs), a collision detection engine for 2D irregular cutting & packing problems.
 <p align="left">
-    <img src="assets/sparrow_logo.png" alt="logo" height=100>
+    <img src="data/sparrow_logo.png" alt="logo" height=100>
 </p>
 
 ## Some example solutions
 <p align="center">
-    <img src="assets/records/final_best_trousers.svg" height=200/>
-    <img src="assets/records/final_best_mao.svg" height=200/>
+    <img src="data/records/final_best_trousers.svg" height=200/>
+    <img src="data/records/final_best_mao.svg" height=200/>
 </p>
 <p align="center">
-    <img src="assets/records/final_best_swim.svg" height=250/>
-    <img src="assets/records/final_best_marques.svg" height=250/>
-    <img src="assets/records/final_best_dagli.svg" height=250/>
+    <img src="data/records/final_best_swim.svg" height=250/>
+    <img src="data/records/final_best_marques.svg" height=250/>
+    <img src="data/records/final_best_dagli.svg" height=250/>
 </p>
 <p align="center">
-    <img src="assets/records/final_best_albano.svg" height=220/>
-    <img src="assets/records/final_best_shirts.svg" height=220/>
+    <img src="data/records/final_best_albano.svg" height=220/>
+    <img src="data/records/final_best_shirts.svg" height=220/>
 </p>
 
 ## Requirements
@@ -44,7 +44,7 @@ cargo run --release -- \
     120
 ```
 
-This repo also contains a simple visualizer to monitor the optimization process live, open [live_viewer.html](assets/live/live_viewer.html) in a web browser,
+This repo also contains a simple visualizer to monitor the optimization process live, open [live_viewer.html](data/live/live_viewer.html) in a web browser,
 and compile `sparrow` with the `live_svg` feature enabled:
 
 ```bash
@@ -54,7 +54,7 @@ cargo run --release --features=live_svg -- \
     libs/jagua-rs/assets/swim.json \
     120
 ```
-![Demo of the live solution viewer](assets/demo.gif)
+![Demo of the live solution viewer](data/demo.gif)
 
 You can advance the algorithm to the next phase manually by pressing 'Ctrl + C' in the terminal.
 
