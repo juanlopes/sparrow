@@ -1,0 +1,29 @@
+## Experiments
+*[UNDER CONSTRUCTION]*
+
+#### Solution files of the experiments
+
+The best solutions ever produced by `sparrow` for each of the instances are stored in [records](../records) folder.
+
+The final solutions and logs for all experiments used in the performance comparison in the paper stored in the [benchmark_runs](benchmark_runs) folder.
+
+#### Reproduction of comparative experiments
+The experiments were all executed via GitHub Actions, on a self-hosted runner equipped with an AMD Ryzen 9 7950X CPU.
+This system was running Ubuntu 20.04 LTS under WSL2 on Windows 11.
+The exact commands to run a benchmark are defined in [single_bench.yml](../../.github/workflows/single_bench.yml).
+
+The log of a benchmark run contains all the information you need for exact reproduction:
+```
+[BENCH] git commit hash: 4d70ca7f468957a046a74bbb614b896f0ad463e3
+[BENCH] system time: 2025-03-28T19:13:40.628237341Z
+[BENCH] no seed provided, using: 12552852848582794543
+[BENCH] starting bench for swim (13x8 runs across 16 cores, 1200s timelimit)
+...
+```
+
+To exactly reproduce a benchmark make sure:
+- Your Rust toolchain (nightly) matches the one that was the most recent at the time of the experiment.
+- You are on the same commit.
+- The seed is set to the same value:
+    - in [src/config.rs](../../src/config.rs): `pub const RNG_SEED: Option<usize> = Some(12552852848582794543);`
+- Commands are exactly executed as in the [single_bench.yml](../../.github/workflows/single_bench.yml) action.

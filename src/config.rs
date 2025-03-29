@@ -77,7 +77,7 @@ pub const UNIQUE_SAMPLE_THRESHOLD: f32 = 0.05;
 
 pub const OUTPUT_DIR: &str = "output";
 
-pub const LIVE_DIR: &str = "assets/live";
+pub const LIVE_DIR: &str = "data/live";
 
 pub const LOG_LEVEL_FILTER_RELEASE: log::LevelFilter = log::LevelFilter::Info;
 

@@ -48,8 +48,8 @@ This repo also contains a simple visualizer to monitor the optimization process 
 and compile `sparrow` with the `live_svg` feature enabled:
 
 ```bash
-rm assets/live/.live_solution.svg
-open assets/live/live_viewer.html
+rm data/live/.live_solution.svg
+open data/live/live_viewer.html
 cargo run --release --features=live_svg -- \
     libs/jagua-rs/assets/swim.json \
     120

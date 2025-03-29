@@ -1,0 +1,137 @@
+<svg viewBox="-2.8307197 -3.0000007 62.275818 66" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="bin_0">
+<path d="M0,0 L56.61438,0 L56.61438,60 L0,60 z" fill="#D3D3D3" stroke="black" stroke-width="0.3113791"/>
+<title>bin, id: 0, bbox: [x_min: 0.000, y_min: 0.000, x_max: 56.614, y_max: 60.000]</title>
+</g>
+<g id="items">
+<defs>
+<g id="item_0">
+<path d="M0,8 L1,7 L7,5 L12,0 L15,3 L10,8 L11,9 L1,9 z" fill="#7A7A7A" fill-opacity="0.5" fill-rule="nonzero" stroke="black" stroke-width="0.15568955"/>
+</g>
+<g id="item_1">
+<path d="M2,12 L0,0 L4,0 L4,1 L5,1 L5,0 L9,0 L9,2 L5,12 z" fill="#7A7A7A" fill-opacity="0.5" fill-rule="nonzero" stroke="black" stroke-width="0.15568955"/>
+</g>
+<g id="item_2">
+<path d="M2,24 L0,18 L0,6 L2,0 L9,0 L11,6 L11,18 L9,24 z" fill="#7A7A7A" fill-opacity="0.5" fill-rule="nonzero" stroke="black" stroke-width="0.15568955"/>
+</g>
+<g id="item_3">
+<path d="M0,15 L0,0 L14,0 L14,15 z" fill="#7A7A7A" fill-opacity="0.5" fill-rule="nonzero" stroke="black" stroke-width="0.15568955"/>
+</g>
+<g id="item_4">
+<path d="M0,0 L9,0 L7,5 L2,5 z" fill="#7A7A7A" fill-opacity="0.5" fill-rule="nonzero" stroke="black" stroke-width="0.15568955"/>
+</g>
+<g id="item_5">
+<path d="M0,32 L1,3 L3,0 L6,1 L11,11 L5,31 L2,33 z" fill="#7A7A7A" fill-opacity="0.5" fill-rule="nonzero" stroke="black" stroke-width="0.15568955"/>
+</g>
+<g id="item_6">
+<path d="M0,3 L5,0 L23,0 L13,5 L1,5 z" fill="#7A7A7A" fill-opacity="0.5" fill-rule="nonzero" stroke="black" stroke-width="0.15568955"/>
+</g>
+<g id="item_7">
+<path d="M1,0 L4,0 L5,6 L4,6 L4,5 L3,4 L2,4 L1,5 L1,6 L0,6 z" fill="#7A7A7A" fill-opacity="0.5" fill-rule="nonzero" stroke="black" stroke-width="0.15568955"/>
+</g>
+<g id="item_8">
+<path d="M0,2 L1,0 L8,0 L6,3 z" fill="#7A7A7A" fill-opacity="0.5" fill-rule="nonzero" stroke="black" stroke-width="0.15568955"/>
+</g>
+<g id="item_9">
+<path d="M0,0 L14,0 L5,6 z" fill="#7A7A7A" fill-opacity="0.5" fill-rule="nonzero" stroke="black" stroke-width="0.15568955"/>
+</g>
+</defs>
+<use transform="translate(0.00018167496 0.005050659), rotate(0)" xlink:href="#item_5">
+<title>item, id: 5, transf: [r: 0.000°, t: (0.000, 0.005)]</title>
+</use>
+<use transform="translate(14.255466 5.2594376), rotate(0)" xlink:href="#item_5">
+<title>item, id: 5, transf: [r: 0.000°, t: (14.255, 5.259)]</title>
+</use>
+<use transform="translate(15.090242 45.03829), rotate(-180)" xlink:href="#item_5">
+<title>item, id: 5, transf: [r: -180.000°, t: (15.090, 45.038)]</title>
+</use>
+<use transform="translate(31.613464 35.79877), rotate(0)" xlink:href="#item_2">
+<title>item, id: 2, transf: [r: 0.000°, t: (31.613, 35.799)]</title>
+</use>
+<use transform="translate(31.612885 49.741947), rotate(-180)" xlink:href="#item_2">
+<title>item, id: 2, transf: [r: -180.000°, t: (31.613, 49.742)]</title>
+</use>
+<use transform="translate(31.60862 11.796314), rotate(0)" xlink:href="#item_2">
+<title>item, id: 2, transf: [r: 0.000°, t: (31.609, 11.796)]</title>
+</use>
+<use transform="translate(42.614048 44.999207), rotate(0)" xlink:href="#item_3">
+<title>item, id: 3, transf: [r: 0.000°, t: (42.614, 44.999)]</title>
+</use>
+<use transform="translate(42.608665 14.9969425), rotate(0)" xlink:href="#item_3">
+<title>item, id: 3, transf: [r: 0.000°, t: (42.609, 14.997)]</title>
+</use>
+<use transform="translate(56.613564 44.99789), rotate(-180)" xlink:href="#item_3">
+<title>item, id: 3, transf: [r: -180.000°, t: (56.614, 44.998)]</title>
+</use>
+<use transform="translate(4.280506 54.999607), rotate(0)" xlink:href="#item_6">
+<title>item, id: 6, transf: [r: 0.000°, t: (4.281, 55.000)]</title>
+</use>
+<use transform="translate(35.08844 5.000399), rotate(-180)" xlink:href="#item_6">
+<title>item, id: 6, transf: [r: -180.000°, t: (35.088, 5.000)]</title>
+</use>
+<use transform="translate(31.325834 54.99844), rotate(-180)" xlink:href="#item_6">
+<title>item, id: 6, transf: [r: -180.000°, t: (31.326, 54.998)]</title>
+</use>
+<use transform="translate(35.485703 0.8725991), rotate(0)" xlink:href="#item_0">
+<title>item, id: 0, transf: [r: 0.000°, t: (35.486, 0.873)]</title>
+</use>
+<use transform="translate(23.668839 1.6530352), rotate(0)" xlink:href="#item_0">
+<title>item, id: 0, transf: [r: 0.000°, t: (23.669, 1.653)]</title>
+</use>
+<use transform="translate(15.239019 59.04099), rotate(-180)" xlink:href="#item_0">
+<title>item, id: 0, transf: [r: -180.000°, t: (15.239, 59.041)]</title>
+</use>
+<use transform="translate(24.321753 10.654396), rotate(0)" xlink:href="#item_1">
+<title>item, id: 1, transf: [r: 0.000°, t: (24.322, 10.654)]</title>
+</use>
+<use transform="translate(21.654602 49.994637), rotate(-180)" xlink:href="#item_1">
+<title>item, id: 1, transf: [r: -180.000°, t: (21.655, 49.995)]</title>
+</use>
+<use transform="translate(56.593395 14.996849), rotate(-180)" xlink:href="#item_1">
+<title>item, id: 1, transf: [r: -180.000°, t: (56.593, 14.997)]</title>
+</use>
+<use transform="translate(5.478905 0.06191945), rotate(0)" xlink:href="#item_9">
+<title>item, id: 9, transf: [r: 0.000°, t: (5.479, 0.062)]</title>
+</use>
+<use transform="translate(34.79194 0.000028371811), rotate(0)" xlink:href="#item_9">
+<title>item, id: 9, transf: [r: 0.000°, t: (34.792, 0.000)]</title>
+</use>
+<use transform="translate(33.780796 59.999992), rotate(-180)" xlink:href="#item_9">
+<title>item, id: 9, transf: [r: -180.000°, t: (33.781, 60.000)]</title>
+</use>
+<use transform="translate(4.836813 45.038326), rotate(0)" xlink:href="#item_4">
+<title>item, id: 4, transf: [r: 0.000°, t: (4.837, 45.038)]</title>
+</use>
+<use transform="translate(9.014128 44.89492), rotate(-180)" xlink:href="#item_4">
+<title>item, id: 4, transf: [r: -180.000°, t: (9.014, 44.895)]</title>
+</use>
+<use transform="translate(39.84204 9.873456), rotate(0)" xlink:href="#item_4">
+<title>item, id: 4, transf: [r: 0.000°, t: (39.842, 9.873)]</title>
+</use>
+<use transform="translate(0.04765892 33.82626), rotate(0)" xlink:href="#item_7">
+<title>item, id: 7, transf: [r: 0.000°, t: (0.048, 33.826)]</title>
+</use>
+<use transform="translate(5.001544 51.456947), rotate(-180)" xlink:href="#item_7">
+<title>item, id: 7, transf: [r: -180.000°, t: (5.002, 51.457)]</title>
+</use>
+<use transform="translate(15.619637 12.036247), rotate(-180)" xlink:href="#item_7">
+<title>item, id: 7, transf: [r: -180.000°, t: (15.620, 12.036)]</title>
+</use>
+<use transform="translate(31.300913 25.650608), rotate(-180)" xlink:href="#item_8">
+<title>item, id: 8, transf: [r: -180.000°, t: (31.301, 25.651)]</title>
+</use>
+<use transform="translate(20.6262 5.0004244), rotate(0)" xlink:href="#item_8">
+<title>item, id: 8, transf: [r: 0.000°, t: (20.626, 5.000)]</title>
+</use>
+<use transform="translate(48.61433 0.000059485435), rotate(0)" xlink:href="#item_8">
+<title>item, id: 8, transf: [r: 0.000°, t: (48.614, 0.000)]</title>
+</use>
+</g>
+<g id="quality_zones"/>
+<g id="optionals">
+<g id="overlap_lines" transform="translate(0 0), rotate(0)"/>
+</g>
+<text font-family="monospace" font-size="1.4153595" font-weight="500" x="0" y="-0.70767975">
+height: 60.000 | width: 56.614 | usage: 89.332% | final_bench_44
+</text>
+</svg>
