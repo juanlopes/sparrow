@@ -11,7 +11,6 @@ pub const CDE_CONFIG: CDEConfig = CDEConfig {
     hpg_n_cells: 0,
     item_surrogate_config: SPSurrogateConfig {
         n_pole_limits: [(64, 0.0), (16, 0.8), (8, 0.9)],
-        //n_pole_limits: [(10, 0.8), (5, 0.9), (2, 0.95)],
         n_ff_poles: 2,
         n_ff_piers: 0,
     },
