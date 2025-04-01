@@ -1,9 +1,9 @@
 # sparrow 🪶
-### State-of-the-art nesting 🪺 heuristic for 2D irregular strip packing
+### The state-of-the-art nesting heuristic for 2D irregular strip packing
 This optimization algorithm can be used to solve 2D irregular strip packing problems, also commonly referred to as nesting problems.
-It builds on [`jagua-rs`](https://github.com/JeroenGar/jagua-rs), a collision detection engine for 2D irregular cutting & packing problems.
+`sparrow` builds on [`jagua-rs`](https://github.com/JeroenGar/jagua-rs): a collision detection engine for 2D irregular cutting & packing problems.
 <p align="left">
-    <img src="data/sparrow_logo.png" alt="logo" height=100>
+    <img src="data/sparrow_logo.png" alt="logo" height=120>
 </p>
 
 ## Some example solutions
@@ -72,9 +72,11 @@ See [`jagua-rs` README](https://github.com/JeroenGar/jagua-rs?tab=readme-ov-file
 
 ## Output
 
-Solutions are exported as SVG files in `output` folder. The final SVG solutions is saved as `output/final_{name}.svg`.
+Solutions are exported as SVG files in the `output` folder. 
+The final SVG solutions is saved as `output/final_{name}.svg`.
 
-The SVG files are both a visualization and formal output of a solution as all original shapes and their exact transformations applied to them are defined within the SVG:
+The SVG files serve as both a visualization and formal expression of the solution.
+All original shapes and their exact transformations applied to them are defined within the SVG:
 ```html
     ...
     <g id="items">
@@ -86,7 +88,7 @@ The SVG files are both a visualization and formal output of a solution as all or
     ...
 ```
 The [SVG spec](https://stackoverflow.com/questions/18582935/the-applying-order-of-svg-transforms) defines that the transformations are applied from right to left.
-So here the item is first rotated and then translated.
+So here the item is always first rotated and then translated.
 
 By default, a range of intermediate (and infeasible) solutions will be exported in `output/sols_{name}`.
 To disable this and export only a single final solution, compile with the `only_final_svg` feature:
@@ -96,7 +98,7 @@ cargo run --release --features=only_final_svg -- \
 ```
 ## Targeting maximum performance
 
-To build a binary with maximum performance, set the `target-cpu=native` compiler flag, switch to the nightly toolchain (required for [SIMD](https://doc.rust-lang.org/std/simd/index.html) support) and enable the `simd` feature:
+To build a binary with maximum performance, make sure `target-cpu=native` compiler flag is set, switch to the nightly toolchain (required for [SIMD](https://doc.rust-lang.org/std/simd/index.html) support) and enable the `simd` feature:
 
 ```bash
   export RUSTFLAGS='-C target-cpu=native'
@@ -118,6 +120,11 @@ Alternatively you can enable all `debug_assert!()` checks in release builds by r
 cargo run --profile debug-release -- \
     -i libs/jagua-rs/assets/swim.json
 ```
+
+## Experiments
+All final solution of the experiments from the paper can be found in
+[data/experiments](data/experiments)
+It also explains how to reproduce them exactly.
 
 ## Development
 
