@@ -6,6 +6,9 @@ This optimization algorithm can be used to solve 2D irregular strip packing prob
     <img src="data/sparrow_logo.png" alt="logo" height=120>
 </p>
 
+> sparrows are master weavers, crafting nests with intricate patterns.
+[(source)](https://www.mathnasium.com/math-centers/happyvalley/news/mathematical-marvels-bird-nest-construction-hv#)
+
 ## What sparrow is capable of
 <p align="center">
     <img src="data/records/final_best_trousers.svg" height=200/>
