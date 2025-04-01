@@ -6,7 +6,7 @@ This optimization algorithm can be used to solve 2D irregular strip packing prob
     <img src="data/sparrow_logo.png" alt="logo" height=120>
 </p>
 
-## Some example solutions
+## What sparrow is capable of
 <p align="center">
     <img src="data/records/final_best_trousers.svg" height=200/>
     <img src="data/records/final_best_mao.svg" height=200/>
@@ -36,7 +36,10 @@ cargo run --release  -- \
     -i [path to input JSON] \
     -t [timelimit in seconds (default is 600s)]
 ```
-Or to specify explore and compression times separately:
+By default 80% of the time is spend exploring and 20% is spend compression.
+Pressing 'Ctrl + C' makes the algorithm proceed to the next phase immediately.
+
+Alternatively, you can also explicitly define explore and compression times:
 ```bash
 cargo run --release  -- \
     -i [path to input JSON] \
@@ -50,8 +53,11 @@ cargo run --release -- \
     -i libs/jagua-rs/assets/swim.json
 ```
 
-This repo also contains a simple visualizer to monitor the optimization process live, open [live_viewer.html](data/live/live_viewer.html) in a web browser,
-and compile `sparrow` with the `live_svg` feature enabled:
+## Visualizer
+
+This repo contains a simple visualizer to monitor the optimization process live.
+Open [live_viewer.html](data/live/live_viewer.html) in a web browser,
+and build `sparrow` with the `live_svg` feature enabled:
 
 ```bash
 rm data/live/.live_solution.svg
@@ -60,8 +66,6 @@ cargo run --release --features=live_svg -- \
     -i libs/jagua-rs/assets/swim.json
 ```
 ![Demo of the live solution viewer](data/demo.gif)
-
-You can advance the algorithm to the next phase manually by pressing 'Ctrl + C' in the terminal.
 
 ## Input
 
@@ -75,7 +79,7 @@ See [`jagua-rs` README](https://github.com/JeroenGar/jagua-rs?tab=readme-ov-file
 Solutions are exported as SVG files in the `output` folder. 
 The final SVG solutions is saved as `output/final_{name}.svg`.
 
-The SVG files serve as both a visualization and formal expression of the solution.
+The SVG files serve both as a visual and exact representation of the solution.
 All original shapes and their exact transformations applied to them are defined within the SVG:
 ```html
     ...
@@ -98,7 +102,9 @@ cargo run --release --features=only_final_svg -- \
 ```
 ## Targeting maximum performance
 
-To build a binary with maximum performance, make sure `target-cpu=native` compiler flag is set, switch to the nightly toolchain (required for [SIMD](https://doc.rust-lang.org/std/simd/index.html) support) and enable the `simd` feature:
+Make sure `target-cpu=native` compiler flag is set, 
+switch to the nightly toolchain (required for [SIMD](https://doc.rust-lang.org/std/simd/index.html) support) 
+and enable the `simd` feature:
 
 ```bash
   export RUSTFLAGS='-C target-cpu=native'
@@ -122,14 +128,14 @@ cargo run --profile debug-release -- \
 ```
 
 ## Experiments
-All final solution of the experiments from the paper can be found in
-[data/experiments](data/experiments)
-It also explains how to reproduce them exactly.
+All solution from the comparative experiments in the paper can be found at
+[data/experiments](data/experiments).
+The [README](data/experiments/README) details how to exactly reproduce every benchmark run.
 
 ## Development
 
 This repo is meant to remain a faithful representation of the algorithm described in [TBA].
-Therefore, only pull requests containing bug fixes and performance improvements which do not change the algorithm too significantly will be accepted.
+However, I am open to pull requests containing bug fixes and speed/performance improvements as long as they do not alter the algorithm too significantly.
 
 Feel free to fork the repository if you want to experiment with different heuristics or want to expand the functionality.
 
