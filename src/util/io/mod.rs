@@ -12,6 +12,7 @@ use jagua_rs::io::json_instance::JsonInstance;
 pub mod layout_to_svg;
 pub mod svg_export;
 pub mod svg_util;
+pub mod cli;
 
 pub fn read_json_instance(path: &Path) -> JsonInstance {
     let file = File::open(path)

@@ -3,6 +3,7 @@ name = "sparrow"
 version = "0.1.0"
 edition = "2024"
 default-run = "sparrow"
+description = "State-of-the-art nesting heuristic for 2D irregular strip packing problems"
 
 [features]
 live_svg = []
@@ -38,6 +39,7 @@ num_cpus = "1.16.0"
 ctrlc = "3.4.5"
 jiff = "0.2.4"
 test-case = "3.3.1"
+clap = { version = "4.5.34", features = ["derive"] }
 
 [profile.dev]
 overflow-checks = true

@@ -6,27 +6,40 @@ use jagua_rs::io::parser::Parser;
 use log::{info, warn, Level};
 use rand::prelude::SmallRng;
 use rand::SeedableRng;
-use sparrow::config::{CDE_CONFIG, DRAW_OPTIONS, LIVE_DIR, LOG_LEVEL_FILTER_DEBUG, LOG_LEVEL_FILTER_RELEASE, OUTPUT_DIR, RNG_SEED, SIMPLIFICATION_CONFIG};
+use sparrow::config::{CDE_CONFIG, COMPRESS_TIME_RATIO, DRAW_OPTIONS, EXPLORE_TIME_RATIO, LIVE_DIR, LOG_LEVEL_FILTER_DEBUG, LOG_LEVEL_FILTER_RELEASE, OUTPUT_DIR, RNG_SEED, SIMPLIFICATION_CONFIG};
 use sparrow::optimizer::{optimize, Terminator};
 use sparrow::util::io;
 use sparrow::util::io::layout_to_svg::s_layout_to_svg;
-use std::env::args;
 use std::fs;
 use std::path::Path;
 use std::time::Duration;
+use clap::Parser as Clap;
+use sparrow::util::io::cli::MainCli;
 
 fn main() {
-    let input_file_path = args().nth(1).expect("first argument must be the input file");
-    let time_limit: Duration = args().nth(2).expect("second argument must be the time limit [s]")
-        .parse::<u64>().map(|s| Duration::from_secs(s))
-        .expect("second argument must be the time limit [s]");
-
     fs::create_dir_all(OUTPUT_DIR).expect("could not create output directory");
-
     match cfg!(debug_assertions) {
         true => io::init_logger(LOG_LEVEL_FILTER_DEBUG),
         false => io::init_logger(LOG_LEVEL_FILTER_RELEASE),
     }
+
+    let args = MainCli::parse();
+    let input_file_path = &args.input;
+    let (explore_dur, compress_dur) = match (args.global_time, args.exploration, args.compression) {
+        (Some(gt), None, None) => {
+            (Duration::from_secs(gt).mul_f32(EXPLORE_TIME_RATIO), Duration::from_secs(gt).mul_f32(COMPRESS_TIME_RATIO))
+        },
+        (None, Some(et), Some(ct)) => {
+            (Duration::from_secs(et), Duration::from_secs(ct))
+        },
+        (None, None, None) => {
+            warn!("[MAIN] No time limit specified");
+            (Duration::from_secs(600).mul_f32(EXPLORE_TIME_RATIO), Duration::from_secs(600).mul_f32(COMPRESS_TIME_RATIO))
+        },
+        _ => unreachable!("invalid cli pattern (clap should have caught this)"),
+    };
+
+    info!("[MAIN] Configured to explore for {}s and compress for {}s", explore_dur.as_secs(), compress_dur.as_secs());
 
     let rng = match RNG_SEED {
         Some(seed) => {
@@ -56,7 +69,7 @@ fn main() {
 
     let terminator = Terminator::new_with_ctrlc_handler();
 
-    let solution = optimize(instance.clone(), rng, output_folder_path, terminator, time_limit);
+    let solution = optimize(instance.clone(), rng, output_folder_path, terminator, explore_dur, compress_dur);
 
     {
         let svg = s_layout_to_svg(&solution.layout_snapshots[0], &instance, DRAW_OPTIONS, "final");

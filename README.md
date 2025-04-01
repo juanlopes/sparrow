@@ -33,15 +33,21 @@ git submodule update --init
 General usage:
 ```bash
 cargo run --release  -- \
-    [path to input JSON] \
-    [timelimit in seconds]
+    -i [path to input JSON] \
+    -t [timelimit in seconds (default is 600s)]
+```
+Or to specify explore and compression times separately:
+```bash
+cargo run --release  -- \
+    -i [path to input JSON] \
+    -e [explore time in seconds] \
+    -c [compression time in seconds]
 ```
 
 Concrete example:
 ```bash
 cargo run --release -- \
-    libs/jagua-rs/assets/swim.json \
-    120
+    -i libs/jagua-rs/assets/swim.json
 ```
 
 This repo also contains a simple visualizer to monitor the optimization process live, open [live_viewer.html](data/live/live_viewer.html) in a web browser,
@@ -51,8 +57,7 @@ and compile `sparrow` with the `live_svg` feature enabled:
 rm data/live/.live_solution.svg
 open data/live/live_viewer.html
 cargo run --release --features=live_svg -- \
-    libs/jagua-rs/assets/swim.json \
-    120
+    -i libs/jagua-rs/assets/swim.json
 ```
 ![Demo of the live solution viewer](data/demo.gif)
 
@@ -87,8 +92,7 @@ By default, a range of intermediate (and infeasible) solutions will be exported 
 To disable this and export only a single final solution, compile with the `only_final_svg` feature:
 ```bash
 cargo run --release --features=only_final_svg -- \
-    libs/jagua-rs/assets/swim.json \
-    120
+    -i libs/jagua-rs/assets/swim.json
 ```
 ## Targeting maximum performance
 
@@ -98,8 +102,7 @@ To build a binary with maximum performance, set the `target-cpu=native` compiler
   export RUSTFLAGS='-C target-cpu=native'
   export RUSTUP_TOOLCHAIN=nightly
   cargo run --release --features=simd,only_final_svg -- \
-      libs/jagua-rs/assets/swim.json \
-      120
+      -i libs/jagua-rs/assets/swim.json
 ```
 
 ## Testing
@@ -113,8 +116,7 @@ Some basic integration tests are included that run the heuristic on a few exampl
 Alternatively you can enable all `debug_assert!()` checks in release builds by running the tests with the `debug-release` profile:
 ```bash
 cargo run --profile debug-release -- \
-    libs/jagua-rs/assets/swim.json \
-    120
+    -i libs/jagua-rs/assets/swim.json
 ```
 
 ## Development
