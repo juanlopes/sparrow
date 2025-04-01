@@ -1,7 +1,7 @@
 # sparrow 🪶
 
-> sparrows are master weavers, crafting nests with intricate patterns.
-[(source)](https://www.mathnasium.com/math-centers/happyvalley/news/mathematical-marvels-bird-nest-construction-hv#)
+> sparrows are master weavers, crafting nests with intricate patterns...
+[(read more)](https://www.mathnasium.com/math-centers/happyvalley/news/mathematical-marvels-bird-nest-construction-hv#)
 
 ### The state-of-the-art nesting heuristic for 2D irregular strip packing
 This optimization algorithm can be used to solve 2D irregular strip packing problems, also commonly referred to as nesting problems.
