@@ -40,10 +40,10 @@ cargo run --release  -- \
     -i [path to input JSON] \
     -t [timelimit in seconds (default is 600s)]
 ```
-By default 80% of the time is spent exploring and 20% is spent compression.
-Pressing 'Ctrl + C' makes the algorithm proceed to the next phase immediately.
+By default 80% of the time is spent exploring and 20% is spent compressing.
+'Ctrl + C' proceeds the algorithm to the next phase immediately.
 
-Alternatively, you can also explicitly define explore and compression times:
+Alternatively, it is also possible explicitly define explore and compression times:
 ```bash
 cargo run --release  -- \
     -i [path to input JSON] \
