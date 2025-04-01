@@ -1,5 +1,5 @@
 ## Experiments
-*[UNDER CONSTRUCTION]*
+🚧 *[UNDER CONSTRUCTION]* 🚧
 
 #### Solution files of the experiments
 
@@ -12,7 +12,7 @@ The experiments were all executed via GitHub Actions, on a self-hosted runner eq
 This system was running Ubuntu 20.04 LTS under WSL2 on Windows 11.
 The exact commands to run a benchmark are defined in [single_bench.yml](../../.github/workflows/single_bench.yml).
 
-The log of a benchmark run contains all the information you need for exact reproduction:
+For every entry in [benchmark_runs](benchmark_runs) the included log file contains all the information required for exact reproduction:
 ```
 [BENCH] git commit hash: 4d70ca7f468957a046a74bbb614b896f0ad463e3
 [BENCH] system time: 2025-03-28T19:13:40.628237341Z
@@ -21,9 +21,9 @@ The log of a benchmark run contains all the information you need for exact repro
 ...
 ```
 
-To exactly reproduce a benchmark make sure:
-- Your Rust toolchain (nightly) matches the one that was the most recent at the time of the experiment.
-- You are on the same commit.
-- The seed is set to the same value:
-    - in [src/config.rs](../../src/config.rs): `pub const RNG_SEED: Option<usize> = Some(12552852848582794543);`
-- Commands are exactly executed as in the [single_bench.yml](../../.github/workflows/single_bench.yml) action.
+Steps to exactly reproduce this benchmark:
+- Ensure the Rust toolchain (nightly) matches the one that was the most recent at the time of the experiment (28th of March 2025).
+- Ensure the repo is checked out are on the same commit (same hash).
+- The seed is in [config.rs](../../src/config.rs) is set to the one that was randomly chosen for that particular benchmark:
+    - For example: `pub const RNG_SEED: Option<usize> = Some(12552852848582794543);`
+- `sparrow` is build and run exactly the same as the [single_bench.yml](../../.github/workflows/single_bench.yml) action defines.
