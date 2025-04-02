@@ -42,7 +42,7 @@ cargo run --release  -- \
     -t [timelimit in seconds (default is 600s)]
 ```
 By default 80% of the time is spent exploring and 20% is spent compressing.
-'Ctrl + C' proceeds the algorithm to the next phase immediately.
+Pressing 'Ctrl + C' immediately moves the algorithm to the next phase.
 
 Alternatively, it is also possible explicitly define explore and compression times:
 ```bash
@@ -66,7 +66,7 @@ and build `sparrow` with the `live_svg` feature enabled:
 
 ```bash
 rm data/live/.live_solution.svg
-open data/live/live_viewer.html
+open data/live/live_viewer.html 
 cargo run --release --features=live_svg -- \
     -i libs/jagua-rs/assets/swim.json
 ```
@@ -82,7 +82,7 @@ See [`jagua-rs` README](https://github.com/JeroenGar/jagua-rs?tab=readme-ov-file
 ## Output
 
 Solutions are exported as SVG files in the `output` folder. 
-The final SVG solutions is saved as `output/final_{name}.svg`.
+The final SVG solution is saved as `output/final_{name}.svg`.
 
 The SVG files serve both as a visual and exact representation of the solution.
 All original shapes and their exact transformations applied to them are defined within the SVG:
@@ -133,9 +133,9 @@ cargo run --profile debug-release -- \
 ```
 
 ## Experiments
-All solution from the comparative experiments in the paper can be found at
+All solutions from the comparative experiments in the paper can be found at
 [data/experiments](data/experiments).
-The [README](data/experiments/README.md) details how to exactly reproduce every benchmark run.
+The accompanying [README](data/experiments/README.md) details how to perform an exact reproduction of a benchmark run.
 
 ## Development
 
