@@ -7,7 +7,7 @@ use rand::Rng;
 use std::cmp::Ordering;
 use std::fmt::Debug;
 
-pub fn coordinate_descent(
+pub fn refine_coord_desc(
     (init_dt, init_eval): (DTransformation, SampleEval),
     evaluator: &mut impl SampleEvaluator,
     min_dim: f32,

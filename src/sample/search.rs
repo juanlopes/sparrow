@@ -1,7 +1,7 @@
 use crate::config::UNIQUE_SAMPLE_THRESHOLD;
 use crate::eval::sample_eval::{SampleEval, SampleEvaluator};
 use crate::sample::best_samples::BestSamples;
-use crate::sample::coord_descent::coordinate_descent;
+use crate::sample::coord_descent::refine_coord_desc;
 use crate::sample::uniform_sampler::UniformBBoxSampler;
 use jagua_rs::entities::item::Item;
 use jagua_rs::entities::layout::Layout;
@@ -57,7 +57,7 @@ pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, mut e
     }
 
     for start in best_samples.samples.clone() {
-        let descended = coordinate_descent(start.clone(), &mut evaluator, item_min_dim, rng);
+        let descended = refine_coord_desc(start.clone(), &mut evaluator, item_min_dim, rng);
         best_samples.report(descended.0, descended.1);
     }
 
