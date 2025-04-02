@@ -135,7 +135,7 @@ cargo run --profile debug-release -- \
 ## Experiments
 All solution from the comparative experiments in the paper can be found at
 [data/experiments](data/experiments).
-The [README](data/experiments/README) details how to exactly reproduce every benchmark run.
+The [README](data/experiments/README.md) details how to exactly reproduce every benchmark run.
 
 ## Development
 
