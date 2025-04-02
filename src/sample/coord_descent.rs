@@ -10,7 +10,8 @@ use std::fmt::Debug;
 pub fn refine_coord_desc(
     (init_dt, init_eval): (DTransformation, SampleEval),
     evaluator: &mut impl SampleEvaluator,
-    min_dim: f32,
+    step_init: f32,
+    step_limit: f32,
     rng: &mut impl Rng,
 ) -> (DTransformation, SampleEval) {
     let n_evals_init = evaluator.n_evals();
@@ -22,8 +23,8 @@ pub fn refine_coord_desc(
         pos: init_pos,
         eval: init_eval,
         axis: CDAxis::random(rng),
-        steps: (min_dim * CD_STEP_INIT_RATIO, min_dim * CD_STEP_INIT_RATIO),
-        step_limit: min_dim * CD_STEP_LIMIT_RATIO,
+        steps: (step_init, step_init),
+        step_limit,
     };
 
     // As long as new candidates are available, evaluate them and update the state

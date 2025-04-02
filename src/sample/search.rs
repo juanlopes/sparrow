@@ -1,4 +1,4 @@
-use crate::config::UNIQUE_SAMPLE_THRESHOLD;
+use crate::config::{CD_FNL_RATIOS, CD_PRE_RATIOS, UNIQUE_SAMPLE_THRESHOLD};
 use crate::eval::sample_eval::{SampleEval, SampleEvaluator};
 use crate::sample::best_samples::BestSamples;
 use crate::sample::coord_descent::refine_coord_desc;
@@ -56,12 +56,23 @@ pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, mut e
         }
     }
 
+    //Prerefine the best samples
     for start in best_samples.samples.clone() {
-        let descended = refine_coord_desc(start.clone(), &mut evaluator, item_min_dim, rng);
+        let descended = refine_coord_desc(
+            start.clone(),
+            &mut evaluator,
+            item_min_dim * CD_PRE_RATIOS.0,
+            item_min_dim * CD_PRE_RATIOS.1,
+            rng);
         best_samples.report(descended.0, descended.1);
     }
 
 
+    //Do a final refine on the best one
+    let final_sample = best_samples.best().map(|s|
+        refine_coord_desc(s, &mut evaluator, item_min_dim * CD_FNL_RATIOS.0, item_min_dim * CD_FNL_RATIOS.1, rng)
+    );
+
     debug!("[S] {} samples evaluated, best: {:?}",evaluator.n_evals(),best_samples.best());
-    (best_samples.best(), evaluator.n_evals())
+    (final_sample, evaluator.n_evals())
 }
