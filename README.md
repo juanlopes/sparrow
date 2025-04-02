@@ -4,13 +4,14 @@
 [(read more)](https://www.mathnasium.com/math-centers/happyvalley/news/mathematical-marvels-bird-nest-construction-hv#)
 
 ### The state-of-the-art nesting heuristic for 2D irregular strip packing
-This optimization algorithm can be used to solve 2D irregular strip packing problems, also commonly referred to as nesting problems.
-`sparrow` builds on [`jagua-rs`](https://github.com/JeroenGar/jagua-rs): a collision detection engine for 2D irregular cutting & packing problems.
+`sparrow` can be used to solve 2D irregular strip packing problems, also commonly referred to as nesting problems.
+This optimization algorithm builds on [`jagua-rs`](https://github.com/JeroenGar/jagua-rs): a collision detection engine for 2D irregular cutting & packing problems.
+
 <p align="left">
     <img src="data/sparrow_logo.png" alt="logo" height=120>
 </p>
 
-## What sparrow is capable of
+## Built by sparrow
 <p align="center">
     <img src="data/records/final_best_trousers.svg" height=200/>
     <img src="data/records/final_best_mao.svg" height=200/>
