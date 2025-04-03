@@ -66,6 +66,7 @@ fn main() {
 
     for i in 0..n_batches {
         println!("[BENCH] batch {}/{}", i + 1, n_batches);
+        println!("[BENCH] system time: {}", jiff::Timestamp::now());
         let mut iter_solutions = vec![None; n_runs_per_iter];
         rayon::scope(|s| {
             for (j, sol_slice) in iter_solutions.iter_mut().enumerate() {
@@ -84,6 +85,7 @@ fn main() {
                     let final_explore_sol = solutions.last().expect("no solutions found during exploration");
 
                     let start_comp = Instant::now();
+
 
                     terminator.set_timeout_from_now(time_limit.mul_f32(COMPRESS_TIME_RATIO)).reset_ctrlc();
                     let mut cmpr_separator = Separator::new(expl_separator.instance, expl_separator.prob, expl_separator.rng, expl_separator.output_svg_folder, expl_separator.svg_counter, SEP_CFG_COMPRESS);
@@ -150,6 +152,7 @@ fn main() {
     println!("avg:    {:.3}", calculate_average(&final_usages));
     println!("stddev: {:.3}", calculate_stddev(&final_usages));
     println!("======================");
+    println!("[BENCH] system time: {}", jiff::Timestamp::now());
 }
 
 
