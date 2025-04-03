@@ -58,7 +58,7 @@ pub fn exploration_phase(sep: &mut Separator, term: &Terminator) -> Vec<Solution
                 info!("[EXPL] new best at width: {:.3} ({:.3}%)",current_width,sep.prob.usage() * 100.0);
                 best_width = current_width;
                 feasible_solutions.push(local_best.0.clone());
-                sep.export_svg(Some(local_best.0.clone()), "f", false);
+                sep.export_svg(Some(local_best.0.clone()), "expl_f", false);
             }
             let next_width = current_width * (1.0 - EXPLORE_SHRINK_STEP);
             info!("[EXPL] shrinking width by {}%: {:.3} -> {:.3}", EXPLORE_SHRINK_STEP * 100.0, current_width, next_width);
@@ -67,7 +67,7 @@ pub fn exploration_phase(sep: &mut Separator, term: &Terminator) -> Vec<Solution
             solution_pool.clear();
         } else {
             info!("[EXPL] layout separation unsuccessful, exporting min overlap solution");
-            sep.export_svg(Some(local_best.0.clone()), "o", false);
+            sep.export_svg(Some(local_best.0.clone()), "expl_nf", false);
 
             //layout was not successfully separated, add to local bests
             match solution_pool.binary_search_by(|(_, o)| o.partial_cmp(&total_overlap).unwrap()) {
@@ -116,7 +116,7 @@ pub fn compression_phase(sep: &mut Separator, init: &Solution, term: &Terminator
         match attempt_to_compress(sep, &best, step, &term) {
             Some(compacted_sol) => {
                 info!("[CMPR] compressed to {:.3} ({:.3}%)", strip_width(&compacted_sol), compacted_sol.usage * 100.0);
-                sep.export_svg(Some(compacted_sol.clone()), "p", false);
+                sep.export_svg(Some(compacted_sol.clone()), "cmpr", false);
                 best = compacted_sol;
             }
             None => {}
