@@ -71,9 +71,9 @@ pub const CD_STEP_INIT_RATIO: f32 = 0.25; //25%
 /// Coordinate descent step limit as a ratio of the item's min dimension
 pub const CD_STEP_LIMIT_RATIO: f32 = 0.001; //0.1%
 
-pub const CD_PRE_RATIOS: (f32, f32) = (0.25, 0.05); //25% to 5%
+pub const CD_PRE_RATIOS: (f32, f32) = (0.25, 0.01); //25% to 1%
 
-pub const CD_FNL_RATIOS: (f32, f32) = (0.05, 0.001); //5% to 0.01%
+pub const CD_FNL_RATIOS: (f32, f32) = (0.01, 0.0001); //1% to 0.01%
 
 /// If two samples are closer than this ratio of the item's min dimension, they are considered duplicates
 pub const UNIQUE_SAMPLE_THRESHOLD: f32 = 0.05;

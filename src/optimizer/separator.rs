@@ -136,7 +136,7 @@ impl Separator {
             self.rollback(&min_overlap_sol.0, Some(&min_overlap_sol.1));
         }
         let secs = start.elapsed().as_secs_f32();
-        log!(self.config.log_level, "[SEP] finished, evals/s: {}, evals/move: {} moves/s: {}, iter/s: {}, #workers: {}, total {:.3}s",
+        log!(self.config.log_level, "[SEP] finished, evals/s: {}, evals/move: {}, moves/s: {}, iter/s: {}, #workers: {}, total {:.3}s",
             FMT.fmt2(sep_stats.total_evals as f32 / secs),
             FMT.fmt2(sep_stats.total_evals as f32 / sep_stats.total_moves as f32),
             FMT.fmt2(sep_stats.total_moves as f32 / secs),
