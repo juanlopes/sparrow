@@ -42,8 +42,6 @@ cargo run --release  -- \
     -t [timelimit in seconds (default is 600s)]
 ```
 By default 80% of the time is spent exploring and 20% is spent compressing.
-Pressing 'Ctrl + C' immediately moves the algorithm to the next phase.
-
 Alternatively, it is also possible explicitly define explore and compression times:
 ```bash
 cargo run --release  -- \
@@ -51,6 +49,7 @@ cargo run --release  -- \
     -e [explore time in seconds] \
     -c [compression time in seconds]
 ```
+Pressing 'Ctrl + C' immediately moves the algorithm to the next phase.
 
 Concrete example:
 ```bash
@@ -131,9 +130,9 @@ cargo run --profile debug-release -- \
 ```
 
 ## Experiments
-All solutions from the comparative experiments in the paper can be found at
+All solutions from the comparative experiments in [TBA] can be found at
 [data/experiments](data/experiments).
-The accompanying [README](data/experiments/README.md) details how to perform an exact reproduction of a benchmark run.
+The accompanying [README](data/experiments/README.md) details how to perform an exact reproduction of any benchmark run.
 
 ## Development
 
