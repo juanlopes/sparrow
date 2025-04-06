@@ -31,7 +31,7 @@ pub const COMPRESS_TIME_RATIO: f32 = 1.0 - EXPLORE_TIME_RATIO;
 
 pub const WEIGHT_MAX_INC_RATIO: f32 = 2.0;
 pub const WEIGHT_MIN_INC_RATIO: f32 = 1.2;
-pub const WEIGHT_OVERLAP_DECAY: f32 = 0.95;
+pub const WEIGHT_DECAY: f32 = 0.95;
 
 pub const OVERLAP_PROXY_EPSILON_DIAM_RATIO: f32 = 0.01;
 
@@ -89,7 +89,7 @@ pub const DRAW_OPTIONS: SvgDrawOptions = SvgDrawOptions {
     quadtree: false,
     haz_prox_grid: false,
     surrogate: false,
-    highlight_overlap: true,
+    highlight_collisions: true,
 };
 
 pub const LBF_SAMPLE_CONFIG: SampleConfig = SampleConfig {

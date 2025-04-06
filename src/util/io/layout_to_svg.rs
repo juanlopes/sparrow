@@ -307,12 +307,12 @@ pub fn layout_to_svg(
         }
     };
 
-    //highlight overlapping items (if enabled)
-    let overlap_group = match options.highlight_overlap {
+    //highlight colliding items (if enabled)
+    let collision_group = match options.highlight_collisions {
         false => None,
         true => {
-            let mut overlap_group = Group::new()
-                .set("id", "overlap_lines")
+            let mut collision_group = Group::new()
+                .set("id", "collision_lines")
                 .set("transform", transform_to_svg(&inv_bin_transf));
             for (pk, pi) in layout.placed_items().iter() {
                 let collides_with = layout
@@ -336,10 +336,10 @@ pub fn layout_to_svg(
                                 // avoid duplicate lines
                                 let start = pi.shape.poi.center;
                                 let end = layout.placed_items[*colliding_pk].shape.poi.center;
-                                overlap_group = overlap_group.add(svg_export::data_to_path(
+                                collision_group = collision_group.add(svg_export::data_to_path(
                                     svg_export::edge_data(&Edge { start, end }),
                                     &[
-                                        ("stroke", &*format!("{}", theme.overlap_highlight_color)),
+                                        ("stroke", &*format!("{}", theme.collision_highlight_color)),
                                         ("stroke-opacity", "0.75"),
                                         ("stroke-width", &*format!("{}", stroke_width * 4.0)),
                                         ("stroke-dasharray", &*format!("{} {}", 4.0 * stroke_width, 8.0 * stroke_width)),
@@ -350,9 +350,9 @@ pub fn layout_to_svg(
                             }
                         }
                         HazardEntity::BinExterior => {
-                            overlap_group = overlap_group.add(svg_export::point(
+                            collision_group = collision_group.add(svg_export::point(
                                 pi.shape.poi.center,
-                                Some(&*format!("{}", theme.overlap_highlight_color)),
+                                Some(&*format!("{}", theme.collision_highlight_color)),
                                 Some(3.0 * stroke_width),
                             ));
                         }
@@ -362,13 +362,13 @@ pub fn layout_to_svg(
                     }
                 }
             }
-            Some(overlap_group)
+            Some(collision_group)
         }
     };
 
     let vbox_svg = (vbox.x_min, vbox.y_min, vbox.width(), vbox.height());
 
-    let optionals = [surrogate_group, qt_group, hpg_group, overlap_group]
+    let optionals = [surrogate_group, qt_group, hpg_group, collision_group]
         .into_iter()
         .flatten()
         .fold(Group::new().set("id", "optionals"), |g, opt| g.add(opt));

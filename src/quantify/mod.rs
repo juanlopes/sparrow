@@ -1,15 +1,21 @@
 use crate::config::OVERLAP_PROXY_EPSILON_DIAM_RATIO;
-use jagua_rs::geometry::fail_fast::sp_surrogate::SPSurrogate;
+use crate::quantify::overlap_proxy::overlap_area_proxy;
 use jagua_rs::geometry::geo_traits::{Distance, Shape};
 use jagua_rs::geometry::primitives::aa_rectangle::AARectangle;
 use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
 
-/// Evaluates the overlap between two simple polygons.
+pub mod overlap_proxy;
+mod pair_matrix;
+pub mod tracker;
+#[cfg(feature = "simd")]
+pub mod simd;
+
+/// Quantifies a collision between two simple polygons.
 #[inline(always)]
-pub fn eval_overlap_poly_poly(s1: &SimplePolygon, s2: &SimplePolygon) -> f32 {
+pub fn quantify_collision_poly_poly(s1: &SimplePolygon, s2: &SimplePolygon) -> f32 {
     let epsilon = f32::max(s1.diameter(), s2.diameter()) * OVERLAP_PROXY_EPSILON_DIAM_RATIO;
 
-    let overlap_proxy = poles_overlap_area_proxy(&s1.surrogate(), &s2.surrogate(), epsilon) + epsilon.powi(2);
+    let overlap_proxy = overlap_area_proxy(&s1.surrogate(), &s2.surrogate(), epsilon) + epsilon.powi(2);
 
     debug_assert!(overlap_proxy.is_normal());
 
@@ -24,9 +30,9 @@ pub fn calc_shape_penalty(s1: &SimplePolygon, s2: &SimplePolygon) -> f32 {
     (p1 * p2).sqrt() //geometric mean
 }
 
-/// Evaluates the overlap between a simple polygon and the exterior of the bin.
+/// Quantifies a collision between a simple polygon and the exterior of the bin.
 #[inline(always)]
-pub fn eval_overlap_poly_bin(s: &SimplePolygon, bin_bbox: AARectangle) -> f32 {
+pub fn quantify_collision_poly_bin(s: &SimplePolygon, bin_bbox: AARectangle) -> f32 {
     let s_bbox = s.bbox();
     let overlap = match AARectangle::from_intersection(&s_bbox, &bin_bbox) {
         Some(r) => {
@@ -44,26 +50,4 @@ pub fn eval_overlap_poly_bin(s: &SimplePolygon, bin_bbox: AARectangle) -> f32 {
     let penalty = s.surrogate().convex_hull_area;
 
     10.0 * (overlap * penalty).sqrt()
-}
-
-
-/// Calculates a proxy for the overlap area between two sets of poles
-#[inline(always)]
-pub fn poles_overlap_area_proxy<'a>(sp1: &SPSurrogate, sp2: &SPSurrogate, epsilon: f32) -> f32 {
-    let mut total_overlap = 0.0;
-    for p1 in &sp1.poles {
-        for p2 in &sp2.poles {
-            // Penetration depth between the two poles (circles)
-            let pd = (p1.radius + p2.radius) - p1.center.distance(&p2.center);
-
-            let pd_decay = match pd >= epsilon {
-                true => pd,
-                false => epsilon.powi(2) / (-pd + 2.0 * epsilon),
-            };
-
-            total_overlap += pd_decay * f32::min(p1.radius, p2.radius);
-        }
-    }
-    debug_assert!(total_overlap.is_normal());
-    total_overlap
 }

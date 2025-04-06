@@ -1,5 +1,6 @@
 extern crate core;
 
+use clap::Parser as Clap;
 use jagua_rs::entities::instances::instance::Instance;
 use jagua_rs::entities::instances::instance_generic::InstanceGeneric;
 use jagua_rs::io::parser::Parser;
@@ -9,12 +10,11 @@ use rand::SeedableRng;
 use sparrow::config::{CDE_CONFIG, COMPRESS_TIME_RATIO, DRAW_OPTIONS, EXPLORE_TIME_RATIO, LIVE_DIR, LOG_LEVEL_FILTER_DEBUG, LOG_LEVEL_FILTER_RELEASE, OUTPUT_DIR, RNG_SEED, SIMPLIFICATION_CONFIG};
 use sparrow::optimizer::{optimize, Terminator};
 use sparrow::util::io;
+use sparrow::util::io::cli::MainCli;
 use sparrow::util::io::layout_to_svg::s_layout_to_svg;
 use std::fs;
 use std::path::Path;
 use std::time::Duration;
-use clap::Parser as Clap;
-use sparrow::util::io::cli::MainCli;
 
 fn main() {
     fs::create_dir_all(OUTPUT_DIR).expect("could not create output directory");
