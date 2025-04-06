@@ -18,7 +18,7 @@ use std::time::{Duration, Instant};
 
 pub mod lbf;
 pub mod separator;
-mod separator_worker;
+mod worker;
 pub mod terminator;
 
 // All high-level heuristic logic

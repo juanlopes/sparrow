@@ -1,4 +1,4 @@
-use crate::eval::separation_eval::SeparationEvaluator;
+use crate::eval::sep_evaluator::SeparationEvaluator;
 use crate::quantify::tracker::CollisionTracker;
 use crate::sample::search;
 use crate::sample::search::SampleConfig;

@@ -96,8 +96,8 @@ pub fn collect_poly_collisions_in_detector_custom(
 }
 
 /// Modified version of [`jagua_rs::collision_detection::hazard_helpers::DetectionMap`]
-/// This struct computes the loss incrementally, and caches the result.
-/// Allows it to terminate early if the loss exceeds a certain upperbound.
+/// This struct computes the loss incrementally on the fly and caches the result.
+/// Allows for early termination if the loss exceeds a certain upperbound.
 pub struct SpecializedDetectionMap<'a> {
     pub layout: &'a Layout,
     pub ct: &'a CollisionTracker,

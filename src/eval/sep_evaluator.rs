@@ -37,6 +37,7 @@ impl<'a> SeparationEvaluator<'a> {
 }
 
 impl<'a> SampleEvaluator for SeparationEvaluator<'a> {
+    /// Evaluates a transformation. An upper bound can be provided to early terminate the process.
     fn eval(&mut self, dt: DTransformation, upper_bound: Option<SampleEval>) -> SampleEval {
         self.n_evals += 1;
         let cde = self.layout.cde();
@@ -47,21 +48,22 @@ impl<'a> SampleEvaluator for SeparationEvaluator<'a> {
             Some(SampleEval::Clear { .. }) => 0.0,
             _ => fsize::INFINITY,
         };
-        // reload the detection map for the new query and update its loss bound
+        // reload the detection map for the new query and update the loss bound
         self.detection_map.reload(loss_bound);
 
-        //query the CDE for collisions and eval them
+        // Query the CDE, all colliding hazards will be stored in the detection map
         collect_poly_collisions_in_detector_custom(cde, &dt, &mut self.shape_buff, self.item.shape.as_ref(), &mut self.detection_map);
 
-        if self.detection_map.is_empty() {
-            SampleEval::Clear { loss: 0.0 }
-        } else if self.detection_map.early_terminate(&self.shape_buff) {
-            //the early termination was triggered, this means potentially not all collisions were detected,
-            //but the sample will be rejected anyway.
+        if self.detection_map.early_terminate(&self.shape_buff) {
+            //the detection map is in early termination state, this means potentially not all collisions were detected,
+            //but its loss was above the loss bound anyway
             SampleEval::Invalid
+        } else if self.detection_map.is_empty() {
+            SampleEval::Clear { loss: 0.0 }
         } else {
-            let loss = self.detection_map.loss(&self.shape_buff);
-            SampleEval::Collision { loss }
+            SampleEval::Collision {
+                loss: self.detection_map.loss(&self.shape_buff),
+            }
         }
     }
 

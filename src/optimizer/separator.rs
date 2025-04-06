@@ -1,5 +1,5 @@
 use crate::config::{DRAW_OPTIONS, LIVE_DIR};
-use crate::optimizer::separator_worker::{SepStats, SeparatorWorker};
+use crate::optimizer::worker::{SepStats, SeparatorWorker};
 use crate::optimizer::Terminator;
 use crate::quantify::tracker::{CTSnapshot, CollisionTracker};
 use crate::sample::search::SampleConfig;

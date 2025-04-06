@@ -10,7 +10,7 @@ pub struct Terminator {
 }
 
 impl Terminator {
-    /// Creates a dummy terminator that will never terminate
+    /// Creates a dummy that never terminates
     pub fn new_without_ctrlc() -> Self {
         Terminator {
             timeout: None,
@@ -18,7 +18,7 @@ impl Terminator {
         }
     }
 
-    /// Only call this function once, it will set up a handler for Ctrl-C
+    /// Sets up the handler for Ctrl-C (only call once)
     pub fn new_with_ctrlc_handler() -> Self {
         let ctrlc = Arc::new(AtomicBool::new(false));
         let c = ctrlc.clone();
