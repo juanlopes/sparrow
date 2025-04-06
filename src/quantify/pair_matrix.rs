@@ -1,33 +1,33 @@
-use crate::overlap::tracker::OTEntry;
 use std::ops::{Index, IndexMut};
+use crate::quantify::tracker::CTEntry;
 
-// triangular matrix of pair-wise overlaps and weights
-// supporting data structure for the OverlapTracker
+// triangular matrix of pair-wise collision loss and weights
+// supporting data structure for the `CollisionTracker`
 #[derive(Debug, Clone)]
-pub struct OTPairMatrix {
+pub struct PairMatrix {
     pub size: usize,
-    pub data: Vec<OTEntry>,
+    pub data: Vec<CTEntry>,
 }
 
-impl OTPairMatrix {
+impl PairMatrix {
     pub fn new(size: usize) -> Self {
         let len = size * (size + 1) / 2;
         Self {
             size,
-            data: vec![OTEntry { weight: 1.0, overlap: 0.0 }; len],
+            data: vec![CTEntry { weight: 1.0, loss: 0.0 }; len],
         }
     }
 }
 
-impl Index<(usize, usize)> for OTPairMatrix {
-    type Output = OTEntry;
+impl Index<(usize, usize)> for PairMatrix {
+    type Output = CTEntry;
 
     fn index(&self, (row, col): (usize, usize)) -> &Self::Output {
         &self.data[calc_idx(row, col, self.size)]
     }
 }
 
-impl IndexMut<(usize, usize)> for OTPairMatrix {
+impl IndexMut<(usize, usize)> for PairMatrix {
     fn index_mut(&mut self, (row, col): (usize, usize)) -> &mut Self::Output {
         &mut self.data[calc_idx(row, col, self.size)]
     }

@@ -1,11 +1,9 @@
-use crate::overlap::proxy::eval_overlap_poly_bin;
+#[cfg(feature = "simd")]
+use crate::quantify::simd::circles_soa::CirclesSoA;
+#[cfg(feature = "simd")]
+use crate::quantify::simd::quantify_collision_poly_poly_simd;
 #[cfg(not(feature = "simd"))]
-use crate::overlap::proxy::eval_overlap_poly_poly;
-#[cfg(feature = "simd")]
-use crate::overlap::simd::circles_soa::CirclesSoA;
-#[cfg(feature = "simd")]
-use crate::overlap::simd::proxy_simd::eval_overlap_poly_poly_simd;
-use crate::overlap::tracker::OverlapTracker;
+use crate::quantify::quantify_collision_poly_poly;
 use crate::util::assertions;
 use crate::util::bit_reversal_iterator::BitReversalIterator;
 use float_cmp::approx_eq;
@@ -21,6 +19,8 @@ use jagua_rs::geometry::d_transformation::DTransformation;
 use jagua_rs::geometry::geo_traits::{CollidesWith, Shape, TransformableFrom};
 use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
 use slotmap::SecondaryMap;
+use crate::quantify::quantify_collision_poly_bin;
+use crate::quantify::tracker::CollisionTracker;
 
 /// Functionally the same as [`CDEngine::collect_poly_collisions_in_detector`], but with early termination.
 /// Saving quite a bit of CPU time since over 90% of the time is spent in this function.
@@ -96,11 +96,11 @@ pub fn collect_poly_collisions_in_detector_custom(
 }
 
 /// Modified version of [`jagua_rs::collision_detection::hazard_helpers::DetectionMap`]
-/// This struct computes the overlap incrementally, and caches the result.
-/// Allows it to terminate early if the overlap exceeds a certain upperbound.
+/// This struct computes the loss incrementally, and caches the result.
+/// Allows it to terminate early if the loss exceeds a certain upperbound.
 pub struct SpecializedDetectionMap<'a> {
     pub layout: &'a Layout,
-    pub ot: &'a OverlapTracker,
+    pub ct: &'a CollisionTracker,
     pub current_pk: PItemKey,
     pub detected_pis: SecondaryMap<PItemKey, (HazardEntity, usize)>,
     pub detected_bin: Option<(HazardEntity, usize)>,
@@ -114,12 +114,12 @@ pub struct SpecializedDetectionMap<'a> {
 impl<'a> SpecializedDetectionMap<'a> {
     pub fn new(
         layout: &'a Layout,
-        ot: &'a OverlapTracker,
+        ct: &'a CollisionTracker,
         current_pk: PItemKey,
     ) -> Self {
         Self {
             layout,
-            ot,
+            ct,
             current_pk,
             detected_pis: SecondaryMap::new(),
             detected_bin: None,
@@ -153,31 +153,31 @@ impl<'a> SpecializedDetectionMap<'a> {
             // additional hazards were detected, update the cache
             let extra_loss: f32 = self.iter_with_index()
                 .filter(|(_, idx)| *idx >= cache_idx)
-                .map(|(h, _)| self.calc_weighted_overlap(h, shape))
+                .map(|(h, _)| self.calc_weighted_loss(h, shape))
                 .sum();
             self.loss_cache = (self.idx_counter, cached_loss + extra_loss);
         }
-        debug_assert!(approx_eq!(f32, self.loss_cache.1, self.iter().map(|h| self.calc_weighted_overlap(h, shape)).sum()));
+        debug_assert!(approx_eq!(f32, self.loss_cache.1, self.iter().map(|h| self.calc_weighted_loss(h, shape)).sum()));
         self.loss_cache.1
     }
 
-    fn calc_weighted_overlap(&self, haz: &HazardEntity, shape: &SimplePolygon) -> f32 {
+    fn calc_weighted_loss(&self, haz: &HazardEntity, shape: &SimplePolygon) -> f32 {
         match haz {
             HazardEntity::PlacedItem { pk: other_pk, .. } => {
                 let other_shape = &self.layout.placed_items[*other_pk].shape;
 
                 #[cfg(not(feature = "simd"))]
-                let overlap = eval_overlap_poly_poly(other_shape, shape);
+                let loss = quantify_collision_poly_poly(other_shape, shape);
                 #[cfg(feature = "simd")]
-                let overlap = eval_overlap_poly_poly_simd(other_shape, shape, &self.poles_soa);
+                let loss = quantify_collision_poly_poly_simd(other_shape, shape, &self.poles_soa);
 
-                let weight = self.ot.get_pair_weight(self.current_pk, *other_pk);
-                overlap * weight
+                let weight = self.ct.get_pair_weight(self.current_pk, *other_pk);
+                loss * weight
             }
             HazardEntity::BinExterior => {
-                let overlap = eval_overlap_poly_bin(shape, self.layout.bin.bbox());
-                let weight = self.ot.get_bin_weight(self.current_pk);
-                2.0 * overlap * weight
+                let loss = quantify_collision_poly_bin(shape, self.layout.bin.bbox());
+                let weight = self.ct.get_bin_weight(self.current_pk);
+                2.0 * loss * weight
             }
             _ => unimplemented!("unsupported hazard entity"),
         }

@@ -18,9 +18,9 @@ pub struct SvgDrawOptions {
     ///Draw the fail fast surrogate on top of each item
     #[serde(default)]
     pub surrogate: bool,
-    ///Draw lines between overlapping items
+    ///Draw lines between colliding items
     #[serde(default)]
-    pub highlight_overlap: bool,
+    pub highlight_collisions: bool,
 }
 
 impl Default for SvgDrawOptions {
@@ -30,7 +30,7 @@ impl Default for SvgDrawOptions {
             quadtree: false,
             haz_prox_grid: false,
             surrogate: true,
-            highlight_overlap: true,
+            highlight_collisions: true,
         }
     }
 }
@@ -43,7 +43,7 @@ pub struct SvgLayoutTheme {
     pub hole_fill: Color,
     pub qz_fill: [Color; N_QUALITIES],
     pub qz_stroke_opac: f32,
-    pub overlap_highlight_color: Color,
+    pub collision_highlight_color: Color,
 }
 
 impl Default for SvgLayoutTheme {
@@ -73,7 +73,7 @@ impl SvgLayoutTheme{
             Color(0xCB, 0xFF, 0x00), // GREEN
         ],
         qz_stroke_opac: 0.5,
-        overlap_highlight_color: Color(0x00, 0xFF, 0x00), // LIME
+        collision_highlight_color: Color(0x00, 0xFF, 0x00), // LIME
     };
 
     pub(crate) const GRAY_THEME: SvgLayoutTheme = SvgLayoutTheme {
@@ -94,7 +94,7 @@ impl SvgLayoutTheme{
             Color(0x63, 0x63, 0x63), //GRAY
         ],
         qz_stroke_opac: 0.9,
-        overlap_highlight_color: Color(0xD0, 0x00, 0x00), //LIME
+        collision_highlight_color: Color(0xD0, 0x00, 0x00), //LIME
     };
 }
 

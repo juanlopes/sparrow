@@ -1,7 +1,6 @@
 use std::iter::Sum;
 use std::ops::AddAssign;
 use crate::eval::separation_eval::SeparationEvaluator;
-use crate::overlap::tracker::OverlapTracker;
 use crate::sample::search;
 use crate::sample::search::SampleConfig;
 use crate::util::assertions::tracker_matches_layout;
@@ -18,42 +17,43 @@ use jagua_rs::geometry::d_transformation::DTransformation;
 use log::debug;
 use rand::prelude::{SliceRandom, SmallRng};
 use tap::Tap;
+use crate::quantify::tracker::CollisionTracker;
 
 pub struct SeparatorWorker {
     pub instance: SPInstance,
     pub prob: SPProblem,
-    pub ot: OverlapTracker,
+    pub ct: CollisionTracker,
     pub rng: SmallRng,
     pub sample_config: SampleConfig,
 }
 
 impl SeparatorWorker {
-    pub fn load(&mut self, sol: &Solution, ot: &OverlapTracker) {
-        // restores the state of the worker to the given solution and accompanying overlap tracker
+    pub fn load(&mut self, sol: &Solution, ct: &CollisionTracker) {
+        // restores the state of the worker to the given solution and accompanying tracker
         debug_assert!(strip_width(sol) == self.prob.strip_width());
         self.prob.restore_to_solution(sol);
-        self.ot = ot.clone();
+        self.ct = ct.clone();
     }
 
     pub fn separate(&mut self) -> SepStats {
-        //collect all overlapping items and shuffle them
+        //collect all colliding items and shuffle them
         let candidates = self.prob.layout.placed_items().keys()
-            .filter(|pk| self.ot.get_overlap(*pk) > 0.0)
+            .filter(|pk| self.ct.get_loss(*pk) > 0.0)
             .collect_vec()
             .tap_mut(|v| v.shuffle(&mut self.rng));
 
         let mut total_moves = 0;
         let mut total_evals = 0;
 
-        //give each item a chance to move to a better (less weighted overlapping) position
+        //give each item a chance to move to a better (eval) position
         for &pk in candidates.iter() {
-            //check if the item is still overlapping
-            if self.ot.get_overlap(pk) > 0.0 {
+            //check if the item is still colliding
+            if self.ct.get_loss(pk) > 0.0 {
                 let item_id = self.prob.layout.placed_items()[pk].item_id;
                 let item = self.instance.item(item_id);
 
                 // create an evaluator to evaluate the samples during the search
-                let evaluator = SeparationEvaluator::new(&self.prob.layout, item, pk, &self.ot);
+                let evaluator = SeparationEvaluator::new(&self.prob.layout, item, pk, &self.ct);
 
                 // search for a better position for the item
                 let (best_sample, n_evals) =
@@ -71,11 +71,11 @@ impl SeparatorWorker {
     }
 
     pub fn move_item(&mut self, pk: PItemKey, d_transf: DTransformation) -> PItemKey {
-        debug_assert!(tracker_matches_layout(&self.ot, &self.prob.layout));
+        debug_assert!(tracker_matches_layout(&self.ct, &self.prob.layout));
 
         let item = self.instance.item(self.prob.layout.placed_items()[pk].item_id);
 
-        let (old_o, old_w_o) = (self.ot.get_overlap(pk), self.ot.get_weighted_overlap(pk));
+        let (old_l, old_w_l) = (self.ct.get_loss(pk), self.ct.get_weighted_loss(pk));
 
         //modify the problem, by removing the item and placing it in the new position
         self.prob.remove_item(STRIP_LAYOUT_IDX, pk, true);
@@ -86,13 +86,13 @@ impl SeparatorWorker {
                 layout_idx: STRIP_LAYOUT_IDX,
             }
         );
-        //update the overlap tracker to reflect the changes
-        self.ot.register_item_move(&self.prob.layout, pk, new_pk);
+        //update the collision tracker to reflect the changes
+        self.ct.register_item_move(&self.prob.layout, pk, new_pk);
 
-        let (new_o, new_w_o) = (self.ot.get_overlap(new_pk), self.ot.get_weighted_overlap(new_pk));
+        let (new_l, new_w_l) = (self.ct.get_loss(new_pk), self.ct.get_weighted_loss(new_pk));
 
-        debug!("Moved item {} from from o: {}, wo: {} to o+1: {}, w_o+1: {}",item.id,FMT.fmt2(old_o),FMT.fmt2(old_w_o),FMT.fmt2(new_o),FMT.fmt2(new_w_o));
-        debug_assert!(tracker_matches_layout(&self.ot, &self.prob.layout));
+        debug!("Moved item {} from from l: {}, wl: {} to l+1: {}, wl+1: {}",item.id,FMT.fmt2(old_l),FMT.fmt2(old_w_l),FMT.fmt2(new_l),FMT.fmt2(new_w_l));
+        debug_assert!(tracker_matches_layout(&self.ct, &self.prob.layout));
 
         new_pk
     }

@@ -1,26 +1,11 @@
-use crate::config::OVERLAP_PROXY_EPSILON_DIAM_RATIO;
-use crate::overlap::proxy::{calc_shape_penalty, poles_overlap_area_proxy};
-use crate::overlap::simd::circles_soa::CirclesSoA;
 use float_cmp::approx_eq;
 use jagua_rs::geometry::fail_fast::sp_surrogate::SPSurrogate;
-use jagua_rs::geometry::geo_traits::{Distance, Shape};
+use jagua_rs::geometry::geo_traits::Distance;
 use jagua_rs::geometry::primitives::circle::Circle;
 use jagua_rs::geometry::primitives::point::Point;
-use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
 use std::simd::Simd;
-
-#[inline(always)]
-pub fn eval_overlap_poly_poly_simd(s1: &SimplePolygon, s2: &SimplePolygon, poles2: &CirclesSoA) -> f32 {
-    let epsilon = f32::max(s1.diameter(), s2.diameter()) * OVERLAP_PROXY_EPSILON_DIAM_RATIO;
-
-    let overlap_proxy = poles_overlap_area_proxy_simd(&s1.surrogate(), &s2.surrogate(), epsilon, poles2) + epsilon.powi(2);
-
-    debug_assert!(overlap_proxy.is_normal());
-
-    let penalty = calc_shape_penalty(s1, s2);
-
-    overlap_proxy.sqrt() * penalty
-}
+use crate::quantify::overlap_proxy::overlap_area_proxy;
+use crate::quantify::simd::circles_soa::CirclesSoA;
 
 /// Width of the SIMD vector
 const SIMD_WIDTH: usize = 8;
@@ -93,10 +78,10 @@ pub fn poles_overlap_area_proxy_simd(sp1: &SPSurrogate, sp2: &SPSurrogate, epsil
     }
 
     debug_assert!(
-        approx_eq!(f32, total_overlap, poles_overlap_area_proxy(sp1, sp2, epsilon),
+        approx_eq!(f32, total_overlap, overlap_area_proxy(sp1, sp2, epsilon),
                  epsilon = total_overlap * 1e-3),
                   "SIMD and SEQ results do not match: {} vs {}", total_overlap,
-                  poles_overlap_area_proxy(sp1, sp2, epsilon)
+                  overlap_area_proxy(sp1, sp2, epsilon)
     );
 
     debug_assert!(total_overlap.is_normal());

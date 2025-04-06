@@ -1,7 +1,6 @@
 use crate::config::{DRAW_OPTIONS, LIVE_DIR};
 use crate::optimizer::separator_worker::{SepStats, SeparatorWorker};
 use crate::optimizer::Terminator;
-use crate::overlap::tracker::{OTSnapshot, OverlapTracker};
 use crate::sample::search::SampleConfig;
 use crate::util::assertions::tracker_matches_layout;
 use crate::util::io;
@@ -27,6 +26,7 @@ use rayon::iter::ParallelIterator;
 use rayon::ThreadPool;
 use std::path::Path;
 use std::time::Instant;
+use crate::quantify::tracker::{CTSnapshot, CollisionTracker};
 
 pub struct SeparatorConfig {
     pub iter_no_imprv_limit: usize,
@@ -40,7 +40,7 @@ pub struct Separator {
     pub instance: SPInstance,
     pub rng: SmallRng,
     pub prob: SPProblem,
-    pub ot: OverlapTracker,
+    pub ct: CollisionTracker,
     pub workers: Vec<SeparatorWorker>,
     pub svg_counter: usize,
     pub output_svg_folder: String,
@@ -50,12 +50,12 @@ pub struct Separator {
 
 impl Separator {
     pub fn new(instance: SPInstance, prob: SPProblem, mut rng: SmallRng, output_svg_folder: String, svg_counter: usize, config: SeparatorConfig) -> Self {
-        let overlap_tracker = OverlapTracker::new(&prob.layout);
+        let ct = CollisionTracker::new(&prob.layout);
         let workers = (0..config.n_workers).map(|_|
             SeparatorWorker {
                 instance: instance.clone(),
                 prob: prob.clone(),
-                ot: overlap_tracker.clone(),
+                ct: ct.clone(),
                 rng: SmallRng::seed_from_u64(rng.random()),
                 sample_config: config.sample_config.clone(),
             }).collect();
@@ -66,7 +66,7 @@ impl Separator {
             prob,
             instance,
             rng,
-            ot: overlap_tracker,
+            ct,
             workers,
             svg_counter,
             output_svg_folder,
@@ -75,10 +75,10 @@ impl Separator {
         }
     }
 
-    pub fn separate(&mut self, term: &Terminator) -> (Solution, OTSnapshot) {
-        let mut min_overlap_sol: (Solution, OTSnapshot) = (self.prob.create_solution(None), self.ot.create_snapshot());
-        let mut min_overlap = self.ot.get_total_overlap();
-        log!(self.config.log_level,"[SEP] separating at width: {:.3} and overlap: {} ", self.prob.strip_width(), FMT.fmt2(min_overlap));
+    pub fn separate(&mut self, term: &Terminator) -> (Solution, CTSnapshot) {
+        let mut min_loss_sol = (self.prob.create_solution(None), self.ct.create_snapshot());
+        let mut min_loss = self.ct.get_total_loss();
+        log!(self.config.log_level,"[SEP] separating at width: {:.3} and loss: {} ", self.prob.strip_width(), FMT.fmt2(min_loss));
 
         let mut n_strikes = 0;
         let mut n_iter = 0;
@@ -88,52 +88,52 @@ impl Separator {
         'outer: while n_strikes < self.config.strike_limit && !term.is_kill() {
             let mut n_iter_no_improvement = 0;
 
-            let initial_strike_overlap = self.ot.get_total_overlap();
-            debug!("[SEP] [s:{n_strikes},i:{n_iter}]     init_o: {}",FMT.fmt2(initial_strike_overlap));
+            let initial_strike_loss = self.ct.get_total_loss();
+            debug!("[SEP] [s:{n_strikes},i:{n_iter}]     init_l: {}",FMT.fmt2(initial_strike_loss));
 
             while n_iter_no_improvement < self.config.iter_no_imprv_limit {
-                let (overlap_before, w_overlap_before) = (
-                    self.ot.get_total_overlap(),
-                    self.ot.get_total_weighted_overlap(),
+                let (loss_before, w_loss_before) = (
+                    self.ct.get_total_loss(),
+                    self.ct.get_total_weighted_loss(),
                 );
                 sep_stats += self.move_colliding_items();
-                let (overlap, w_overlap) = (
-                    self.ot.get_total_overlap(),
-                    self.ot.get_total_weighted_overlap(),
+                let (loss, w_loss) = (
+                    self.ct.get_total_loss(),
+                    self.ct.get_total_weighted_loss(),
                 );
 
-                debug!("[SEP] [s:{n_strikes},i:{n_iter}] ( ) o: {} -> {}, w_o: {} -> {}, (min o: {})", FMT.fmt2(overlap_before), FMT.fmt2(overlap), FMT.fmt2(w_overlap_before), FMT.fmt2(w_overlap), FMT.fmt2(min_overlap));
-                debug_assert!(w_overlap <= w_overlap_before * 1.001, "weighted overlap should not not increase: {} -> {}", FMT.fmt2(w_overlap_before), FMT.fmt2(w_overlap));
+                debug!("[SEP] [s:{n_strikes},i:{n_iter}] ( ) l: {} -> {}, wl: {} -> {}, (min l: {})", FMT.fmt2(loss_before), FMT.fmt2(loss), FMT.fmt2(w_loss_before), FMT.fmt2(w_loss), FMT.fmt2(min_loss));
+                debug_assert!(w_loss <= w_loss_before * 1.001, "weighted loss should not increase: {} -> {}", FMT.fmt2(w_loss), FMT.fmt2(w_loss_before));
 
-                if overlap == 0.0 {
+                if loss == 0.0 {
                     //layout is successfully separated
-                    log!(self.config.log_level,"[SEP] [s:{n_strikes},i:{n_iter}] (S)  min_o: {}",FMT.fmt2(overlap));
-                    min_overlap_sol = (self.prob.create_solution(None), self.ot.create_snapshot());
+                    log!(self.config.log_level,"[SEP] [s:{n_strikes},i:{n_iter}] (S)  min_l: {}",FMT.fmt2(loss));
+                    min_loss_sol = (self.prob.create_solution(None), self.ct.create_snapshot());
                     break 'outer;
-                } else if overlap < min_overlap {
-                    //layout is not separated, but absolute overlap is better than before
-                    log!(self.config.log_level,"[SEP] [s:{n_strikes},i:{n_iter}] (*) min_o: {}",FMT.fmt2(overlap));
+                } else if loss < min_loss {
+                    //layout is not separated, but absolute loss is better than before
+                    log!(self.config.log_level,"[SEP] [s:{n_strikes},i:{n_iter}] (*) min_l: {}",FMT.fmt2(loss));
                     self.export_svg(None, "i", true);
-                    if overlap < min_overlap * 0.98 {
-                        //only reset the iter_no_improvement counter if the overlap improved significantly
+                    if loss < min_loss * 0.98 {
+                        //only reset the iter_no_improvement counter if the loss improved significantly
                         n_iter_no_improvement = 0;
                     }
-                    min_overlap_sol = (self.prob.create_solution(None), self.ot.create_snapshot());
-                    min_overlap = overlap;
+                    min_loss_sol = (self.prob.create_solution(None), self.ct.create_snapshot());
+                    min_loss = loss;
                 } else {
                     n_iter_no_improvement += 1;
                 }
 
-                self.ot.increment_weights();
+                self.ct.increment_weights();
                 n_iter += 1;
             }
 
-            if initial_strike_overlap * 0.98 <= min_overlap {
+            if initial_strike_loss * 0.98 <= min_loss {
                 n_strikes += 1;
             } else {
                 n_strikes = 0;
             }
-            self.rollback(&min_overlap_sol.0, Some(&min_overlap_sol.1));
+            self.rollback(&min_loss_sol.0, Some(&min_loss_sol.1));
         }
         let secs = start.elapsed().as_secs_f32();
         log!(self.config.log_level, "[SEP] finished, evals/s: {}, evals/move: {}, moves/s: {}, iter/s: {}, #workers: {}, total {:.3}s",
@@ -145,7 +145,7 @@ impl Separator {
             FMT.fmt2(secs),
         );
 
-        (min_overlap_sol.0, min_overlap_sol.1)
+        (min_loss_sol.0, min_loss_sol.1)
     }
 
     fn move_colliding_items(&mut self) -> SepStats {
@@ -155,50 +155,50 @@ impl Separator {
         let sep_report = self.pool.install(|| {
             self.workers.par_iter_mut().map(|worker| {
                 // Sync the workers with the master
-                worker.load(&master_sol, &self.ot);
+                worker.load(&master_sol, &self.ct);
                 // Let them modify
                 worker.separate()
             }).sum()
         });
 
-        debug!("[MOD] optimizers w_o's: {:?}",self.workers.iter().map(|opt| opt.ot.get_total_weighted_overlap()).collect_vec());
+        debug!("[MOD] optimizers w_o's: {:?}",self.workers.iter().map(|opt| opt.ct.get_total_weighted_loss()).collect_vec());
 
-        // Check which worker has the lowest total weighted overlap
+        // Check which worker has the lowest total weighted loss
         let best_opt = self.workers.iter_mut()
-            .min_by_key(|opt| OrderedFloat(opt.ot.get_total_weighted_overlap()))
-            .map(|opt| (opt.prob.create_solution(None), &opt.ot))
+            .min_by_key(|opt| OrderedFloat(opt.ct.get_total_weighted_loss()))
+            .map(|opt| (opt.prob.create_solution(None), &opt.ct))
             .unwrap();
 
         // Sync the master with the best optimizer
         self.prob.restore_to_solution(&best_opt.0);
-        self.ot = best_opt.1.clone();
+        self.ct = best_opt.1.clone();
 
         sep_report
     }
 
-    pub fn rollback(&mut self, sol: &Solution, ots: Option<&OTSnapshot>) {
+    pub fn rollback(&mut self, sol: &Solution, ots: Option<&CTSnapshot>) {
         debug_assert!(strip_width(sol) == self.prob.strip_width());
         self.prob.restore_to_solution(sol);
 
         match ots {
             Some(ots) => {
-                //if a snapshot of the overlap tracker was provided, restore it
-                self.ot.restore_but_keep_weights(ots, &self.prob.layout);
+                //if a snapshot of the tracker was provided, restore it
+                self.ct.restore_but_keep_weights(ots, &self.prob.layout);
             }
             None => {
                 //otherwise, rebuild it
-                self.ot = OverlapTracker::new(&self.prob.layout);
+                self.ct = CollisionTracker::new(&self.prob.layout);
             }
         }
     }
 
     pub fn move_item(&mut self, pk: PItemKey, d_transf: DTransformation) -> PItemKey {
-        debug_assert!(tracker_matches_layout(&self.ot, &self.prob.layout));
+        debug_assert!(tracker_matches_layout(&self.ct, &self.prob.layout));
 
         let item_id = self.prob.layout.placed_items()[pk].item_id;
 
-        let old_overlap = self.ot.get_overlap(pk);
-        let old_weighted_overlap = self.ot.get_weighted_overlap(pk);
+        let old_loss = self.ct.get_loss(pk);
+        let old_weighted_loss = self.ct.get_weighted_loss(pk);
 
         //Remove the item from the problem
         self.prob.remove_item(STRIP_LAYOUT_IDX, pk, true);
@@ -210,15 +210,15 @@ impl Separator {
             item_id,
         });
 
-        self.ot.register_item_move(&self.prob.layout, pk, new_pk);
+        self.ct.register_item_move(&self.prob.layout, pk, new_pk);
 
-        let new_overlap = self.ot.get_overlap(new_pk);
-        let new_weighted_overlap = self.ot.get_weighted_overlap(new_pk);
+        let new_loss = self.ct.get_loss(new_pk);
+        let new_weighted_loss = self.ct.get_weighted_loss(new_pk);
 
-        debug!("[MV] moved item {} from from o: {}, wo: {} to o+1: {}, w_o+1: {}"
-            ,item_id,FMT.fmt2(old_overlap),FMT.fmt2(old_weighted_overlap),FMT.fmt2(new_overlap),FMT.fmt2(new_weighted_overlap));
+        debug!("[MV] moved item {} from from l: {}, wl: {} to l+1: {}, wl+1: {}"
+            ,item_id,FMT.fmt2(old_loss),FMT.fmt2(old_weighted_loss),FMT.fmt2(new_loss),FMT.fmt2(new_weighted_loss));
 
-        debug_assert!(tracker_matches_layout(&self.ot, &self.prob.layout));
+        debug_assert!(tracker_matches_layout(&self.ct, &self.prob.layout));
 
         new_pk
     }
@@ -247,15 +247,15 @@ impl Separator {
         );
         self.prob.layout.change_bin(new_bin);
 
-        //rebuild the overlap tracker
-        self.ot = OverlapTracker::new(&self.prob.layout);
+        //rebuild the collision tracker
+        self.ct = CollisionTracker::new(&self.prob.layout);
 
         //rebuild the workers
         self.workers.iter_mut().for_each(|opt| {
             *opt = SeparatorWorker {
                 instance: self.instance.clone(),
                 prob: self.prob.clone(),
-                ot: self.ot.clone(),
+                ct: self.ct.clone(),
                 rng: SmallRng::seed_from_u64(self.rng.random()),
                 sample_config: self.config.sample_config.clone(),
             };

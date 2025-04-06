@@ -50,9 +50,9 @@ pub fn exploration_phase(sep: &mut Separator, term: &Terminator) -> Vec<Solution
 
     while !term.is_kill() {
         let local_best = sep.separate(&term);
-        let total_overlap = local_best.1.get_total_overlap();
+        let total_loss = local_best.1.get_total_loss();
 
-        if total_overlap == 0.0 {
+        if total_loss == 0.0 {
             //layout is successfully separated
             if current_width < best_width {
                 info!("[EXPL] new best at width: {:.3} ({:.3}%)",current_width,sep.prob.usage() * 100.0);
@@ -66,12 +66,12 @@ pub fn exploration_phase(sep: &mut Separator, term: &Terminator) -> Vec<Solution
             current_width = next_width;
             solution_pool.clear();
         } else {
-            info!("[EXPL] layout separation unsuccessful, exporting min overlap solution");
+            info!("[EXPL] layout separation unsuccessful, exporting min loss solution");
             sep.export_svg(Some(local_best.0.clone()), "expl_nf", false);
 
             //layout was not successfully separated, add to local bests
-            match solution_pool.binary_search_by(|(_, o)| o.partial_cmp(&total_overlap).unwrap()) {
-                Ok(idx) | Err(idx) => solution_pool.insert(idx, (local_best.0.clone(), total_overlap)),
+            match solution_pool.binary_search_by(|(_, o)| o.partial_cmp(&total_loss).unwrap()) {
+                Ok(idx) | Err(idx) => solution_pool.insert(idx, (local_best.0.clone(), total_loss)),
             }
 
             //restore to a random solution from the tabu list, better solutions have more chance to be selected
@@ -82,8 +82,8 @@ pub fn exploration_phase(sep: &mut Separator, term: &Terminator) -> Vec<Solution
                 //map it to the range of the solution pool
                 let selected_idx = (sample * solution_pool.len() as f32) as usize;
 
-                let (selected_sol, overlap) = &solution_pool[selected_idx];
-                info!("[EXPL] selected starting solution {}/{} from solution pool (o: {})", selected_idx, solution_pool.len(), FMT.fmt2(*overlap));
+                let (selected_sol, loss) = &solution_pool[selected_idx];
+                info!("[EXPL] selected starting solution {}/{} from solution pool (l: {})", selected_idx, solution_pool.len(), FMT.fmt2(*loss));
                 selected_sol
             };
 
@@ -137,9 +137,9 @@ fn attempt_to_compress(sep: &mut Separator, init: &Solution, r_shrink: f32, term
     let split_pos = sep.rng.random_range(0.0..sep.prob.strip_width());
     sep.change_strip_width(new_width, Some(split_pos));
 
-    //try to separate layout, if all overlap is eliminated, return the solution
+    //try to separate layout, if all collisions are eliminated, return the solution
     let (compacted_sol, ot) = sep.separate(term);
-    match ot.get_total_overlap() == 0.0 {
+    match ot.get_total_loss() == 0.0 {
         true => Some(compacted_sol),
         false => None,
     }

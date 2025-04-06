@@ -1,6 +1,5 @@
 use crate::eval::sample_eval::{SampleEval, SampleEvaluator};
 use crate::eval::specialized_jaguars_pipeline::{collect_poly_collisions_in_detector_custom, SpecializedDetectionMap};
-use crate::overlap::tracker::OverlapTracker;
 use jagua_rs::collision_detection::hazard_helpers::HazardDetector;
 use jagua_rs::entities::item::Item;
 use jagua_rs::entities::layout::Layout;
@@ -8,6 +7,7 @@ use jagua_rs::entities::placed_item::PItemKey;
 use jagua_rs::fsize;
 use jagua_rs::geometry::d_transformation::DTransformation;
 use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
+use crate::quantify::tracker::CollisionTracker;
 
 pub struct SeparationEvaluator<'a> {
     layout: &'a Layout,
@@ -22,9 +22,9 @@ impl<'a> SeparationEvaluator<'a> {
         layout: &'a Layout,
         item: &'a Item,
         current_pk: PItemKey,
-        ot: &'a OverlapTracker,
+        ct: &'a CollisionTracker,
     ) -> Self {
-        let detection_map = SpecializedDetectionMap::new(layout, ot, current_pk);
+        let detection_map = SpecializedDetectionMap::new(layout, ct, current_pk);
 
         Self {
             layout,
@@ -41,7 +41,7 @@ impl<'a> SampleEvaluator for SeparationEvaluator<'a> {
         self.n_evals += 1;
         let cde = self.layout.cde();
 
-        // evals with higher overlap loss than this will always be rejected
+        // evals with higher loss than this will always be rejected
         let loss_bound = match upper_bound {
             Some(SampleEval::Collision { loss }) => loss,
             Some(SampleEval::Clear { .. }) => 0.0,
