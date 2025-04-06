@@ -1,4 +1,4 @@
-# sparrow 🪶
+# sparrow 🪶 [![Rust CI](https://github.com/JeroenGar/sparrow/actions/workflows/rust_ci.yml/badge.svg?branch=main)](https://github.com/JeroenGar/sparrow/actions/workflows/rust_ci.yml) 
 
 > Sparrows are master weavers, crafting nests with intricate patterns. They utilize geometry and symmetry to ensure structural integrity and stability. By incorporating precise angles, lengths, and weaving patterns, these birds achieve a balance between strength and efficiency.
 [(read more)](https://www.mathnasium.com/math-centers/happyvalley/news/mathematical-marvels-bird-nest-construction-hv#)
