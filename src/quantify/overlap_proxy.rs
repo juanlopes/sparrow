@@ -1,5 +1,5 @@
 use jagua_rs::geometry::fail_fast::sp_surrogate::SPSurrogate;
-use jagua_rs::geometry::geo_traits::{Distance};
+use jagua_rs::geometry::geo_traits::Distance;
 
 /// Calculates a proxy for the overlap area between two simple polygons (using poles).
 #[inline(always)]

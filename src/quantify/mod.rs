@@ -1,8 +1,8 @@
+use crate::config::OVERLAP_PROXY_EPSILON_DIAM_RATIO;
+use crate::quantify::overlap_proxy::overlap_area_proxy;
 use jagua_rs::geometry::geo_traits::{Distance, Shape};
 use jagua_rs::geometry::primitives::aa_rectangle::AARectangle;
 use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
-use crate::config::OVERLAP_PROXY_EPSILON_DIAM_RATIO;
-use crate::quantify::overlap_proxy::overlap_area_proxy;
 
 pub mod overlap_proxy;
 mod pair_matrix;

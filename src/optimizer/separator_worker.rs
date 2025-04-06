@@ -1,6 +1,5 @@
-use std::iter::Sum;
-use std::ops::AddAssign;
 use crate::eval::separation_eval::SeparationEvaluator;
+use crate::quantify::tracker::CollisionTracker;
 use crate::sample::search;
 use crate::sample::search::SampleConfig;
 use crate::util::assertions::tracker_matches_layout;
@@ -16,8 +15,9 @@ use jagua_rs::entities::solution::Solution;
 use jagua_rs::geometry::d_transformation::DTransformation;
 use log::debug;
 use rand::prelude::{SliceRandom, SmallRng};
+use std::iter::Sum;
+use std::ops::AddAssign;
 use tap::Tap;
-use crate::quantify::tracker::CollisionTracker;
 
 pub struct SeparatorWorker {
     pub instance: SPInstance,

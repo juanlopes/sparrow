@@ -1,5 +1,6 @@
 use crate::eval::sample_eval::{SampleEval, SampleEvaluator};
 use crate::eval::specialized_jaguars_pipeline::{collect_poly_collisions_in_detector_custom, SpecializedDetectionMap};
+use crate::quantify::tracker::CollisionTracker;
 use jagua_rs::collision_detection::hazard_helpers::HazardDetector;
 use jagua_rs::entities::item::Item;
 use jagua_rs::entities::layout::Layout;
@@ -7,7 +8,6 @@ use jagua_rs::entities::placed_item::PItemKey;
 use jagua_rs::fsize;
 use jagua_rs::geometry::d_transformation::DTransformation;
 use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
-use crate::quantify::tracker::CollisionTracker;
 
 pub struct SeparationEvaluator<'a> {
     layout: &'a Layout,

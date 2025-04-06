@@ -1,9 +1,9 @@
-use jagua_rs::geometry::geo_traits::Shape;
-use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
 use crate::config::OVERLAP_PROXY_EPSILON_DIAM_RATIO;
 use crate::quantify::calc_shape_penalty;
 use crate::quantify::simd::circles_soa::CirclesSoA;
 use crate::quantify::simd::overlap_proxy_simd::poles_overlap_area_proxy_simd;
+use jagua_rs::geometry::geo_traits::Shape;
+use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
 
 pub mod circles_soa;
 pub mod overlap_proxy_simd;

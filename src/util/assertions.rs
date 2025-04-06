@@ -1,6 +1,6 @@
 use crate::eval::specialized_jaguars_pipeline::SpecializedDetectionMap;
-use crate::quantify::{quantify_collision_poly_bin, quantify_collision_poly_poly};
 use crate::quantify::tracker::CollisionTracker;
+use crate::quantify::{quantify_collision_poly_bin, quantify_collision_poly_poly};
 use crate::util::io::svg_util::SvgDrawOptions;
 use float_cmp::{approx_eq, assert_approx_eq};
 use itertools::Itertools;

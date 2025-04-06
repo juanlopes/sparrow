@@ -1,6 +1,7 @@
 use crate::config::{DRAW_OPTIONS, LIVE_DIR};
 use crate::optimizer::separator_worker::{SepStats, SeparatorWorker};
 use crate::optimizer::Terminator;
+use crate::quantify::tracker::{CTSnapshot, CollisionTracker};
 use crate::sample::search::SampleConfig;
 use crate::util::assertions::tracker_matches_layout;
 use crate::util::io;
@@ -26,7 +27,6 @@ use rayon::iter::ParallelIterator;
 use rayon::ThreadPool;
 use std::path::Path;
 use std::time::Instant;
-use crate::quantify::tracker::{CTSnapshot, CollisionTracker};
 
 pub struct SeparatorConfig {
     pub iter_no_imprv_limit: usize,

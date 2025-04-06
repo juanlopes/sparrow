@@ -1,4 +1,4 @@
-use crate::config::{WEIGHT_MAX_INC_RATIO, WEIGHT_MIN_INC_RATIO, WEIGHT_DECAY};
+use crate::config::{WEIGHT_DECAY, WEIGHT_MAX_INC_RATIO, WEIGHT_MIN_INC_RATIO};
 use crate::quantify::pair_matrix::PairMatrix;
 use crate::quantify::{quantify_collision_poly_bin, quantify_collision_poly_poly};
 use crate::util::assertions::tracker_matches_layout;

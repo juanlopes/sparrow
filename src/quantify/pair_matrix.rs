@@ -1,5 +1,5 @@
-use std::ops::{Index, IndexMut};
 use crate::quantify::tracker::CTEntry;
+use std::ops::{Index, IndexMut};
 
 // triangular matrix of pair-wise collision loss and weights
 // supporting data structure for the `CollisionTracker`

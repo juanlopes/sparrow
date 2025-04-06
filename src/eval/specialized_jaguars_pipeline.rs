@@ -1,9 +1,11 @@
+use crate::quantify::quantify_collision_poly_bin;
+#[cfg(not(feature = "simd"))]
+use crate::quantify::quantify_collision_poly_poly;
 #[cfg(feature = "simd")]
 use crate::quantify::simd::circles_soa::CirclesSoA;
 #[cfg(feature = "simd")]
 use crate::quantify::simd::quantify_collision_poly_poly_simd;
-#[cfg(not(feature = "simd"))]
-use crate::quantify::quantify_collision_poly_poly;
+use crate::quantify::tracker::CollisionTracker;
 use crate::util::assertions;
 use crate::util::bit_reversal_iterator::BitReversalIterator;
 use float_cmp::approx_eq;
@@ -19,8 +21,6 @@ use jagua_rs::geometry::d_transformation::DTransformation;
 use jagua_rs::geometry::geo_traits::{CollidesWith, Shape, TransformableFrom};
 use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
 use slotmap::SecondaryMap;
-use crate::quantify::quantify_collision_poly_bin;
-use crate::quantify::tracker::CollisionTracker;
 
 /// Functionally the same as [`CDEngine::collect_poly_collisions_in_detector`], but with early termination.
 /// Saving quite a bit of CPU time since over 90% of the time is spent in this function.
