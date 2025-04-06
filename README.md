@@ -28,10 +28,6 @@ This optimization algorithm builds on [`jagua-rs`](https://github.com/JeroenGar/
 
 ## Requirements
 - [Rust](https://www.rust-lang.org/tools/install) ≥ 1.85
-- [`jagua-rs`](https://github.com/JeroenGar/jagua-rs) submodule initialized and up to date:
-```bash
-git submodule update --init
-```
 
 ## Usage
 
@@ -54,7 +50,7 @@ Pressing 'Ctrl + C' immediately moves the algorithm to the next phase.
 Concrete example:
 ```bash
 cargo run --release -- \
-    -i libs/jagua-rs/assets/swim.json
+    -i data/input/swim.json
 ```
 
 ## Visualizer
@@ -65,7 +61,7 @@ and build `sparrow` with the `live_svg` feature enabled:
 
 ```bash
 cargo run --release --features=live_svg -- \
-    -i libs/jagua-rs/assets/swim.json
+    -i data/input/swim.json
 ```
 ![Demo of the live solution viewer](data/demo.gif)
 
@@ -100,7 +96,7 @@ By default, a range of intermediate (and infeasible) solutions will be exported 
 To disable this and export only a single final solution, compile with the `only_final_svg` feature:
 ```bash
 cargo run --release --features=only_final_svg -- \
-    -i libs/jagua-rs/assets/swim.json
+    -i data/input/swim.json
 ```
 ## Targeting maximum performance
 
@@ -112,7 +108,7 @@ and enable the `simd` feature:
   export RUSTFLAGS='-C target-cpu=native'
   export RUSTUP_TOOLCHAIN=nightly
   cargo run --release --features=simd,only_final_svg -- \
-      -i libs/jagua-rs/assets/swim.json
+      -i data/input/swim.json
 ```
 
 ## Testing
@@ -126,7 +122,7 @@ Some basic integration tests are included that run the heuristic on a few exampl
 Alternatively you can enable all `debug_assert!()` checks in release builds by running the tests with the `debug-release` profile:
 ```bash
 cargo run --profile debug-release -- \
-    -i libs/jagua-rs/assets/swim.json
+    -i data/input/swim.json
 ```
 
 ## Experiments

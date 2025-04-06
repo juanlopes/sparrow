@@ -15,7 +15,7 @@ mod integration_tests {
 
     const EXPLORE_TIMEOUT: Duration = Duration::from_secs(10);
     const COMPRESS_TIMEOUT: Duration = Duration::from_secs(10);
-    const INSTANCE_BASE_PATH: &str = "libs/jagua-rs/assets";
+    const INSTANCE_BASE_PATH: &str = "data/input";
     const RNG_SEED: Option<usize> = Some(0); // fix seed for reproducibility
     
     #[test_case("swim.json"; "swim")]

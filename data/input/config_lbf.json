@@ -1,0 +1,16 @@
+{
+  "cde_config": {
+    "quadtree_depth": 5,
+    "hpg_n_cells": 2000,
+    "item_surrogate_config": {
+      "pole_coverage_goal": 0.9,
+      "max_poles": 10,
+      "n_ff_poles": 2,
+      "n_ff_piers": 0
+    }
+  },
+  "poly_simpl_tolerance": 0.001,
+  "prng_seed": 0,
+  "n_samples": 5000,
+  "ls_frac": 0.2
+}

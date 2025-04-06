@@ -1,3 +1,0 @@
-[submodule "jagua-rs"]
-	path = libs/jagua-rs
-	url = https://github.com/JeroenGar/jagua-rs.git
