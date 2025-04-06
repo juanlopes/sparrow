@@ -55,7 +55,7 @@ jobs:
           RUSTFLAGS: '-C target-cpu=native -Awarnings'
         run: |
           export RUSTFLAGS=$RUSTFLAGS
-          output=$(cargo run --profile release --features=only_final_svg,simd --bin bench -- libs/jagua-rs/assets/${{ inputs.instance }}.json ${{ inputs.run_time_s}} ${{ inputs.n_runs }} | tee /dev/stderr)
+          output=$(cargo run --profile release --features=only_final_svg,simd --bin bench -- data/input/${{ inputs.instance }}.json ${{ inputs.run_time_s}} ${{ inputs.n_runs }} | tee /dev/stderr)
           echo "$output" > "output/${{ inputs.instance }}_bench_stdout.log"
           {
             echo "## Benchmark Output for \`${{ inputs.instance }}\`"
