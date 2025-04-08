@@ -16,8 +16,9 @@ pub const CDE_CONFIG: CDEConfig = CDEConfig {
     },
 };
 
-// Simplifies the items exclusively outwards (inflating the shape)
-// The simplification stops when the area(simplified) > area(original) * (1.0 + tolerance)
+/// Simplifies the items exclusively outwards (inflating the shape)
+/// The simplification stops when the area(simplified) > area(original) * (1.0 + tolerance)
+/// Switch to [PolySimplConfig::Disabled] to disable any simplification
 pub const SIMPLIFICATION_CONFIG: PolySimplConfig = PolySimplConfig::Enabled{
     tolerance: 0.001
 };

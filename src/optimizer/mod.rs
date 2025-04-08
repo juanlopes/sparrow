@@ -11,7 +11,7 @@ use jagua_rs::entities::solution::Solution;
 use log::info;
 use ordered_float::OrderedFloat;
 use rand::prelude::{IteratorRandom, SmallRng};
-use rand::Rng;
+use rand::{Rng, RngCore, SeedableRng};
 use rand_distr::Distribution;
 use rand_distr::Normal;
 use std::time::{Duration, Instant};
@@ -22,16 +22,17 @@ mod worker;
 pub mod terminator;
 
 // All high-level heuristic logic
-pub fn optimize(instance: SPInstance, rng: SmallRng, output_folder_path: String, mut terminator: Terminator, explore_dur: Duration, compress_dur: Duration) -> Solution {
-    let builder = LBFBuilder::new(instance, CDE_CONFIG, rng, LBF_SAMPLE_CONFIG).construct();
+pub fn optimize(instance: SPInstance, mut rng: SmallRng, output_folder_path: String, mut terminator: Terminator, explore_dur: Duration, compress_dur: Duration) -> Solution {
+    let mut next_rng = || SmallRng::seed_from_u64(rng.next_u64());
+    let builder = LBFBuilder::new(instance, CDE_CONFIG, next_rng(), LBF_SAMPLE_CONFIG).construct();
 
     terminator.set_timeout_from_now(explore_dur);
-    let mut expl_separator = Separator::new(builder.instance, builder.prob, builder.rng, output_folder_path.clone(), 0, SEP_CFG_EXPLORE);
+    let mut expl_separator = Separator::new(builder.instance, builder.prob, next_rng(), output_folder_path.clone(), 0, SEP_CFG_EXPLORE);
     let solutions = exploration_phase(&mut expl_separator, &terminator);
     let final_explore_sol = solutions.last().unwrap().clone();
 
     terminator.set_timeout_from_now(compress_dur).reset_ctrlc();
-    let mut cmpr_separator = Separator::new(expl_separator.instance, expl_separator.prob, expl_separator.rng, expl_separator.output_svg_folder, expl_separator.svg_counter, SEP_CFG_COMPRESS);
+    let mut cmpr_separator = Separator::new(expl_separator.instance, expl_separator.prob, next_rng(), expl_separator.output_svg_folder, expl_separator.svg_counter, SEP_CFG_COMPRESS);
     let cmpr_sol = compression_phase(&mut cmpr_separator, &final_explore_sol, &terminator);
 
     cmpr_sol
