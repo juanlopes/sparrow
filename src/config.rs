@@ -16,11 +16,11 @@ pub const CDE_CONFIG: CDEConfig = CDEConfig {
     },
 };
 
-// Uncomment if your instance contains polygons with a lot of vertices
+// Simplifies the items exclusively outwards (inflating the shape)
+// The simplification stops when the area(simplified) > area(original) * (1.0 + tolerance)
 pub const SIMPLIFICATION_CONFIG: PolySimplConfig = PolySimplConfig::Enabled{
     tolerance: 0.001
 };
-//pub const SIMPLIFICATION_CONFIG: PolySimplConfig = PolySimplConfig::Disabled;
 
 pub const EXPLORE_SHRINK_STEP: f32 = 0.001;
 pub const EXPLORE_SOL_DISTR_STDDEV: f32 = 0.25;
