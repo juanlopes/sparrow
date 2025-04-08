@@ -17,10 +17,10 @@ pub const CDE_CONFIG: CDEConfig = CDEConfig {
 };
 
 // Uncomment if your instance contains polygons with a lot of vertices
-// pub const SIMPLIFICATION_CONFIG: PolySimplConfig = PolySimplConfig::Enabled{
-//     tolerance: 0.001
-// };
-pub const SIMPLIFICATION_CONFIG: PolySimplConfig = PolySimplConfig::Disabled;
+pub const SIMPLIFICATION_CONFIG: PolySimplConfig = PolySimplConfig::Enabled{
+    tolerance: 0.001
+};
+//pub const SIMPLIFICATION_CONFIG: PolySimplConfig = PolySimplConfig::Disabled;
 
 pub const EXPLORE_SHRINK_STEP: f32 = 0.001;
 pub const EXPLORE_SOL_DISTR_STDDEV: f32 = 0.25;
