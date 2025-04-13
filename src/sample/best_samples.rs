@@ -1,6 +1,6 @@
 use crate::eval::sample_eval::SampleEval;
 use itertools::Itertools;
-use jagua_rs::geometry::d_transformation::DTransformation;
+use jagua_rs::geometry::DTransformation;
 use std::f32::consts::PI;
 use std::fmt::Debug;
 

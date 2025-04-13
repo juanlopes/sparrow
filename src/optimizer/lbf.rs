@@ -2,18 +2,15 @@ use crate::eval::lbf_evaluator::LBFEvaluator;
 use crate::eval::sample_eval::SampleEval;
 use crate::sample::search::{search_placement, SampleConfig};
 use itertools::Itertools;
-use jagua_rs::entities::instances::instance_generic::InstanceGeneric;
-use jagua_rs::entities::instances::strip_packing::SPInstance;
-use jagua_rs::entities::placing_option::PlacingOption;
-use jagua_rs::entities::problems::problem_generic::{ProblemGeneric, STRIP_LAYOUT_IDX};
-use jagua_rs::entities::problems::strip_packing::SPProblem;
-use jagua_rs::util::config::CDEConfig;
 use log::debug;
 use ordered_float::OrderedFloat;
 use rand::prelude::SmallRng;
 use std::cmp::Reverse;
 use std::iter;
 use std::time::Instant;
+use jagua_rs::entities::general::Instance;
+use jagua_rs::entities::strip_packing::{SPInstance, SPPlacement, SPProblem};
+use jagua_rs::util::CDEConfig;
 
 pub struct LBFBuilder {
     pub instance: SPInstance,
@@ -51,7 +48,7 @@ impl LBFBuilder {
                 Reverse(OrderedFloat(convex_hull_area * diameter))
             })
             .map(|id| {
-                let missing_qty = self.prob.missing_item_qtys()[id].max(0) as usize;
+                let missing_qty = self.prob.missing_item_qtys[id].max(0) as usize;
                 iter::repeat(id).take(missing_qty)
             })
             .flatten()
@@ -72,17 +69,17 @@ impl LBFBuilder {
         match self.find_placement(item_id) {
             Some(p_opt) => {
                 self.prob.place_item(p_opt);
-                debug!("[CONSTR] placing item {}/{} with id {} at [{}]",self.prob.placed_item_qtys().sum::<usize>(),self.instance.total_item_qty(),p_opt.item_id,p_opt.d_transf);
+                debug!("[CONSTR] placing item {}/{} with id {} at [{}]",self.prob.layout.placed_items.len(),self.instance.total_item_qty(),p_opt.item_id,p_opt.d_transf);
             }
             None => {
                 debug!("[CONSTR] failed to place item with id {}, expanding strip width",item_id);
-                self.prob.modify_strip_in_back(self.prob.strip_width() * 1.2);
+                self.prob.change_strip_width(self.prob.strip_width() * 1.2);
                 self.place_item(item_id);
             }
         }
     }
 
-    fn find_placement(&mut self, item_id: usize) -> Option<PlacingOption> {
+    fn find_placement(&mut self, item_id: usize) -> Option<SPPlacement> {
         let layout = &self.prob.layout;
         let item = self.instance.item(item_id);
         let evaluator = LBFEvaluator::new(layout, item);
@@ -91,7 +88,7 @@ impl LBFBuilder {
 
         match best_sample {
             Some((d_transf, SampleEval::Clear { .. })) => {
-                Some(PlacingOption { layout_idx: STRIP_LAYOUT_IDX, item_id, d_transf })
+                Some(SPPlacement { item_id, d_transf })
             }
             _ => None
         }

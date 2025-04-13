@@ -19,7 +19,8 @@ name = "bench"
 path = "src/bench.rs"
 
 [dependencies]
-jagua-rs = { git = "https://github.com/JeroenGar/jagua-rs.git", rev = "aa99a0af75c7ddf97095e02b33df0c7906bc2988" }
+jagua-rs = { git = "https://github.com/JeroenGar/jagua-rs.git", rev = "804c28900955d51cb435644a60285204797c6bfb" }
+#jagua-rs = { path = "../jagua-rs/jagua-rs" }
 rand = { version = "0.9.0", features = ["small_rng"] }
 rand_distr = "0.5.1"
 svg = "0.18.0"

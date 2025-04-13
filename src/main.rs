@@ -1,8 +1,7 @@
 extern crate core;
 
 use clap::Parser as Clap;
-use jagua_rs::entities::instances::instance::Instance;
-use jagua_rs::entities::instances::instance_generic::InstanceGeneric;
+use jagua_rs::entities::general::Instance;
 use jagua_rs::io::parser::Parser;
 use log::{info, warn, Level};
 use rand::prelude::SmallRng;
@@ -15,6 +14,7 @@ use sparrow::util::io::layout_to_svg::s_layout_to_svg;
 use std::fs;
 use std::path::Path;
 use std::time::Duration;
+use sparrow::util::io::to_sp_instance;
 
 fn main() {
     fs::create_dir_all(OUTPUT_DIR).expect("could not create output directory");
@@ -58,10 +58,8 @@ fn main() {
     let json_instance = io::read_json_instance(Path::new(&input_file_path));
 
     let parser = Parser::new(SIMPLIFICATION_CONFIG, CDE_CONFIG, true);
-    let instance = match parser.parse(&json_instance){
-        Instance::SP(spi) => spi,
-        _ => panic!("expected strip packing instance"),
-    };
+    let any_instance = parser.parse(&json_instance);
+    let instance = to_sp_instance(any_instance.as_ref()).expect("Expected SPInstance");
 
     info!("[MAIN] loaded instance {} with #{} items", json_instance.name, instance.total_item_qty());
 
@@ -72,7 +70,7 @@ fn main() {
     let solution = optimize(instance.clone(), rng, output_folder_path, terminator, explore_dur, compress_dur);
 
     {
-        let svg = s_layout_to_svg(&solution.layout_snapshots[0], &instance, DRAW_OPTIONS, "final");
+        let svg = s_layout_to_svg(&solution.layout_snapshot, &instance, DRAW_OPTIONS, "final");
         io::write_svg(&svg, Path::new(format!("{OUTPUT_DIR}/final_{}.svg", json_instance.name).as_str()), Level::Info);
         if cfg!(feature = "live_svg") {
             io::write_svg(&svg, Path::new(format!("{LIVE_DIR}/.live_solution.svg").as_str()), Level::Trace);

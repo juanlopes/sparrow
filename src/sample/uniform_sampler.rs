@@ -1,13 +1,12 @@
 use itertools::Itertools;
-use jagua_rs::entities::item::Item;
-use jagua_rs::geometry::d_transformation::DTransformation;
 use jagua_rs::geometry::geo_enums::AllowedRotation;
 use jagua_rs::geometry::geo_traits::{Shape, TransformableFrom};
-use jagua_rs::geometry::primitives::aa_rectangle::AARectangle;
-use jagua_rs::geometry::transformation::Transformation;
 use rand::prelude::IndexedRandom;
 use rand::Rng;
 use std::ops::Range;
+use jagua_rs::entities::general::Item;
+use jagua_rs::geometry::primitives::AARectangle;
+use jagua_rs::geometry::{DTransformation, Transformation};
 
 /// A sampler that creates uniform samples for an item within a bounding box
 #[derive(Clone, Debug)]

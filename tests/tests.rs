@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod integration_tests {
-    use jagua_rs::entities::instances::instance::Instance;
     use jagua_rs::io::parser::Parser;
     use rand::prelude::SmallRng;
     use rand::SeedableRng;
@@ -12,6 +11,7 @@ mod integration_tests {
     use std::path::Path;
     use std::time::Duration;
     use test_case::test_case;
+    use sparrow::util::io::to_sp_instance;
 
     const EXPLORE_TIMEOUT: Duration = Duration::from_secs(10);
     const COMPRESS_TIMEOUT: Duration = Duration::from_secs(10);
@@ -26,10 +26,8 @@ mod integration_tests {
         let json_instance = io::read_json_instance(Path::new(&input_file_path));
 
         let parser = Parser::new(SIMPLIFICATION_CONFIG, CDE_CONFIG, true);
-        let instance = match parser.parse(&json_instance){
-            Instance::SP(spi) => spi,
-            _ => panic!("expected strip packing instance"),
-        };
+        let any_instance = parser.parse(&json_instance);
+        let instance = to_sp_instance(any_instance.as_ref()).expect("Expected SPInstance");
 
         println!("[TEST] loaded instance: {}", json_instance.name);
 

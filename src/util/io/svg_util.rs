@@ -1,8 +1,6 @@
 use std::fmt::{Display, Formatter};
-
+use jagua_rs::entities::general::N_QUALITIES;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-
-use jagua_rs::entities::quality_zone::N_QUALITIES;
 
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize, Copy)]
 pub struct SvgDrawOptions {

@@ -8,16 +8,9 @@ use crate::util::io;
 use crate::util::io::layout_to_svg::{layout_to_svg, s_layout_to_svg};
 use crate::{EXPORT_LIVE_SVG, EXPORT_ONLY_FINAL_SVG, FMT};
 use itertools::Itertools;
-use jagua_rs::entities::bin::Bin;
-use jagua_rs::entities::instances::strip_packing::SPInstance;
-use jagua_rs::entities::placed_item::PItemKey;
-use jagua_rs::entities::placing_option::PlacingOption;
-use jagua_rs::entities::problems::problem_generic::{ProblemGeneric, STRIP_LAYOUT_IDX};
-use jagua_rs::entities::problems::strip_packing::{strip_width, SPProblem};
-use jagua_rs::entities::solution::Solution;
-use jagua_rs::geometry::d_transformation::DTransformation;
-use jagua_rs::geometry::geo_traits::Shape;
-use jagua_rs::geometry::primitives::aa_rectangle::AARectangle;
+use jagua_rs::entities::general::PItemKey;
+use jagua_rs::entities::strip_packing::{SPInstance, SPPlacement, SPProblem, SPSolution};
+use jagua_rs::geometry::DTransformation;
 use log::{debug, log, Level};
 use ordered_float::OrderedFloat;
 use rand::rngs::SmallRng;
@@ -27,6 +20,7 @@ use rayon::iter::ParallelIterator;
 use rayon::ThreadPool;
 use std::path::Path;
 use std::time::Instant;
+use jagua_rs::geometry::geo_traits::Shape;
 
 pub struct SeparatorConfig {
     pub iter_no_imprv_limit: usize,
@@ -71,12 +65,12 @@ impl Separator {
             svg_counter,
             output_svg_folder,
             config,
-            pool
+            pool,
         }
     }
 
-    pub fn separate(&mut self, term: &Terminator) -> (Solution, CTSnapshot) {
-        let mut min_loss_sol = (self.prob.create_solution(None), self.ct.create_snapshot());
+    pub fn separate(&mut self, term: &Terminator) -> (SPSolution, CTSnapshot) {
+        let mut min_loss_sol = (self.prob.save(), self.ct.save());
         let mut min_loss = self.ct.get_total_loss();
         log!(self.config.log_level,"[SEP] separating at width: {:.3} and loss: {} ", self.prob.strip_width(), FMT.fmt2(min_loss));
 
@@ -108,7 +102,7 @@ impl Separator {
                 if loss == 0.0 {
                     //layout is successfully separated
                     log!(self.config.log_level,"[SEP] [s:{n_strikes},i:{n_iter}] (S)  min_l: {}",FMT.fmt2(loss));
-                    min_loss_sol = (self.prob.create_solution(None), self.ct.create_snapshot());
+                    min_loss_sol = (self.prob.save(), self.ct.save());
                     break 'outer;
                 } else if loss < min_loss {
                     //layout is not separated, but absolute loss is better than before
@@ -118,7 +112,7 @@ impl Separator {
                         //only reset the iter_no_improvement counter if the loss improved significantly
                         n_iter_no_improvement = 0;
                     }
-                    min_loss_sol = (self.prob.create_solution(None), self.ct.create_snapshot());
+                    min_loss_sol = (self.prob.save(), self.ct.save());
                     min_loss = loss;
                 } else {
                     n_iter_no_improvement += 1;
@@ -149,7 +143,7 @@ impl Separator {
     }
 
     fn move_colliding_items(&mut self) -> SepStats {
-        let master_sol = self.prob.create_solution(None);
+        let master_sol = self.prob.save();
 
         // Use the local thread pool (instead of global one) to maximize cache locality
         let sep_report = self.pool.install(|| {
@@ -166,19 +160,19 @@ impl Separator {
         // Check which worker has the lowest total weighted loss
         let best_opt = self.workers.iter_mut()
             .min_by_key(|opt| OrderedFloat(opt.ct.get_total_weighted_loss()))
-            .map(|opt| (opt.prob.create_solution(None), &opt.ct))
+            .map(|opt| (opt.prob.save(), &opt.ct))
             .unwrap();
 
         // Sync the master with the best optimizer
-        self.prob.restore_to_solution(&best_opt.0);
+        self.prob.restore(&best_opt.0);
         self.ct = best_opt.1.clone();
 
         sep_report
     }
 
-    pub fn rollback(&mut self, sol: &Solution, ots: Option<&CTSnapshot>) {
-        debug_assert!(strip_width(sol) == self.prob.strip_width());
-        self.prob.restore_to_solution(sol);
+    pub fn rollback(&mut self, sol: &SPSolution, ots: Option<&CTSnapshot>) {
+        debug_assert!(sol.strip_width == self.prob.strip_width());
+        self.prob.restore(sol);
 
         match ots {
             Some(ots) => {
@@ -201,14 +195,10 @@ impl Separator {
         let old_weighted_loss = self.ct.get_weighted_loss(pk);
 
         //Remove the item from the problem
-        self.prob.remove_item(STRIP_LAYOUT_IDX, pk, true);
+        self.prob.remove_item(pk, true);
 
         //Place the item again but with a new transformation
-        let (_, new_pk) = self.prob.place_item(PlacingOption {
-            d_transf,
-            layout_idx: STRIP_LAYOUT_IDX,
-            item_id,
-        });
+        let new_pk = self.prob.place_item(SPPlacement{d_transf,item_id});
 
         self.ct.register_item_move(&self.prob.layout, pk, new_pk);
 
@@ -240,12 +230,7 @@ impl Separator {
             self.move_item(pik, new_transf.decompose());
         }
 
-        //swap the bin to one with the new width
-        let new_bin = Bin::from_strip(
-            AARectangle::new(0.0, 0.0, new_width, self.prob.strip_height()),
-            self.prob.layout.bin.base_cde.config().clone(),
-        );
-        self.prob.layout.change_bin(new_bin);
+        self.prob.change_strip_width(new_width);
 
         //rebuild the collision tracker
         self.ct = CollisionTracker::new(&self.prob.layout);
@@ -263,7 +248,7 @@ impl Separator {
         debug!("[SEP] changed strip width to {:.3}", new_width);
     }
 
-    pub fn export_svg(&mut self, solution: Option<Solution>, suffix: &str, only_live: bool) {
+    pub fn export_svg(&mut self, solution: Option<SPSolution>, suffix: &str, only_live: bool) {
         if !EXPORT_ONLY_FINAL_SVG {
             if self.svg_counter == 0 {
                 std::fs::create_dir_all(&self.output_svg_folder).unwrap();
@@ -277,7 +262,7 @@ impl Separator {
 
             let file_name = format!("{}_{:.3}_{suffix}", self.svg_counter, self.prob.strip_width());
             let svg = match solution {
-                Some(sol) => s_layout_to_svg(&sol.layout_snapshots[0], &self.instance, DRAW_OPTIONS, file_name.as_str()),
+                Some(sol) => s_layout_to_svg(&sol.layout_snapshot, &self.instance, DRAW_OPTIONS, file_name.as_str()),
                 None => layout_to_svg(&self.prob.layout, &self.instance, DRAW_OPTIONS, file_name.as_str()),
             };
 

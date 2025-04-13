@@ -1,7 +1,7 @@
 use crate::config::{CD_STEP_FAIL, CD_STEP_SUCCESS};
 use crate::eval::sample_eval::{SampleEval, SampleEvaluator};
-use jagua_rs::geometry::d_transformation::DTransformation;
-use jagua_rs::geometry::primitives::point::Point;
+use jagua_rs::geometry::DTransformation;
+use jagua_rs::geometry::primitives::Point;
 use log::trace;
 use rand::Rng;
 use std::cmp::Ordering;

@@ -1,5 +1,5 @@
 use itertools::izip;
-use jagua_rs::geometry::primitives::circle::Circle;
+use jagua_rs::geometry::primitives::Circle;
 
 /// Collection of circles, but with a memory layout that's more suitable for SIMD operations.
 /// SoA (Structure of Arrays) instead of AoS (Array of Structures).

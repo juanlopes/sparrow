@@ -1,11 +1,10 @@
+use jagua_rs::collision_detection::hazards::detector::HazardDetector;
+use jagua_rs::collision_detection::hazards::HazardEntity;
+use jagua_rs::entities::general::{Layout, PItemKey};
 use crate::config::{WEIGHT_DECAY, WEIGHT_MAX_INC_RATIO, WEIGHT_MIN_INC_RATIO};
 use crate::quantify::pair_matrix::PairMatrix;
 use crate::quantify::{quantify_collision_poly_bin, quantify_collision_poly_poly};
 use crate::util::assertions::tracker_matches_layout;
-use jagua_rs::collision_detection::hazard::HazardEntity;
-use jagua_rs::collision_detection::hazard_helpers::HazardDetector;
-use jagua_rs::entities::layout::Layout;
-use jagua_rs::entities::placed_item::PItemKey;
 use ordered_float::Float;
 use slotmap::SecondaryMap;
 
@@ -80,19 +79,19 @@ impl CollisionTracker {
         }
     }
 
-    pub fn restore_but_keep_weights(&mut self, ots: &CTSnapshot, layout: &Layout) {
+    pub fn restore_but_keep_weights(&mut self, cts: &CTSnapshot, layout: &Layout) {
         //Copy the loss and keys, but keep the weights
-        self.pk_idx_map = ots.pk_idx_map.clone();
+        self.pk_idx_map = cts.pk_idx_map.clone();
         self.pair_collisions.data.iter_mut()
-            .zip(ots.pair_collisions.data.iter())
+            .zip(cts.pair_collisions.data.iter())
             .for_each(|(a, b)| a.loss = b.loss);
         self.bin_collisions.iter_mut()
-            .zip(ots.bin_collisions.iter())
+            .zip(cts.bin_collisions.iter())
             .for_each(|(a, b)| a.loss = b.loss);
         debug_assert!(tracker_matches_layout(self, layout));
     }
 
-    pub fn create_snapshot(&self) -> CTSnapshot {
+    pub fn save(&self) -> CTSnapshot {
         self.clone()
     }
 

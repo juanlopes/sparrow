@@ -1,6 +1,5 @@
 extern crate core;
 
-use jagua_rs::entities::instances::instance::Instance;
 use jagua_rs::io::parser::Parser;
 use ordered_float::OrderedFloat;
 use rand::prelude::SmallRng;
@@ -15,6 +14,7 @@ use std::env::args;
 use std::fs;
 use std::path::Path;
 use std::time::{Duration, Instant};
+use sparrow::util::io::to_sp_instance;
 
 fn main() {
     //the input file is the first argument
@@ -53,12 +53,8 @@ fn main() {
     );
 
     let parser = Parser::new(SIMPLIFICATION_CONFIG, CDE_CONFIG, true);
-    let instance = parser.parse(&json_instance);
-
-    let instance = match instance {
-        Instance::SP(spi) => spi,
-        _ => panic!("Expected SPInstance"),
-    };
+    let any_instance = parser.parse(&json_instance);
+    let instance = to_sp_instance(any_instance.as_ref()).expect("Expected SPInstance");
 
     let mut final_solutions = vec![];
 
@@ -100,7 +96,7 @@ fn main() {
                     );
 
                     io::write_svg(
-                        &s_layout_to_svg(&cmpr_sol.layout_snapshots[0], &instance, DRAW_OPTIONS, &*format!("final_bench_{}", bench_idx)),
+                        &s_layout_to_svg(&cmpr_sol.layout_snapshot, &instance, DRAW_OPTIONS, &*format!("final_bench_{}", bench_idx)),
                         Path::new(&format!("{OUTPUT_DIR}/final_bench_{}.svg", bench_idx)),
                         log::Level::Info,
                     );
@@ -116,8 +112,8 @@ fn main() {
     let (final_widths, final_usages): (Vec<f32>, Vec<f32>) = final_solutions
         .iter()
         .map(|s| {
-            let width = s.layout_snapshots[0].bin.bbox().width();
-            let usage = s.layout_snapshots[0].usage;
+            let width = s.layout_snapshot.bin.bbox().width();
+            let usage = s.layout_snapshot.usage;
             (width, usage * 100.0)
         })
         .unzip();
@@ -125,7 +121,7 @@ fn main() {
     let best_final_solution = final_solutions.iter().max_by_key(|s| OrderedFloat(s.usage)).unwrap();
 
     io::write_svg(
-        &s_layout_to_svg(&best_final_solution.layout_snapshots[0], &instance, DRAW_OPTIONS, "final_best"),
+        &s_layout_to_svg(&best_final_solution.layout_snapshot, &instance, DRAW_OPTIONS, "final_best"),
         Path::new(format!("{OUTPUT_DIR}/final_best_{}.svg", json_instance.name).as_str()),
         log::Level::Info,
     );

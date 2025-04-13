@@ -1,22 +1,19 @@
 use crate::util::io::svg_util::SvgDrawOptions;
 use crate::util::io::{svg_export, svg_util};
-use jagua_rs::collision_detection::hazard::HazardEntity;
-use jagua_rs::collision_detection::hazard_helpers::HazardDetector;
-use jagua_rs::entities::instances::instance_generic::InstanceGeneric;
-use jagua_rs::entities::layout::Layout;
-use jagua_rs::entities::layout::LayoutSnapshot;
-use jagua_rs::geometry::primitives::circle::Circle;
-use jagua_rs::geometry::primitives::edge::Edge;
-use jagua_rs::geometry::transformation::Transformation;
 use jagua_rs::io::parser;
 use log::warn;
 use std::hash::{DefaultHasher, Hash, Hasher};
+use jagua_rs::collision_detection::hazards::detector::HazardDetector;
+use jagua_rs::collision_detection::hazards::HazardEntity;
+use jagua_rs::entities::general::{Instance, Layout, LayoutSnapshot};
+use jagua_rs::geometry::primitives::{Circle, Edge};
+use jagua_rs::geometry::Transformation;
 use svg::node::element::{Definitions, Group, Text, Title, Use};
 use svg::Document;
 
 pub fn s_layout_to_svg(
     s_layout: &LayoutSnapshot,
-    instance: &impl InstanceGeneric,
+    instance: &impl Instance,
     options: SvgDrawOptions,
     title: &str,
 ) -> Document {
@@ -26,7 +23,7 @@ pub fn s_layout_to_svg(
 
 pub fn layout_to_svg(
     layout: &Layout,
-    instance: &impl InstanceGeneric,
+    instance: &impl Instance,
     options: SvgDrawOptions,
     title: &str,
 ) -> Document {

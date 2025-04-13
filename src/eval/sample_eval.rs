@@ -1,5 +1,5 @@
-use jagua_rs::geometry::d_transformation::DTransformation;
-use jagua_rs::util::fpa::FPA;
+use jagua_rs::geometry::DTransformation;
+use jagua_rs::util::FPA;
 use std::cmp::Ordering;
 
 use SampleEval::{Clear, Collision, Invalid};
