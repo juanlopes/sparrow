@@ -1,8 +1,7 @@
+use jagua_rs::geometry::geo_traits::{DistanceTo, Shape};
+use jagua_rs::geometry::primitives::{AARectangle, SimplePolygon};
 use crate::config::OVERLAP_PROXY_EPSILON_DIAM_RATIO;
 use crate::quantify::overlap_proxy::overlap_area_proxy;
-use jagua_rs::geometry::geo_traits::{Distance, Shape};
-use jagua_rs::geometry::primitives::aa_rectangle::AARectangle;
-use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
 
 pub mod overlap_proxy;
 mod pair_matrix;
@@ -42,7 +41,7 @@ pub fn quantify_collision_poly_bin(s: &SimplePolygon, bin_bbox: AARectangle) -> 
         }
         None => {
             //no intersection, guide towards intersection with bin
-            s_bbox.area() + s_bbox.centroid().distance(&bin_bbox.centroid())
+            s_bbox.area() + s_bbox.centroid().distance_to(&bin_bbox.centroid())
         }
     };
     debug_assert!(overlap.is_normal());

@@ -1,8 +1,8 @@
 use crate::optimizer::separator::SeparatorConfig;
 use crate::sample::search::SampleConfig;
 use crate::util::io::svg_util::{SvgDrawOptions, SvgLayoutTheme};
-use jagua_rs::util::config::{CDEConfig, SPSurrogateConfig};
-use jagua_rs::util::polygon_simplification::PolySimplConfig;
+use jagua_rs::util::{CDEConfig, SPSurrogateConfig};
+use jagua_rs::util::PolySimplConfig;
 
 pub const RNG_SEED: Option<usize> = None;
 

@@ -9,17 +9,16 @@ use crate::quantify::tracker::CollisionTracker;
 use crate::util::assertions;
 use crate::util::bit_reversal_iterator::BitReversalIterator;
 use float_cmp::approx_eq;
-use jagua_rs::collision_detection::cd_engine::CDEngine;
-use jagua_rs::collision_detection::hazard::HazardEntity;
-use jagua_rs::collision_detection::hazard_helpers::{HazardDetector, HazardIgnorer};
-use jagua_rs::collision_detection::quadtree::qt_hazard::QTHazPresence;
-use jagua_rs::collision_detection::quadtree::qt_node::QTNode;
-use jagua_rs::collision_detection::quadtree::qt_traits::QTQueryable;
-use jagua_rs::entities::layout::Layout;
-use jagua_rs::entities::placed_item::PItemKey;
-use jagua_rs::geometry::d_transformation::DTransformation;
+use jagua_rs::collision_detection::CDEngine;
+use jagua_rs::collision_detection::hazards::HazardEntity;
+use jagua_rs::collision_detection::hazards::detector::HazardDetector;
+use jagua_rs::collision_detection::quadtree::{QTHazPresence, QTQueryable};
+use jagua_rs::collision_detection::quadtree::QTNode;
+use jagua_rs::entities::general::Layout;
+use jagua_rs::entities::general::PItemKey;
+use jagua_rs::geometry::DTransformation;
 use jagua_rs::geometry::geo_traits::{CollidesWith, Shape, TransformableFrom};
-use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
+use jagua_rs::geometry::primitives::SimplePolygon;
 use slotmap::SecondaryMap;
 
 /// Functionally the same as [`CDEngine::collect_poly_collisions_in_detector`], but with early termination.
@@ -238,17 +237,9 @@ impl<'a> HazardDetector for SpecializedDetectionMap<'a> {
             .chain(self.detected_bin.iter().map(|(h, _)| h))
     }
 }
-impl<'a> HazardIgnorer for SpecializedDetectionMap<'a> {
-    fn is_irrelevant(&self, haz: &HazardEntity) -> bool {
-        self.contains(haz)
-    }
-}
 
-/// Mirrors ['QTNode::collect_collisions'] but slightly faster for this specific use case.
-pub fn qt_collect_collisions_custom<T>(qtn: &QTNode, entity: &T, detector: &mut SpecializedDetectionMap)
-where
-    T: QTQueryable,
-{
+/// Mirrors [`QTNode::collect_collisions`] but slightly faster for this specific use case.
+pub fn qt_collect_collisions_custom<T: QTQueryable>(qtn: &QTNode, entity: &T, detector: &mut SpecializedDetectionMap) {
     match entity.collides_with(&qtn.bbox) {
         false => return, //Entity does not collide with the node
         true => match qtn.children.as_ref() {

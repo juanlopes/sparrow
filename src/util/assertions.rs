@@ -4,13 +4,13 @@ use crate::quantify::{quantify_collision_poly_bin, quantify_collision_poly_poly}
 use crate::util::io::svg_util::SvgDrawOptions;
 use float_cmp::{approx_eq, assert_approx_eq};
 use itertools::Itertools;
-use jagua_rs::collision_detection::hazard::HazardEntity;
-use jagua_rs::collision_detection::hazard_helpers::HazardDetector;
-use jagua_rs::entities::layout::Layout;
-use jagua_rs::geometry::primitives::simple_polygon::SimplePolygon;
 use jagua_rs::util::assertions;
 use log::warn;
 use std::collections::HashSet;
+use jagua_rs::collision_detection::hazards::detector::HazardDetector;
+use jagua_rs::collision_detection::hazards::HazardEntity;
+use jagua_rs::entities::general::Layout;
+use jagua_rs::geometry::primitives::SimplePolygon;
 
 pub fn tracker_matches_layout(ct: &CollisionTracker, l: &Layout) -> bool {
     assert!(l.placed_items.keys().all(|k| ct.pk_idx_map.contains_key(k)));

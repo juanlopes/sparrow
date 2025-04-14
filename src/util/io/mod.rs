@@ -1,11 +1,14 @@
+use std::any::Any;
 use log::{log, Level, LevelFilter};
 use std::fs;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
+use jagua_rs::entities::general::Instance;
+use jagua_rs::entities::strip_packing::SPInstance;
 use svg::Document;
 
-use crate::config::OUTPUT_DIR;
+use crate::config::{OUTPUT_DIR};
 use crate::EPOCH;
 use jagua_rs::io::json_instance::JsonInstance;
 
@@ -13,6 +16,10 @@ pub mod layout_to_svg;
 pub mod svg_export;
 pub mod svg_util;
 pub mod cli;
+
+pub fn to_sp_instance(instance: &dyn Instance) -> Option<SPInstance>{
+    (instance as &dyn Any).downcast_ref::<SPInstance>().cloned()
+}
 
 pub fn read_json_instance(path: &Path) -> JsonInstance {
     let file = File::open(path)

@@ -3,11 +3,6 @@ use crate::optimizer::lbf::LBFBuilder;
 use crate::optimizer::separator::Separator;
 pub use crate::optimizer::terminator::Terminator;
 use crate::FMT;
-use jagua_rs::entities::instances::instance_generic::InstanceGeneric;
-use jagua_rs::entities::instances::strip_packing::SPInstance;
-use jagua_rs::entities::problems::problem_generic::ProblemGeneric;
-use jagua_rs::entities::problems::strip_packing::strip_width;
-use jagua_rs::entities::solution::Solution;
 use log::info;
 use ordered_float::OrderedFloat;
 use rand::prelude::{IteratorRandom, SmallRng};
@@ -15,6 +10,8 @@ use rand::{Rng, RngCore, SeedableRng};
 use rand_distr::Distribution;
 use rand_distr::Normal;
 use std::time::{Duration, Instant};
+use jagua_rs::entities::general::Instance;
+use jagua_rs::entities::strip_packing::{SPInstance, SPSolution};
 
 pub mod lbf;
 pub mod separator;
@@ -22,7 +19,7 @@ mod worker;
 pub mod terminator;
 
 // All high-level heuristic logic
-pub fn optimize(instance: SPInstance, mut rng: SmallRng, output_folder_path: String, mut terminator: Terminator, explore_dur: Duration, compress_dur: Duration) -> Solution {
+pub fn optimize(instance: SPInstance, mut rng: SmallRng, output_folder_path: String, mut terminator: Terminator, explore_dur: Duration, compress_dur: Duration) -> SPSolution {
     let mut next_rng = || SmallRng::seed_from_u64(rng.next_u64());
     let builder = LBFBuilder::new(instance, CDE_CONFIG, next_rng(), LBF_SAMPLE_CONFIG).construct();
 
@@ -38,16 +35,16 @@ pub fn optimize(instance: SPInstance, mut rng: SmallRng, output_folder_path: Str
     cmpr_sol
 }
 
-pub fn exploration_phase(sep: &mut Separator, term: &Terminator) -> Vec<Solution> {
-    let mut current_width = sep.prob.occupied_width();
+pub fn exploration_phase(sep: &mut Separator, term: &Terminator) -> Vec<SPSolution> {
+    let mut current_width = sep.prob.strip_width();
     let mut best_width = current_width;
 
-    let mut feasible_solutions = vec![sep.prob.create_solution(None)];
+    let mut feasible_solutions = vec![sep.prob.save()];
 
     sep.export_svg(None, "init", false);
     info!("[EXPL] starting optimization with initial width: {:.3} ({:.3}%)",current_width,sep.prob.usage() * 100.0);
 
-    let mut solution_pool: Vec<(Solution, f32)> = vec![];
+    let mut solution_pool: Vec<(SPSolution, f32)> = vec![];
 
     while !term.is_kill() {
         let local_best = sep.separate(&term);
@@ -99,7 +96,7 @@ pub fn exploration_phase(sep: &mut Separator, term: &Terminator) -> Vec<Solution
     feasible_solutions
 }
 
-pub fn compression_phase(sep: &mut Separator, init: &Solution, term: &Terminator) -> Solution {
+pub fn compression_phase(sep: &mut Separator, init: &SPSolution, term: &Terminator) -> SPSolution {
     let mut best = init.clone();
     let start = Instant::now();
     let end = term.timeout.expect("compression running without timeout");
@@ -116,7 +113,7 @@ pub fn compression_phase(sep: &mut Separator, init: &Solution, term: &Terminator
         info!("[CMPR] attempting {:.3}%", step * 100.0);
         match attempt_to_compress(sep, &best, step, &term) {
             Some(compacted_sol) => {
-                info!("[CMPR] compressed to {:.3} ({:.3}%)", strip_width(&compacted_sol), compacted_sol.usage * 100.0);
+                info!("[CMPR] compressed to {:.3} ({:.3}%)", compacted_sol.strip_width, compacted_sol.usage * 100.0);
                 sep.export_svg(Some(compacted_sol.clone()), "cmpr", false);
                 best = compacted_sol;
             }
@@ -128,13 +125,13 @@ pub fn compression_phase(sep: &mut Separator, init: &Solution, term: &Terminator
 }
 
 
-fn attempt_to_compress(sep: &mut Separator, init: &Solution, r_shrink: f32, term: &Terminator) -> Option<Solution> {
+fn attempt_to_compress(sep: &mut Separator, init: &SPSolution, r_shrink: f32, term: &Terminator) -> Option<SPSolution> {
     //restore to the initial solution and width
-    sep.change_strip_width(strip_width(&init), None);
+    sep.change_strip_width(init.strip_width, None);
     sep.rollback(&init, None);
 
     //shrink the bin at a random position
-    let new_width = strip_width(init) * (1.0 - r_shrink);
+    let new_width = init.strip_width * (1.0 - r_shrink);
     let split_pos = sep.rng.random_range(0.0..sep.prob.strip_width());
     sep.change_strip_width(new_width, Some(split_pos));
 

@@ -5,18 +5,13 @@ use crate::sample::search::SampleConfig;
 use crate::util::assertions::tracker_matches_layout;
 use crate::FMT;
 use itertools::Itertools;
-use jagua_rs::entities::instances::instance_generic::InstanceGeneric;
-use jagua_rs::entities::instances::strip_packing::SPInstance;
-use jagua_rs::entities::placed_item::PItemKey;
-use jagua_rs::entities::placing_option::PlacingOption;
-use jagua_rs::entities::problems::problem_generic::{ProblemGeneric, STRIP_LAYOUT_IDX};
-use jagua_rs::entities::problems::strip_packing::{strip_width, SPProblem};
-use jagua_rs::entities::solution::Solution;
-use jagua_rs::geometry::d_transformation::DTransformation;
 use log::debug;
 use rand::prelude::{SliceRandom, SmallRng};
 use std::iter::Sum;
 use std::ops::AddAssign;
+use jagua_rs::entities::general::{Instance, PItemKey};
+use jagua_rs::entities::strip_packing::{SPInstance, SPPlacement, SPProblem, SPSolution};
+use jagua_rs::geometry::DTransformation;
 use tap::Tap;
 
 pub struct SeparatorWorker {
@@ -28,10 +23,10 @@ pub struct SeparatorWorker {
 }
 
 impl SeparatorWorker {
-    pub fn load(&mut self, sol: &Solution, ct: &CollisionTracker) {
+    pub fn load(&mut self, sol: &SPSolution, ct: &CollisionTracker) {
         // restores the state of the worker to the given solution and accompanying tracker
-        debug_assert!(strip_width(sol) == self.prob.strip_width());
-        self.prob.restore_to_solution(sol);
+        debug_assert!(sol.strip_width == self.prob.strip_width());
+        self.prob.restore(sol);
         self.ct = ct.clone();
     }
 
@@ -78,14 +73,8 @@ impl SeparatorWorker {
         let (old_l, old_w_l) = (self.ct.get_loss(pk), self.ct.get_weighted_loss(pk));
 
         //modify the problem, by removing the item and placing it in the new position
-        self.prob.remove_item(STRIP_LAYOUT_IDX, pk, true);
-        let (_, new_pk) = self.prob.place_item(
-            PlacingOption {
-                d_transf,
-                item_id: item.id,
-                layout_idx: STRIP_LAYOUT_IDX,
-            }
-        );
+        self.prob.remove_item(pk, true);
+        let new_pk = self.prob.place_item(SPPlacement { d_transf, item_id: item.id});
         //update the collision tracker to reflect the changes
         self.ct.register_item_move(&self.prob.layout, pk, new_pk);
 
