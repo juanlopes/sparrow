@@ -28,7 +28,7 @@ pub fn collect_poly_collisions_in_detector_custom(
     dt: &DTransformation,
     shape_buffer: &mut SimplePolygon,
     reference_shape: &SimplePolygon,
-    det: &mut SpecializedDetectionMap,
+    det: &mut SpecializedHazardDetector,
 ) {
     let t = dt.compose();
     // transform the shape buffer to the new position
@@ -97,7 +97,7 @@ pub fn collect_poly_collisions_in_detector_custom(
 /// Modified version of [`jagua_rs::collision_detection::hazard_helpers::DetectionMap`]
 /// This struct computes the loss incrementally on the fly and caches the result.
 /// Allows for early termination if the loss exceeds a certain upperbound.
-pub struct SpecializedDetectionMap<'a> {
+pub struct SpecializedHazardDetector<'a> {
     pub layout: &'a Layout,
     pub ct: &'a CollisionTracker,
     pub current_pk: PItemKey,
@@ -110,7 +110,7 @@ pub struct SpecializedDetectionMap<'a> {
     pub poles_soa: CirclesSoA,
 }
 
-impl<'a> SpecializedDetectionMap<'a> {
+impl<'a> SpecializedHazardDetector<'a> {
     pub fn new(
         layout: &'a Layout,
         ct: &'a CollisionTracker,
@@ -183,7 +183,7 @@ impl<'a> SpecializedDetectionMap<'a> {
     }
 }
 
-impl<'a> HazardDetector for SpecializedDetectionMap<'a> {
+impl<'a> HazardDetector for SpecializedHazardDetector<'a> {
     fn contains(&self, haz: &HazardEntity) -> bool {
         match haz {
             HazardEntity::PlacedItem { pk, .. } => {
@@ -239,7 +239,7 @@ impl<'a> HazardDetector for SpecializedDetectionMap<'a> {
 }
 
 /// Mirrors [`QTNode::collect_collisions`] but slightly faster for this specific use case.
-pub fn qt_collect_collisions_custom<T: QTQueryable>(qtn: &QTNode, entity: &T, detector: &mut SpecializedDetectionMap) {
+pub fn qt_collect_collisions_custom<T: QTQueryable>(qtn: &QTNode, entity: &T, detector: &mut SpecializedHazardDetector) {
     match entity.collides_with(&qtn.bbox) {
         false => return, //Entity does not collide with the node
         true => match qtn.children.as_ref() {
