@@ -1,5 +1,5 @@
 use crate::eval::sample_eval::{SampleEval, SampleEvaluator};
-use crate::eval::specialized_jaguars_pipeline::{collect_poly_collisions_in_detector_custom, SpecializedDetectionMap};
+use crate::eval::specialized_jaguars_pipeline::{collect_poly_collisions_in_detector_custom, SpecializedHazardDetector};
 use crate::quantify::tracker::CollisionTracker;
 use jagua_rs::collision_detection::hazards::detector::HazardDetector;
 use jagua_rs::entities::general::Item;
@@ -12,7 +12,7 @@ use jagua_rs::geometry::primitives::SimplePolygon;
 pub struct SeparationEvaluator<'a> {
     layout: &'a Layout,
     item: &'a Item,
-    detection_map: SpecializedDetectionMap<'a>,
+    detection_map: SpecializedHazardDetector<'a>,
     shape_buff: SimplePolygon,
     n_evals: usize,
 }
@@ -24,7 +24,7 @@ impl<'a> SeparationEvaluator<'a> {
         current_pk: PItemKey,
         ct: &'a CollisionTracker,
     ) -> Self {
-        let detection_map = SpecializedDetectionMap::new(layout, ct, current_pk);
+        let detection_map = SpecializedHazardDetector::new(layout, ct, current_pk);
 
         Self {
             layout,

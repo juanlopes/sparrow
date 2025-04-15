@@ -1,4 +1,4 @@
-use crate::eval::specialized_jaguars_pipeline::SpecializedDetectionMap;
+use crate::eval::specialized_jaguars_pipeline::SpecializedHazardDetector;
 use crate::quantify::tracker::CollisionTracker;
 use crate::quantify::{quantify_collision_poly_bin, quantify_collision_poly_poly};
 use crate::util::io::svg_util::SvgDrawOptions;
@@ -7,7 +7,7 @@ use itertools::Itertools;
 use jagua_rs::util::assertions;
 use log::warn;
 use std::collections::HashSet;
-use jagua_rs::collision_detection::hazards::detector::HazardDetector;
+use jagua_rs::collision_detection::hazards::detector::{BasicHazardDetector, HazardDetector};
 use jagua_rs::collision_detection::hazards::HazardEntity;
 use jagua_rs::entities::general::Layout;
 use jagua_rs::geometry::primitives::SimplePolygon;
@@ -17,24 +17,27 @@ pub fn tracker_matches_layout(ct: &CollisionTracker, l: &Layout) -> bool {
     assert!(assertions::layout_qt_matches_fresh_qt(l));
 
     for (pk1, pi1) in l.placed_items.iter() {
-        let collisions = l.cde().collect_poly_collisions(&pi1.shape, &[(pk1, pi1).into()]);
+        let mut detector = BasicHazardDetector::new();
+        l.cde().collect_poly_collisions(&pi1.shape, &mut detector);
+        detector.remove(&HazardEntity::from((pk1, pi1)));
         assert_eq!(ct.get_pair_loss(pk1, pk1), 0.0);
         for (pk2, pi2) in l.placed_items.iter().filter(|(k, _)| *k != pk1) {
             let stored_loss = ct.get_pair_loss(pk1, pk2);
-            match collisions.iter().contains(&HazardEntity::from((pk2, pi2))) {
+            match detector.iter().contains(&HazardEntity::from((pk2, pi2))) {
                 true => {
                     let calc_loss = quantify_collision_poly_poly(&pi1.shape, &pi2.shape);
                     let calc_loss_r = quantify_collision_poly_poly(&pi2.shape, &pi1.shape);
                     if !approx_eq!(f32,calc_loss,stored_loss,epsilon = 0.10 * stored_loss) && !approx_eq!(f32,calc_loss_r,stored_loss, epsilon = 0.10 * stored_loss) {
-                        let opposite_collisions =
-                            l.cde().collect_poly_collisions(&pi2.shape, &[(pk2, pi2).into()]);
-                        if opposite_collisions.contains(&((pk1, pi1).into())) {
+                        let mut opp_detector = BasicHazardDetector::new();
+                        l.cde().collect_poly_collisions(&pi2.shape, &mut opp_detector);
+                        opp_detector.remove(&HazardEntity::from((pk2, pi2)));
+                        if opp_detector.contains(&((pk1, pi1).into())) {
                             dbg!(&pi1.shape.points, &pi2.shape.points);
                             dbg!(
                                 stored_loss,
                                 calc_loss,
                                 calc_loss_r,
-                                opposite_collisions,
+                                opp_detector.iter().collect_vec(),
                                 HazardEntity::from((pk1, pi1)),
                                 HazardEntity::from((pk2, pi2))
                             );
@@ -45,12 +48,12 @@ pub fn tracker_matches_layout(ct: &CollisionTracker, l: &Layout) -> bool {
                             warn!(
                                 "collisions: pi_1 {:?} -> {:?}",
                                 HazardEntity::from((pk1, pi1)),
-                                collisions
+                                detector.iter().collect_vec()
                             );
                             warn!(
                                 "opposite collisions: pi_2 {:?} -> {:?}",
                                 HazardEntity::from((pk2, pi2)),
-                                opposite_collisions
+                                opp_detector.iter().collect_vec()
                             );
 
                             warn!(
@@ -81,13 +84,15 @@ pub fn tracker_matches_layout(ct: &CollisionTracker, l: &Layout) -> bool {
                 false => {
                     if stored_loss != 0.0 {
                         let calc_loss = quantify_collision_poly_poly(&pi1.shape, &pi2.shape);
-                        let opposite_collisions = l.cde().collect_poly_collisions(&pi2.shape, &[(pk2, pi2).into()]);
-                        if !opposite_collisions.contains(&((pk1, pi1).into())) {
+                        let mut opp_detector = BasicHazardDetector::new();
+                        l.cde().collect_poly_collisions(&pi2.shape, &mut opp_detector);
+                        opp_detector.remove(&HazardEntity::from((pk2, pi2)));
+                        if !opp_detector.contains(&HazardEntity::from((pk1, pi1))) {
                             dbg!(&pi1.shape.points, &pi2.shape.points);
                             dbg!(
                                 stored_loss,
                                 calc_loss,
-                                opposite_collisions,
+                                opp_detector.iter().collect_vec(),
                                 HazardEntity::from((pk1, pi1)),
                                 HazardEntity::from((pk2, pi2))
                             );
@@ -98,19 +103,19 @@ pub fn tracker_matches_layout(ct: &CollisionTracker, l: &Layout) -> bool {
                             warn!(
                                 "collisions: {:?} -> {:?}",
                                 HazardEntity::from((pk1, pi1)),
-                                collisions
+                                detector.iter().collect_vec()
                             );
                             warn!(
                                 "opposite collisions: {:?} -> {:?}",
                                 HazardEntity::from((pk2, pi2)),
-                                opposite_collisions
+                                opp_detector.iter().collect_vec()
                             );
                         }
                     }
                 }
             }
         }
-        if collisions.contains(&HazardEntity::BinExterior) {
+        if detector.contains(&HazardEntity::BinExterior) {
             let stored_loss = ct.get_bin_loss(pk1);
             let calc_loss = quantify_collision_poly_bin(&pi1.shape, l.bin.bbox());
             assert_approx_eq!(f32, stored_loss, calc_loss, ulps = 5);
@@ -122,16 +127,20 @@ pub fn tracker_matches_layout(ct: &CollisionTracker, l: &Layout) -> bool {
     true
 }
 
-pub fn custom_pipeline_matches_jaguars(shape: &SimplePolygon, det: &SpecializedDetectionMap) -> bool {
+pub fn custom_pipeline_matches_jaguars(shape: &SimplePolygon, det: &SpecializedHazardDetector) -> bool {
     //Standard colllision collection, provided by jagua-rs, for comparison
-    let default_dm = {
+    let cde = det.layout.cde();
+    let base_detector = {
         let pi = &det.layout.placed_items[det.current_pk];
         let pk = det.current_pk;
-        det.layout.cde().collect_poly_collisions(shape, &[HazardEntity::from((pk, pi))])
+        let mut detector = BasicHazardDetector::new();
+        cde.collect_poly_collisions(shape, &mut detector);
+        detector.remove(&HazardEntity::from((pk, pi)));
+        detector
     };
 
     //make sure these detection maps are equivalent
-    let default_set: HashSet<HazardEntity> = default_dm.iter().cloned().collect();
+    let default_set: HashSet<HazardEntity> = base_detector.iter().cloned().collect();
     let custom_set: HashSet<HazardEntity> = det.iter().cloned().collect();
 
     assert_eq!(default_set, custom_set, "custom cde pipeline does not match jagua-rs!");

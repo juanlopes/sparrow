@@ -1,4 +1,4 @@
-use jagua_rs::collision_detection::hazards::detector::HazardDetector;
+use jagua_rs::collision_detection::hazards::detector::{BasicHazardDetector, HazardDetector};
 use jagua_rs::collision_detection::hazards::HazardEntity;
 use jagua_rs::entities::general::{Layout, PItemKey};
 use crate::config::{WEIGHT_DECAY, WEIGHT_MAX_INC_RATIO, WEIGHT_MIN_INC_RATIO};
@@ -56,10 +56,13 @@ impl CollisionTracker {
         self.bin_collisions[idx].loss = 0.0;
 
         // Compute which hazards are currently colliding with the item
-        let detected = l.cde().collect_poly_collisions(shape, &[(pk, pi).into()]);
+        let mut detector = BasicHazardDetector::new();
+        l.cde().collect_poly_collisions(shape, &mut detector);
+        // Remove the item itself from the detector
+        detector.remove(&HazardEntity::from((pk, pi)));
 
         // For each colliding hazard, quantify the collision and store it in the tracker
-        for haz in detected.iter() {
+        for haz in detector.iter() {
             match haz {
                 HazardEntity::PlacedItem { pk: other_pk, .. } => {
                     let shape_other = &l.placed_items[*other_pk].shape;
