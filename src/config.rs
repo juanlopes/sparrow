@@ -91,6 +91,7 @@ pub const DRAW_OPTIONS: SvgDrawOptions = SvgDrawOptions {
     haz_prox_grid: false,
     surrogate: false,
     highlight_collisions: true,
+    use_internal_shapes: false,
 };
 
 pub const LBF_SAMPLE_CONFIG: SampleConfig = SampleConfig {

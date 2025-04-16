@@ -19,6 +19,9 @@ pub struct SvgDrawOptions {
     ///Draw lines between colliding items
     #[serde(default)]
     pub highlight_collisions: bool,
+    ///Draw the modified shapes used internally instead of the original ones
+    #[serde(default)]
+    pub use_internal_shapes: bool,
 }
 
 impl Default for SvgDrawOptions {
@@ -29,6 +32,7 @@ impl Default for SvgDrawOptions {
             haz_prox_grid: false,
             surrogate: true,
             highlight_collisions: true,
+            use_internal_shapes: false,
         }
     }
 }

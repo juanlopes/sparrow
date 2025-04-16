@@ -57,7 +57,7 @@ fn main() {
 
     let json_instance = io::read_json_instance(Path::new(&input_file_path));
 
-    let parser = Parser::new(SIMPLIFICATION_CONFIG, CDE_CONFIG, true);
+    let parser = Parser::new(SIMPLIFICATION_CONFIG, CDE_CONFIG);
     let any_instance = parser.parse(&json_instance);
     let instance = to_sp_instance(any_instance.as_ref()).expect("Expected SPInstance");
 
