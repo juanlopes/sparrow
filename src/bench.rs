@@ -52,7 +52,7 @@ fn main() {
         json_instance.name, n_batches, n_runs_per_iter, num_cpus::get_physical(), time_limit
     );
 
-    let parser = Parser::new(SIMPLIFICATION_CONFIG, CDE_CONFIG, true);
+    let parser = Parser::new(SIMPLIFICATION_CONFIG, CDE_CONFIG);
     let any_instance = parser.parse(&json_instance);
     let instance = to_sp_instance(any_instance.as_ref()).expect("Expected SPInstance");
 
@@ -78,20 +78,20 @@ fn main() {
                     let mut expl_separator = Separator::new(builder.instance, builder.prob, next_rng(), output_folder_path, 0, SEP_CFG_EXPLORE);
 
                     terminator.set_timeout_from_now(time_limit.mul_f32(EXPLORE_TIME_RATIO));
-                    let solutions = exploration_phase(&mut expl_separator, &terminator);
+                    let solutions = exploration_phase(&instance, &mut expl_separator, &terminator);
                     let final_explore_sol = solutions.last().expect("no solutions found during exploration");
 
                     let start_comp = Instant::now();
 
                     terminator.set_timeout_from_now(time_limit.mul_f32(COMPRESS_TIME_RATIO)).reset_ctrlc();
                     let mut cmpr_separator = Separator::new(expl_separator.instance, expl_separator.prob, next_rng(), expl_separator.output_svg_folder, expl_separator.svg_counter, SEP_CFG_COMPRESS);
-                    let cmpr_sol = compression_phase(&mut cmpr_separator, final_explore_sol, &terminator);
+                    let cmpr_sol = compression_phase(&instance, &mut cmpr_separator, final_explore_sol, &terminator);
 
                     println!("[BENCH] [id:{:>3}] finished, expl: {:.3}% ({}s), cmpr: {:.3}% (+{:.3}%) ({}s)",
                              bench_idx,
-                             final_explore_sol.usage * 100.0, time_limit.mul_f32(EXPLORE_TIME_RATIO).as_secs(),
-                             cmpr_sol.usage * 100.0,
-                             cmpr_sol.usage * 100.0 - final_explore_sol.usage * 100.0,
+                             final_explore_sol.density(&instance) * 100.0, time_limit.mul_f32(EXPLORE_TIME_RATIO).as_secs(),
+                             cmpr_sol.density(&instance) * 100.0,
+                             cmpr_sol.density(&instance) * 100.0 - final_explore_sol.density(&instance) * 100.0,
                              start_comp.elapsed().as_secs()
                     );
 
@@ -113,12 +113,12 @@ fn main() {
         .iter()
         .map(|s| {
             let width = s.layout_snapshot.bin.bbox().width();
-            let usage = s.layout_snapshot.usage;
+            let usage = s.layout_snapshot.density(&instance);
             (width, usage * 100.0)
         })
         .unzip();
 
-    let best_final_solution = final_solutions.iter().max_by_key(|s| OrderedFloat(s.usage)).unwrap();
+    let best_final_solution = final_solutions.iter().max_by_key(|s| OrderedFloat(s.density(&instance))).unwrap();
 
     io::write_svg(
         &s_layout_to_svg(&best_final_solution.layout_snapshot, &instance, DRAW_OPTIONS, "final_best"),
