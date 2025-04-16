@@ -24,7 +24,7 @@ impl<'a> LBFEvaluator<'a> {
         Self {
             layout,
             item,
-            shape_buff: item.shape.as_ref().clone(),
+            shape_buff: item.shape_cd.as_ref().clone(),
             n_evals: 0
         }
     }
@@ -35,10 +35,10 @@ impl<'a> SampleEvaluator for LBFEvaluator<'a> {
         self.n_evals += 1;
         let cde = self.layout.cde();
         let transf = dt.into();
-        match cde.surrogate_collides(self.item.shape.surrogate(), &transf, &NoHazardFilter) {
+        match cde.surrogate_collides(self.item.shape_cd.surrogate(), &transf, &NoHazardFilter) {
             true => SampleEval::Invalid, // Surrogate collides with something
             false => {
-                self.shape_buff.transform_from(&self.item.shape, &transf);
+                self.shape_buff.transform_from(&self.item.shape_cd, &transf);
                 match cde.poly_collides(&self.shape_buff, &NoHazardFilter) {
                     true => SampleEval::Invalid, // Exact shape collides with something
                     false => {

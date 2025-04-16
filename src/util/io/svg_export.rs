@@ -13,14 +13,14 @@ use jagua_rs::geometry::primitives::SimplePolygon;
 pub fn original_shape_data(original: &OriginalShape, internal: &SimplePolygon, draw_internal: bool) -> Data {
     match draw_internal {
         true => simple_polygon_data(&internal),
-        false => simple_polygon_data(&original.original),
+        false => simple_polygon_data(&original.shape),
     }
 }
 
 
 pub fn simple_polygon_data(s_poly: &SimplePolygon) -> Data {
     let mut data = Data::new().move_to::<(f32, f32)>(s_poly.get_point(0).into());
-    for i in 1..s_poly.number_of_points() {
+    for i in 1..s_poly.n_points() {
         data = data.line_to::<(f32, f32)>(s_poly.get_point(i).into());
     }
     data.close()

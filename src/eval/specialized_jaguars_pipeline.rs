@@ -46,7 +46,7 @@ pub fn collect_poly_collisions_in_detector_custom(
 
     // Collect collisions for all edges of the shape.
     // Iterate over them in a bit-reversed order to maximize detecting new hazards early.
-    let custom_edge_iter = BitReversalIterator::new(shape.number_of_points())
+    let custom_edge_iter = BitReversalIterator::new(shape.n_points())
         .map(|i| shape.get_edge(i));
     for edge in custom_edge_iter {
         qt_collect_collisions_custom(&cde.quadtree, &edge, det);
@@ -174,7 +174,7 @@ impl<'a> SpecializedHazardDetector<'a> {
                 loss * weight
             }
             HazardEntity::BinExterior => {
-                let loss = quantify_collision_poly_bin(shape, self.layout.bin.bbox());
+                let loss = quantify_collision_poly_bin(shape, self.layout.bin.outer_cd.bbox());
                 let weight = self.ct.get_bin_weight(self.current_pk);
                 2.0 * loss * weight
             }

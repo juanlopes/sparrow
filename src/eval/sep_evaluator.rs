@@ -30,7 +30,7 @@ impl<'a> SeparationEvaluator<'a> {
             layout,
             item,
             detection_map,
-            shape_buff: item.shape.as_ref().clone(),
+            shape_buff: item.shape_cd.as_ref().clone(),
             n_evals: 0,
         }
     }
@@ -52,7 +52,7 @@ impl<'a> SampleEvaluator for SeparationEvaluator<'a> {
         self.detection_map.reload(loss_bound);
 
         // Query the CDE, all colliding hazards will be stored in the detection map
-        collect_poly_collisions_in_detector_custom(cde, &dt, &mut self.shape_buff, self.item.shape.as_ref(), &mut self.detection_map);
+        collect_poly_collisions_in_detector_custom(cde, &dt, &mut self.shape_buff, self.item.shape_cd.as_ref(), &mut self.detection_map);
 
         if self.detection_map.early_terminate(&self.shape_buff) {
             //the detection map is in early termination state, this means potentially not all collisions were detected,

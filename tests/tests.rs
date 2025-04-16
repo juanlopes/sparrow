@@ -3,7 +3,7 @@ mod integration_tests {
     use jagua_rs::io::parser::Parser;
     use rand::prelude::SmallRng;
     use rand::SeedableRng;
-    use sparrow::config::{CDE_CONFIG, LBF_SAMPLE_CONFIG, OUTPUT_DIR, SEP_CFG_EXPLORE, SIMPLIFICATION_CONFIG};
+    use sparrow::config::{CDE_CONFIG, LBF_SAMPLE_CONFIG, OUTPUT_DIR, SEP_CFG_EXPLORE, SIMPL_TOLERANCE, MIN_ITEM_SEPARATION};
     use sparrow::optimizer::lbf::LBFBuilder;
     use sparrow::optimizer::separator::Separator;
     use sparrow::optimizer::{compression_phase, exploration_phase, Terminator};
@@ -25,7 +25,7 @@ mod integration_tests {
         let input_file_path = format!("{INSTANCE_BASE_PATH}/{path}");
         let json_instance = io::read_json_instance(Path::new(&input_file_path));
 
-        let parser = Parser::new(SIMPLIFICATION_CONFIG, CDE_CONFIG);
+        let parser = Parser::new(CDE_CONFIG, SIMPL_TOLERANCE, MIN_ITEM_SEPARATION);
         let any_instance = parser.parse(&json_instance);
         let instance = to_sp_instance(any_instance.as_ref()).expect("Expected SPInstance");
 

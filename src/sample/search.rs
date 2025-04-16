@@ -17,7 +17,7 @@ pub struct SampleConfig {
 }
 
 pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, mut evaluator: impl SampleEvaluator, sample_config: SampleConfig, rng: &mut impl Rng) -> (Option<(DTransformation, SampleEval)>, usize) {
-    let item_min_dim = f32::min(item.shape.bbox().width(), item.shape.bbox().height());
+    let item_min_dim = f32::min(item.shape_cd.bbox().width(), item.shape_cd.bbox().height());
 
     let mut best_samples = BestSamples::new(sample_config.n_coord_descents, item_min_dim * UNIQUE_SAMPLE_THRESHOLD);
 
@@ -31,7 +31,7 @@ pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, mut e
 
             //create a sampler around the current placement
             let pi_bbox = l.placed_items[ref_pk].shape.bbox();
-            UniformBBoxSampler::new(pi_bbox, item, l.bin.bbox())
+            UniformBBoxSampler::new(pi_bbox, item, l.bin.outer_cd.bbox())
         }
         None => None,
     };
@@ -44,7 +44,7 @@ pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, mut e
         }
     }
 
-    let bin_sampler = UniformBBoxSampler::new(l.bin.bbox(), item, l.bin.bbox());
+    let bin_sampler = UniformBBoxSampler::new(l.bin.outer_cd.bbox(), item, l.bin.outer_cd.bbox());
 
     if let Some(bin_sampler) = bin_sampler {
         for _ in 0..sample_config.n_bin_samples {

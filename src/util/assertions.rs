@@ -10,6 +10,7 @@ use std::collections::HashSet;
 use jagua_rs::collision_detection::hazards::detector::{BasicHazardDetector, HazardDetector};
 use jagua_rs::collision_detection::hazards::HazardEntity;
 use jagua_rs::entities::general::Layout;
+use jagua_rs::geometry::geo_traits::Shape;
 use jagua_rs::geometry::primitives::SimplePolygon;
 
 pub fn tracker_matches_layout(ct: &CollisionTracker, l: &Layout) -> bool {
@@ -117,7 +118,7 @@ pub fn tracker_matches_layout(ct: &CollisionTracker, l: &Layout) -> bool {
         }
         if detector.contains(&HazardEntity::BinExterior) {
             let stored_loss = ct.get_bin_loss(pk1);
-            let calc_loss = quantify_collision_poly_bin(&pi1.shape, l.bin.bbox());
+            let calc_loss = quantify_collision_poly_bin(&pi1.shape, l.bin.outer_cd.bbox());
             assert_approx_eq!(f32, stored_loss, calc_loss, ulps = 5);
         } else {
             assert_eq!(ct.get_bin_loss(pk1), 0.0);

@@ -145,7 +145,7 @@ fn attempt_to_compress(sep: &mut Separator, init: &SPSolution, r_shrink: f32, te
 
 fn swap_large_pair_of_items(sep: &mut Separator) {
     let large_area_ch_area_cutoff = sep.instance.items().iter()
-        .map(|(item, _)| item.shape.surrogate().convex_hull_area)
+        .map(|(item, _)| item.shape_cd.surrogate().convex_hull_area)
         .max_by_key(|&x| OrderedFloat(x))
         .unwrap() * LARGE_AREA_CH_AREA_CUTOFF_RATIO;
 

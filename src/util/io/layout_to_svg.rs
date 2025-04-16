@@ -7,7 +7,7 @@ use jagua_rs::collision_detection::hazards::detector::{BasicHazardDetector, Haza
 use jagua_rs::collision_detection::hazards::filter::NoHazardFilter;
 use jagua_rs::collision_detection::hazards::HazardEntity;
 use jagua_rs::entities::general::{Instance, Layout, LayoutSnapshot};
-use jagua_rs::geometry::geo_traits::Transformable;
+use jagua_rs::geometry::geo_traits::{Shape, Transformable};
 use jagua_rs::geometry::primitives::{Circle, Edge};
 use jagua_rs::geometry::{DTransformation, Transformation};
 use svg::node::element::{Definitions, Group, Text, Title, Use};
@@ -31,7 +31,7 @@ pub fn layout_to_svg(
 ) -> Document {
     let bin = &layout.bin;
 
-    let vbox = bin.bbox().clone().scale(1.10);
+    let vbox = bin.outer_orig.bbox().clone().scale(1.10);
 
     let theme = &options.theme;
 
@@ -40,17 +40,19 @@ pub fn layout_to_svg(
 
     let label = {
         //print some information on above the left top of the bin
+        let bbox = bin.outer_orig.bbox();
+
         let label_content = format!(
-            "height: {:.3} | width: {:.3} | usage: {:.3}% | {}",
-            layout.bin.bbox().height(),
-            layout.bin.bbox().width(),
+            "height: {:.3} | width: {:.3} | density: {:.3}% | {}",
+            bbox.height(),
+            bbox.width(),
             layout.density(instance) * 100.0,
             title,
         );
         Text::new(label_content)
-            .set("x", bin.bbox().x_min)
-            .set("y", bin.bbox().y_min - 0.5 * 0.025 * f32::min(bin.bbox().width(), bin.bbox().height()))
-            .set("font-size", f32::min(bin.bbox().width(), bin.bbox().height()) * 0.025)
+            .set("x", bbox.x_min)
+            .set("y", bbox.y_min - 0.5 * 0.025 * f32::min(bbox.width(), bbox.height()))
+            .set("font-size", f32::min(bbox.width(), bbox.height()) * 0.025)
             .set("font-family", "monospace")
             .set("font-weight", "500")
     };
@@ -58,7 +60,7 @@ pub fn layout_to_svg(
     //draw bin
     let bin_group = {
         let bin_group = Group::new().set("id", format!("bin_{}", bin.id));
-        let bbox = bin.bbox();
+        let bbox = bin.outer_orig.bbox();
         let title = Title::new(format!(
             "bin, id: {}, bbox: [x_min: {:.3}, y_min: {:.3}, x_max: {:.3}, y_max: {:.3}]",
             bin.id, bbox.x_min, bbox.y_min, bbox.x_max, bbox.y_max
@@ -67,7 +69,7 @@ pub fn layout_to_svg(
         //outer
         bin_group
             .add(svg_export::data_to_path(
-                svg_export::original_shape_data(&bin.original_outer, &bin.outer, options.use_internal_shapes),
+                svg_export::original_shape_data(&bin.outer_orig, &bin.outer_cd, options.use_internal_shapes),
                 &[
                     ("fill", &*format!("{}", theme.bin_fill)),
                     ("stroke", "black"),
@@ -84,7 +86,7 @@ pub fn layout_to_svg(
         for qz in bin.quality_zones.iter().rev().flatten() {
             let color = theme.qz_fill[qz.quality];
             let stroke_color = svg_util::change_brightness(color, 0.5);
-            for (orig_qz_shape, intern_qz_shape) in qz.original_shapes.iter().zip(qz.shapes.iter()) {
+            for (orig_qz_shape, intern_qz_shape) in qz.shapes_orig.iter().zip(qz.shapes_cd.iter()) {
                 qz_group = qz_group.add(
                     svg_export::data_to_path(
                         svg_export::original_shape_data(orig_qz_shape, intern_qz_shape, options.use_internal_shapes),
@@ -119,8 +121,8 @@ pub fn layout_to_svg(
             item_defs = item_defs.add(Group::new().set("id", format!("item_{}", item.id)).add(
                 svg_export::data_to_path(
                     svg_export::original_shape_data(
-                        &item.original_shape,
-                        &item.shape,
+                        &item.shape_orig,
+                        &item.shape_cd,
                         options.use_internal_shapes,
                     ),
                     &[
@@ -138,7 +140,7 @@ pub fn layout_to_svg(
                     true => Transformation::empty(), //surrogate is already in internal coordinates
                     false => {
                         // The original shape is drawn on the SVG, we need to inverse the pre-transform
-                        let pre_transform = item.original_shape.pre_transform.compose();
+                        let pre_transform = item.shape_orig.pre_transform.compose();
                         let inv_pre_transform = pre_transform.inverse();
                         inv_pre_transform
                     }
@@ -167,7 +169,7 @@ pub fn layout_to_svg(
                     ("stroke-linejoin", "round"),
                 ];
 
-                let surrogate = item.shape.surrogate();
+                let surrogate = item.shape_cd.surrogate();
                 let poi = &surrogate.poles[0];
                 let ff_poles = surrogate.ff_poles();
 
@@ -205,7 +207,7 @@ pub fn layout_to_svg(
                     let item = instance.item(pi.item_id);
                     parser::internal_to_absolute_transform(
                         &pi.d_transf,
-                        &item.original_shape.pre_transform,
+                        &item.shape_orig.pre_transform,
                     )
                 }
             };

@@ -30,7 +30,7 @@ impl UniformBBoxSampler {
             AllowedRotation::Continuous => unreachable!(),
         };
 
-        let mut shape_buffer = item.shape.as_ref().clone();
+        let mut shape_buffer = item.shape_cd.as_ref().clone();
 
         let sample_x_range = sample_bbox.x_min..sample_bbox.x_max;
         let sample_y_range = sample_bbox.y_min..sample_bbox.y_max;
@@ -39,7 +39,7 @@ impl UniformBBoxSampler {
         // where the item resides fully inside the bin and is within the sample bounding box
         let rot_entries = rotations.iter()
             .map(|&r| {
-                let r_shape_bbox = shape_buffer.transform_from(item.shape.as_ref(), &Transformation::from_rotation(r)).bbox();
+                let r_shape_bbox = shape_buffer.transform_from(item.shape_cd.as_ref(), &Transformation::from_rotation(r)).bbox();
 
                 //narrow the bin range to account for the rotated shape
                 let bin_x_range = (bin_bbox.x_min - r_shape_bbox.x_min)..(bin_bbox.x_max - r_shape_bbox.x_max);

@@ -4,7 +4,7 @@ use jagua_rs::io::parser::Parser;
 use ordered_float::OrderedFloat;
 use rand::prelude::SmallRng;
 use rand::{Rng, RngCore, SeedableRng};
-use sparrow::config::{CDE_CONFIG, COMPRESS_TIME_RATIO, DRAW_OPTIONS, EXPLORE_TIME_RATIO, LBF_SAMPLE_CONFIG, OUTPUT_DIR, RNG_SEED, SEP_CFG_COMPRESS, SEP_CFG_EXPLORE, SIMPLIFICATION_CONFIG};
+use sparrow::config::*;
 use sparrow::optimizer::lbf::LBFBuilder;
 use sparrow::optimizer::separator::Separator;
 use sparrow::optimizer::{compression_phase, exploration_phase, Terminator};
@@ -14,6 +14,7 @@ use std::env::args;
 use std::fs;
 use std::path::Path;
 use std::time::{Duration, Instant};
+use jagua_rs::geometry::geo_traits::Shape;
 use sparrow::util::io::to_sp_instance;
 
 fn main() {
@@ -52,7 +53,7 @@ fn main() {
         json_instance.name, n_batches, n_runs_per_iter, num_cpus::get_physical(), time_limit
     );
 
-    let parser = Parser::new(SIMPLIFICATION_CONFIG, CDE_CONFIG);
+    let parser = Parser::new(CDE_CONFIG, SIMPL_TOLERANCE, MIN_ITEM_SEPARATION);
     let any_instance = parser.parse(&json_instance);
     let instance = to_sp_instance(any_instance.as_ref()).expect("Expected SPInstance");
 
@@ -112,7 +113,7 @@ fn main() {
     let (final_widths, final_usages): (Vec<f32>, Vec<f32>) = final_solutions
         .iter()
         .map(|s| {
-            let width = s.layout_snapshot.bin.bbox().width();
+            let width = s.layout_snapshot.bin.outer_orig.bbox().width();
             let usage = s.layout_snapshot.density(&instance);
             (width, usage * 100.0)
         })
