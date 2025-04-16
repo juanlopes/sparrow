@@ -21,7 +21,9 @@ pub struct SvgDrawOptions {
     pub highlight_collisions: bool,
     ///Draw the modified shapes used internally instead of the original ones
     #[serde(default)]
-    pub use_internal_shapes: bool,
+    pub draw_cd_shapes: bool,
+    #[serde(default)]
+    pub highlight_cd_shapes: bool,
 }
 
 impl Default for SvgDrawOptions {
@@ -32,7 +34,8 @@ impl Default for SvgDrawOptions {
             haz_prox_grid: false,
             surrogate: true,
             highlight_collisions: true,
-            use_internal_shapes: false,
+            draw_cd_shapes: false,
+            highlight_cd_shapes: true,
         }
     }
 }
