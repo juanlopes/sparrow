@@ -15,13 +15,15 @@ pub const CDE_CONFIG: CDEConfig = CDEConfig {
     },
 };
 
-/// Simplifies the items exclusively outwards (inflating the shape)
-/// The simplification stops when the area(simplified) > area(original) * (1.0 + tolerance)
-/// Switch to [PolySimplConfig::Disabled] to disable any simplification
+/// Defines the polygon simplification tolerance: maximum allowable inflation of items when simplifying their shape.
+/// Disabled if `None`.
+/// See [`jagua_rs::io::parser::Parser::new`] for more details.
 pub const SIMPL_TOLERANCE: Option<f32> = Some(0.001);
 
 
-/// Minimum separation distance between any item and other items or the bin
+/// Defines the minimum distance between items and other hazards.
+/// Disabled if `None`.
+/// See [`jagua_rs::io::parser::Parser::new`] for more details.
 pub const MIN_ITEM_SEPARATION: Option<f32> = None;
 
 pub const EXPLORE_SHRINK_STEP: f32 = 0.001;
