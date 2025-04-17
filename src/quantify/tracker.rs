@@ -73,7 +73,7 @@ impl CollisionTracker {
                     self.pair_collisions[(idx, idx_other)].loss = loss;
                 }
                 HazardEntity::BinExterior => {
-                    let loss = quantify_collision_poly_bin(shape, l.bin.bbox());
+                    let loss = quantify_collision_poly_bin(shape, l.bin.outer_cd.bbox);
                     assert!(loss > 0.0, "loss for a collision should be > 0.0");
                     self.bin_collisions[idx].loss = loss;
                 }

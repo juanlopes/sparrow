@@ -6,7 +6,7 @@ use jagua_rs::io::parser::Parser;
 use log::{info, warn, Level};
 use rand::prelude::SmallRng;
 use rand::SeedableRng;
-use sparrow::config::{CDE_CONFIG, COMPRESS_TIME_RATIO, DRAW_OPTIONS, EXPLORE_TIME_RATIO, LIVE_DIR, LOG_LEVEL_FILTER_DEBUG, LOG_LEVEL_FILTER_RELEASE, OUTPUT_DIR, RNG_SEED, SIMPLIFICATION_CONFIG};
+use sparrow::config::*;
 use sparrow::optimizer::{optimize, Terminator};
 use sparrow::util::io;
 use sparrow::util::io::cli::MainCli;
@@ -57,7 +57,7 @@ fn main() {
 
     let json_instance = io::read_json_instance(Path::new(&input_file_path));
 
-    let parser = Parser::new(SIMPLIFICATION_CONFIG, CDE_CONFIG, true);
+    let parser = Parser::new(CDE_CONFIG, SIMPL_TOLERANCE, MIN_ITEM_SEPARATION);
     let any_instance = parser.parse(&json_instance);
     let instance = to_sp_instance(any_instance.as_ref()).expect("Expected SPInstance");
 

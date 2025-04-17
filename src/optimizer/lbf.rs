@@ -42,7 +42,7 @@ impl LBFBuilder {
         let n_items = self.instance.items().len();
         let sorted_item_indices = (0..n_items)
             .sorted_by_cached_key(|id| {
-                let item_shape = self.instance.items()[*id].0.shape.as_ref();
+                let item_shape = self.instance.items()[*id].0.shape_cd.as_ref();
                 let convex_hull_area = item_shape.surrogate().convex_hull_area;
                 let diameter = item_shape.diameter;
                 Reverse(OrderedFloat(convex_hull_area * diameter))

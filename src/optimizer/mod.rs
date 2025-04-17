@@ -21,28 +21,28 @@ pub mod terminator;
 // All high-level heuristic logic
 pub fn optimize(instance: SPInstance, mut rng: SmallRng, output_folder_path: String, mut terminator: Terminator, explore_dur: Duration, compress_dur: Duration) -> SPSolution {
     let mut next_rng = || SmallRng::seed_from_u64(rng.next_u64());
-    let builder = LBFBuilder::new(instance, CDE_CONFIG, next_rng(), LBF_SAMPLE_CONFIG).construct();
+    let builder = LBFBuilder::new(instance.clone(), CDE_CONFIG, next_rng(), LBF_SAMPLE_CONFIG).construct();
 
     terminator.set_timeout_from_now(explore_dur);
     let mut expl_separator = Separator::new(builder.instance, builder.prob, next_rng(), output_folder_path.clone(), 0, SEP_CFG_EXPLORE);
-    let solutions = exploration_phase(&mut expl_separator, &terminator);
+    let solutions = exploration_phase(&instance, &mut expl_separator, &terminator);
     let final_explore_sol = solutions.last().unwrap().clone();
 
     terminator.set_timeout_from_now(compress_dur).reset_ctrlc();
     let mut cmpr_separator = Separator::new(expl_separator.instance, expl_separator.prob, next_rng(), expl_separator.output_svg_folder, expl_separator.svg_counter, SEP_CFG_COMPRESS);
-    let cmpr_sol = compression_phase(&mut cmpr_separator, &final_explore_sol, &terminator);
+    let cmpr_sol = compression_phase(&instance, &mut cmpr_separator, &final_explore_sol, &terminator);
 
     cmpr_sol
 }
 
-pub fn exploration_phase(sep: &mut Separator, term: &Terminator) -> Vec<SPSolution> {
+pub fn exploration_phase(instance: &SPInstance, sep: &mut Separator, term: &Terminator) -> Vec<SPSolution> {
     let mut current_width = sep.prob.strip_width();
     let mut best_width = current_width;
 
     let mut feasible_solutions = vec![sep.prob.save()];
 
     sep.export_svg(None, "init", false);
-    info!("[EXPL] starting optimization with initial width: {:.3} ({:.3}%)",current_width,sep.prob.usage() * 100.0);
+    info!("[EXPL] starting optimization with initial width: {:.3} ({:.3}%)",current_width,sep.prob.density() * 100.0);
 
     let mut solution_pool: Vec<(SPSolution, f32)> = vec![];
 
@@ -53,7 +53,7 @@ pub fn exploration_phase(sep: &mut Separator, term: &Terminator) -> Vec<SPSoluti
         if total_loss == 0.0 {
             //layout is successfully separated
             if current_width < best_width {
-                info!("[EXPL] new best at width: {:.3} ({:.3}%)",current_width,sep.prob.usage() * 100.0);
+                info!("[EXPL] new best at width: {:.3} ({:.3}%)",current_width,sep.prob.density() * 100.0);
                 best_width = current_width;
                 feasible_solutions.push(local_best.0.clone());
                 sep.export_svg(Some(local_best.0.clone()), "expl_f", false);
@@ -91,12 +91,12 @@ pub fn exploration_phase(sep: &mut Separator, term: &Terminator) -> Vec<SPSoluti
         }
     }
 
-    info!("[EXPL] time limit reached, best solution found: {:.3} ({:.3}%)",best_width,feasible_solutions.last().unwrap().usage * 100.0);
+    info!("[EXPL] time limit reached, best solution found: {:.3} ({:.3}%)",best_width,feasible_solutions.last().unwrap().density(instance) * 100.0);
 
     feasible_solutions
 }
 
-pub fn compression_phase(sep: &mut Separator, init: &SPSolution, term: &Terminator) -> SPSolution {
+pub fn compression_phase(instance: &SPInstance, sep: &mut Separator, init: &SPSolution, term: &Terminator) -> SPSolution {
     let mut best = init.clone();
     let start = Instant::now();
     let end = term.timeout.expect("compression running without timeout");
@@ -113,14 +113,14 @@ pub fn compression_phase(sep: &mut Separator, init: &SPSolution, term: &Terminat
         info!("[CMPR] attempting {:.3}%", step * 100.0);
         match attempt_to_compress(sep, &best, step, &term) {
             Some(compacted_sol) => {
-                info!("[CMPR] compressed to {:.3} ({:.3}%)", compacted_sol.strip_width, compacted_sol.usage * 100.0);
+                info!("[CMPR] compressed to {:.3} ({:.3}%)", compacted_sol.strip_width, compacted_sol.density(instance) * 100.0);
                 sep.export_svg(Some(compacted_sol.clone()), "cmpr", false);
                 best = compacted_sol;
             }
             None => {}
         }
     }
-    info!("[CMPR] finished compression, improved from {:.3}% to {:.3}% (+{:.3}%)", init.usage * 100.0, best.usage * 100.0, (best.usage - init.usage) * 100.0);
+    info!("[CMPR] finished compression, improved from {:.3}% to {:.3}% (+{:.3}%)", init.density(instance) * 100.0, best.density(instance) * 100.0, (best.density(instance) - init.density(instance)) * 100.0);
     best
 }
 
@@ -145,7 +145,7 @@ fn attempt_to_compress(sep: &mut Separator, init: &SPSolution, r_shrink: f32, te
 
 fn swap_large_pair_of_items(sep: &mut Separator) {
     let large_area_ch_area_cutoff = sep.instance.items().iter()
-        .map(|(item, _)| item.shape.surrogate().convex_hull_area)
+        .map(|(item, _)| item.shape_cd.surrogate().convex_hull_area)
         .max_by_key(|&x| OrderedFloat(x))
         .unwrap() * LARGE_AREA_CH_AREA_CUTOFF_RATIO;
 
