@@ -27,7 +27,7 @@ This optimization algorithm builds on [`jagua-rs`](https://github.com/JeroenGar/
 </p>
 
 ## Requirements
-- [Rust](https://www.rust-lang.org/tools/install) ≥ 1.85
+- [Rust](https://www.rust-lang.org/tools/install) ≥ 1.86
 
 ## Usage
 
