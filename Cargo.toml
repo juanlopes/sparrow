@@ -19,12 +19,12 @@ name = "bench"
 path = "src/bench.rs"
 
 [dependencies]
-jagua-rs = { git = "https://github.com/JeroenGar/jagua-rs.git", rev = "c39ed06e8b0d2d63f45a52d8ddd5594c78354886" }
+jagua-rs = { git = "https://github.com/JeroenGar/jagua-rs.git", rev = "acad15611349bd9ec2cc8cc645db3ca73764afcf" }
 #jagua-rs = { path = "../jagua-rs/jagua-rs" }
-rand = { version = "0.9.0", features = ["small_rng"] }
-rand_distr = "0.5.1"
-svg = "0.18.0"
-itertools = "0.14.0"
+rand = { version = "0.9", features = ["small_rng"] }
+rand_distr = "0.5"
+svg = "0.18"
+itertools = "0.14"
 log = { version = "0.4", features = ["release_max_level_info"] }
 fern = "0.7"
 serde = "1.0"
@@ -37,10 +37,10 @@ ordered-float = "5.0.0"
 rayon = "1.10.0"
 numfmt = "1.1.1"
 num_cpus = "1.16.0"
-ctrlc = "3.4.5"
-jiff = "0.2.4"
-test-case = "3.3.1"
-clap = { version = "4.5.34", features = ["derive"] }
+ctrlc = "3.4"
+jiff = "0.2"
+test-case = "3.3"
+clap = { version = "4.5", features = ["derive"] }
 
 [profile.dev]
 overflow-checks = true

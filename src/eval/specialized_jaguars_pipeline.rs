@@ -59,7 +59,7 @@ pub fn collect_poly_collisions_in_detector_custom(
     let checkpoint = det.idx_counter;
 
     // Detect all potential hazards within the bounding box of the shape.
-    cde.collect_potential_hazards_within(&shape.bbox(), det);
+    cde.collect_potential_hazards_within(shape.bbox(), det);
 
     if det.idx_counter > checkpoint {
         // Additional hazards were detected, check if they are contained in each other.

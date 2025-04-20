@@ -33,7 +33,7 @@ pub fn calc_shape_penalty(s1: &SPolygon, s2: &SPolygon) -> f32 {
 #[inline(always)]
 pub fn quantify_collision_poly_bin(s: &SPolygon, bin_bbox: Rect) -> f32 {
     let s_bbox = s.bbox();
-    let overlap = match Rect::intersection(&s_bbox, &bin_bbox) {
+    let overlap = match Rect::intersection(s_bbox, bin_bbox) {
         Some(r) => {
             //intersection exist, calculate the area of the intersection (+ a small value to ensure it is never zero)
             let negative_area = (s_bbox.area() - r.area()) + 0.001 * s_bbox.area();
