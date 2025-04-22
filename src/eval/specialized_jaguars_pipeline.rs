@@ -176,7 +176,7 @@ impl<'a> SpecializedHazardDetector<'a> {
             HazardEntity::BinExterior => {
                 let loss = quantify_collision_poly_bin(shape, self.layout.bin.outer_cd.bbox());
                 let weight = self.ct.get_bin_weight(self.current_pk);
-                2.0 * loss * weight
+                loss * weight
             }
             _ => unimplemented!("unsupported hazard entity"),
         }

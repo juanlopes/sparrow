@@ -5,13 +5,14 @@ use crate::sample::search::SampleConfig;
 use crate::util::assertions::tracker_matches_layout;
 use crate::FMT;
 use itertools::Itertools;
+use jagua_rs::entities::general::{Instance, PItemKey};
+use jagua_rs::entities::strip_packing::{SPInstance, SPPlacement, SPProblem, SPSolution};
+use jagua_rs::geometry::DTransformation;
+use jagua_rs::util::FPA;
 use log::debug;
 use rand::prelude::{SliceRandom, SmallRng};
 use std::iter::Sum;
 use std::ops::AddAssign;
-use jagua_rs::entities::general::{Instance, PItemKey};
-use jagua_rs::entities::strip_packing::{SPInstance, SPPlacement, SPProblem, SPSolution};
-use jagua_rs::geometry::DTransformation;
 use tap::Tap;
 
 pub struct SeparatorWorker {
@@ -73,14 +74,16 @@ impl SeparatorWorker {
         let (old_l, old_w_l) = (self.ct.get_loss(pk), self.ct.get_weighted_loss(pk));
 
         //modify the problem, by removing the item and placing it in the new position
-        self.prob.remove_item(pk, true);
-        let new_pk = self.prob.place_item(SPPlacement { d_transf, item_id: item.id});
+        let old_placement = self.prob.remove_item(pk, true);
+        let new_placement = SPPlacement { d_transf, item_id: item.id };
+        let new_pk = self.prob.place_item(new_placement);
         //update the collision tracker to reflect the changes
         self.ct.register_item_move(&self.prob.layout, pk, new_pk);
 
         let (new_l, new_w_l) = (self.ct.get_loss(new_pk), self.ct.get_weighted_loss(new_pk));
 
-        debug!("Moved item {} from from l: {}, wl: {} to l+1: {}, wl+1: {}",item.id,FMT.fmt2(old_l),FMT.fmt2(old_w_l),FMT.fmt2(new_l),FMT.fmt2(new_w_l));
+        debug!("Moved {:?} (l: {}, wl: {}) to {:?} (l+1: {}, wl+1: {})", old_placement, FMT.fmt2(old_l), FMT.fmt2(old_w_l), new_placement, FMT.fmt2(new_l), FMT.fmt2(new_w_l));
+        debug_assert!(new_w_l <= old_w_l * 1.001, "weighted loss should never increase: {} > {}", FMT.fmt2(old_w_l), FMT.fmt2(new_w_l));
         debug_assert!(tracker_matches_layout(&self.ct, &self.prob.layout));
 
         new_pk
