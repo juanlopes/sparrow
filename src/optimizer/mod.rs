@@ -10,8 +10,10 @@ use rand::{Rng, RngCore, SeedableRng};
 use rand_distr::Distribution;
 use rand_distr::Normal;
 use std::time::{Duration, Instant};
+use float_cmp::approx_eq;
 use jagua_rs::entities::general::Instance;
 use jagua_rs::entities::strip_packing::{SPInstance, SPSolution};
+use jagua_rs::geometry::geo_traits::Shape;
 
 pub mod lbf;
 pub mod separator;
@@ -144,19 +146,25 @@ fn attempt_to_compress(sep: &mut Separator, init: &SPSolution, r_shrink: f32, te
 }
 
 fn swap_large_pair_of_items(sep: &mut Separator) {
+    //TODO: make a more elaborate way of selecting between significant and non-significant items
+    //      to make the disruption more robust across instances
     let large_area_ch_area_cutoff = sep.instance.items().iter()
         .map(|(item, _)| item.shape_cd.surrogate().convex_hull_area)
         .max_by_key(|&x| OrderedFloat(x))
         .unwrap() * LARGE_AREA_CH_AREA_CUTOFF_RATIO;
 
     let layout = &sep.prob.layout;
+
+    //Choose a first item with a large enough convex hull
     let (pk1, pi1) = layout.placed_items.iter()
         .filter(|(_, pi)| pi.shape.surrogate().convex_hull_area > large_area_ch_area_cutoff)
         .choose(&mut sep.rng)
         .unwrap();
 
+    //Choose a second item with a large enough convex hull and different enough from the first.
+    //If no such item is found, choose a random one.
     let (pk2, pi2) = layout.placed_items.iter()
-        .filter(|(_, pi)| pi.item_id != pi1.item_id)
+        .filter(|(_, pi)| !approx_eq!(f32, pi.shape.area(),pi1.shape.area(), epsilon = pi1.shape.area() * 0.1))
         .filter(|(_, pi)| pi.shape.surrogate().convex_hull_area > large_area_ch_area_cutoff)
         .choose(&mut sep.rng)
         .unwrap_or(layout.placed_items.iter()
