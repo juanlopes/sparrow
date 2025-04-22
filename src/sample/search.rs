@@ -27,6 +27,7 @@ pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, mut e
             let dt = l.placed_items[ref_pk].d_transf;
             let eval = evaluator.eval(dt, Some(best_samples.upper_bound()));
 
+            debug!("[S] Starting from: {:?}", (dt, eval));
             best_samples.report(dt, eval);
 
             //create a sampler around the current placement
@@ -71,6 +72,6 @@ pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, mut e
         refine_coord_desc(s, &mut evaluator, item_min_dim * FIN_REF_CD_RATIOS.0, item_min_dim * FIN_REF_CD_RATIOS.1, rng)
     );
 
-    debug!("[S] {} samples evaluated, best: {:?}",evaluator.n_evals(),best_samples.best());
+    debug!("[S] {} samples evaluated, final: {:?}",evaluator.n_evals(),final_sample);
     (final_sample, evaluator.n_evals())
 }
