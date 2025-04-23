@@ -98,6 +98,8 @@ To disable this and export only a single final solution, compile with the `only_
 cargo run --release --features=only_final_svg -- \
     -i data/input/swim.json
 ```
+The final solution is saved both in SVG and JSON format in `output/final_{name}.svg` and `output/final_{name}.json`, respectively.
+
 ## Targeting maximum performance
 
 Make sure `target-cpu=native` compiler flag is set, 

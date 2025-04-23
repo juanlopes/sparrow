@@ -11,11 +11,14 @@ use svg::Document;
 use crate::config::{OUTPUT_DIR};
 use crate::EPOCH;
 use jagua_rs::io::json_instance::JsonInstance;
+use jagua_rs::io::json_solution::JsonSolution;
+use crate::util::io::json_export::JsonOutput;
 
 pub mod layout_to_svg;
 pub mod svg_export;
 pub mod svg_util;
 pub mod cli;
+pub mod json_export;
 
 pub fn to_sp_instance(instance: &dyn Instance) -> Option<SPInstance>{
     (instance as &dyn Any).downcast_ref::<SPInstance>().cloned()
@@ -72,6 +75,18 @@ pub fn write_svg(document: &Document, path: &Path, log_lvl: Level) {
     svg::save(path, document).expect("failed to write svg file");
     log!(log_lvl,
         "[IO] svg exported to file://{}",
+        fs::canonicalize(&path)
+            .expect("could not canonicalize path")
+            .to_str()
+            .unwrap()
+    );
+}
+
+pub fn write_json_output(json_output: &JsonOutput, path: &Path, log_lvl: Level) {
+    let file = File::create(path).expect("could not create json output file");
+    serde_json::to_writer_pretty(file, json_output).expect("could not write json output");
+    log!(log_lvl,
+        "[IO] json output exported to file://{}",
         fs::canonicalize(&path)
             .expect("could not canonicalize path")
             .to_str()
