@@ -3,15 +3,54 @@ use crate::util::io::{svg_export, svg_util};
 use jagua_rs::io::parser;
 use log::warn;
 use std::hash::{DefaultHasher, Hash, Hasher};
+use jagua_rs::collision_detection::CDEConfig;
 use jagua_rs::collision_detection::hazards::detector::{BasicHazardDetector, HazardDetector};
 use jagua_rs::collision_detection::hazards::filter::NoHazardFilter;
 use jagua_rs::collision_detection::hazards::HazardEntity;
 use jagua_rs::entities::general::{Instance, Layout, LayoutSnapshot};
+use jagua_rs::entities::strip_packing::{SPInstance, SPPlacement, SPProblem};
 use jagua_rs::geometry::geo_traits::{Shape, Transformable};
 use jagua_rs::geometry::primitives::Edge;
 use jagua_rs::geometry::{DTransformation, Transformation};
+use jagua_rs::io::json_solution::{JsonContainer, JsonLayout};
 use svg::node::element::{Definitions, Group, Text, Title, Use};
 use svg::Document;
+use crate::config::CDE_CONFIG;
+
+#[allow(unused)]
+/// Method for converting a Json Layout (external representation) as an SVG.
+/// Good to test the internal / external conversion methods.
+pub fn json_layout_to_svg(
+    json_layout: &JsonLayout,
+    instance: &SPInstance,
+    options: SvgDrawOptions,
+    title: &str,
+) -> Document {
+    //rebuild the internal representation from the json
+    let strip_width = match json_layout.container{
+        JsonContainer::Strip{width, ..} => width,
+        JsonContainer::Bin { .. } => panic!("json layout should use a strip container"),
+    };
+    let mut problem = SPProblem::new(instance.clone(), strip_width, CDE_CONFIG);
+    for jpi in json_layout.placed_items.iter(){
+        let item = instance.item(jpi.index);
+        let ext_dtransf = DTransformation::new(
+            jpi.transformation.rotation, 
+            jpi.transformation.translation
+        );
+        //convert to internal transformation
+        let int_dtransf = parser::ext_to_int_transformation(
+            &ext_dtransf,
+            &item.shape_orig.pre_transform,
+        );
+        problem.place_item(SPPlacement{
+            item_id: item.id,
+            d_transf: int_dtransf,
+        });
+    }
+    
+    layout_to_svg(&problem.layout, instance, options, title)
+}
 
 pub fn s_layout_to_svg(
     s_layout: &LayoutSnapshot,
@@ -231,7 +270,7 @@ pub fn layout_to_svg(
                 true => pi.d_transf,
                 false => {
                     let item = instance.item(pi.item_id);
-                    parser::internal_to_absolute_transform(
+                    parser::int_to_ext_transformation(
                         &pi.d_transf,
                         &item.shape_orig.pre_transform,
                     )

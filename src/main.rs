@@ -2,7 +2,7 @@ extern crate core;
 
 use clap::Parser as Clap;
 use jagua_rs::entities::general::Instance;
-use jagua_rs::io::parser::Parser;
+use jagua_rs::io::parser::{compose_json_solution_spp, Parser};
 use log::{info, warn, Level};
 use rand::prelude::SmallRng;
 use rand::SeedableRng;
@@ -14,6 +14,8 @@ use sparrow::util::io::layout_to_svg::s_layout_to_svg;
 use std::fs;
 use std::path::Path;
 use std::time::Duration;
+use sparrow::EPOCH;
+use sparrow::util::io::json_export::JsonOutput;
 use sparrow::util::io::to_sp_instance;
 
 fn main() {
@@ -75,5 +77,8 @@ fn main() {
         if cfg!(feature = "live_svg") {
             io::write_svg(&svg, Path::new(format!("{LIVE_DIR}/.live_solution.svg").as_str()), Level::Trace);
         }
+        let json_output = JsonOutput::new(json_instance.clone(), &solution, &instance);
+        let json_path = format!("{OUTPUT_DIR}/final_{}.json", json_instance.name);
+        io::write_json_output(&json_output, Path::new(json_path.as_str()), Level::Info);
     }
 }
