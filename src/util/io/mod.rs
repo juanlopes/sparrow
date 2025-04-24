@@ -11,7 +11,6 @@ use svg::Document;
 use crate::config::{OUTPUT_DIR};
 use crate::EPOCH;
 use jagua_rs::io::json_instance::JsonInstance;
-use jagua_rs::io::json_solution::JsonSolution;
 use crate::util::io::json_export::JsonOutput;
 
 pub mod layout_to_svg;

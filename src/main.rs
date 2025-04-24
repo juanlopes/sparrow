@@ -2,7 +2,6 @@ extern crate core;
 
 use clap::Parser as Clap;
 use jagua_rs::entities::general::Instance;
-use jagua_rs::io::parser::{compose_json_solution_spp, Parser};
 use log::{info, warn, Level};
 use rand::prelude::SmallRng;
 use rand::SeedableRng;
@@ -14,7 +13,7 @@ use sparrow::util::io::layout_to_svg::s_layout_to_svg;
 use std::fs;
 use std::path::Path;
 use std::time::Duration;
-use sparrow::EPOCH;
+use jagua_rs::io::parse::Parser;
 use sparrow::util::io::json_export::JsonOutput;
 use sparrow::util::io::to_sp_instance;
 

@@ -1,9 +1,7 @@
 use crate::util::io::svg_util::SvgDrawOptions;
 use crate::util::io::{svg_export, svg_util};
-use jagua_rs::io::parser;
 use log::warn;
 use std::hash::{DefaultHasher, Hash, Hasher};
-use jagua_rs::collision_detection::CDEConfig;
 use jagua_rs::collision_detection::hazards::detector::{BasicHazardDetector, HazardDetector};
 use jagua_rs::collision_detection::hazards::filter::NoHazardFilter;
 use jagua_rs::collision_detection::hazards::HazardEntity;
@@ -12,6 +10,7 @@ use jagua_rs::entities::strip_packing::{SPInstance, SPPlacement, SPProblem};
 use jagua_rs::geometry::geo_traits::{Shape, Transformable};
 use jagua_rs::geometry::primitives::Edge;
 use jagua_rs::geometry::{DTransformation, Transformation};
+use jagua_rs::io::export::{ext_to_int_transformation, int_to_ext_transformation};
 use jagua_rs::io::json_solution::{JsonContainer, JsonLayout};
 use svg::node::element::{Definitions, Group, Text, Title, Use};
 use svg::Document;
@@ -39,7 +38,7 @@ pub fn json_layout_to_svg(
             jpi.transformation.translation
         );
         //convert to internal transformation
-        let int_dtransf = parser::ext_to_int_transformation(
+        let int_dtransf = ext_to_int_transformation(
             &ext_dtransf,
             &item.shape_orig.pre_transform,
         );
@@ -270,7 +269,7 @@ pub fn layout_to_svg(
                 true => pi.d_transf,
                 false => {
                     let item = instance.item(pi.item_id);
-                    parser::int_to_ext_transformation(
+                    int_to_ext_transformation(
                         &pi.d_transf,
                         &item.shape_orig.pre_transform,
                     )

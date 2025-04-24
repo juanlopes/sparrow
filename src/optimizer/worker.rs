@@ -8,7 +8,6 @@ use itertools::Itertools;
 use jagua_rs::entities::general::{Instance, PItemKey};
 use jagua_rs::entities::strip_packing::{SPInstance, SPPlacement, SPProblem, SPSolution};
 use jagua_rs::geometry::DTransformation;
-use jagua_rs::util::FPA;
 use log::debug;
 use rand::prelude::{SliceRandom, SmallRng};
 use std::iter::Sum;
