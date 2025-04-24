@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod integration_tests {
-    use jagua_rs::io::parser::Parser;
+    use jagua_rs::io::parse::Parser;
     use rand::prelude::SmallRng;
     use rand::SeedableRng;
     use sparrow::config::{CDE_CONFIG, LBF_SAMPLE_CONFIG, OUTPUT_DIR, SEP_CFG_EXPLORE, SIMPL_TOLERANCE, MIN_ITEM_SEPARATION};

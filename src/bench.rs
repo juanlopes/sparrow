@@ -1,6 +1,6 @@
 extern crate core;
 
-use jagua_rs::io::parser::Parser;
+use jagua_rs::io::parse::Parser;
 use ordered_float::OrderedFloat;
 use rand::prelude::SmallRng;
 use rand::{Rng, RngCore, SeedableRng};
