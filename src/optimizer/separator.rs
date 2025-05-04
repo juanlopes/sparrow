@@ -71,7 +71,7 @@ impl Separator {
     pub fn separate(&mut self, term: &Terminator) -> (SPSolution, CTSnapshot) {
         let mut min_loss_sol = (self.prob.save(), self.ct.save());
         let mut min_loss = self.ct.get_total_loss();
-        log!(self.config.log_level,"[SEP] separating at width: {:.3} and loss: {} ", self.prob.strip_width(), FMT.fmt2(min_loss));
+        log!(self.config.log_level,"[SEP] separating at width: {:.3} and loss: {} ", self.prob.strip_width(), FMT().fmt2(min_loss));
 
         let mut n_strikes = 0;
         let mut n_iter = 0;
@@ -82,7 +82,7 @@ impl Separator {
             let mut n_iter_no_improvement = 0;
 
             let initial_strike_loss = self.ct.get_total_loss();
-            debug!("[SEP] [s:{n_strikes},i:{n_iter}]     init_l: {}",FMT.fmt2(initial_strike_loss));
+            debug!("[SEP] [s:{n_strikes},i:{n_iter}]     init_l: {}",FMT().fmt2(initial_strike_loss));
 
             while n_iter_no_improvement < self.config.iter_no_imprv_limit {
                 let (loss_before, w_loss_before) = (
@@ -95,17 +95,17 @@ impl Separator {
                     self.ct.get_total_weighted_loss(),
                 );
 
-                debug!("[SEP] [s:{n_strikes},i:{n_iter}] ( ) l: {} -> {}, wl: {} -> {}, (min l: {})", FMT.fmt2(loss_before), FMT.fmt2(loss), FMT.fmt2(w_loss_before), FMT.fmt2(w_loss), FMT.fmt2(min_loss));
-                debug_assert!(w_loss <= w_loss_before * 1.001, "weighted loss should not increase: {} -> {}", FMT.fmt2(w_loss), FMT.fmt2(w_loss_before));
+                debug!("[SEP] [s:{n_strikes},i:{n_iter}] ( ) l: {} -> {}, wl: {} -> {}, (min l: {})", FMT().fmt2(loss_before), FMT().fmt2(loss), FMT().fmt2(w_loss_before), FMT().fmt2(w_loss), FMT().fmt2(min_loss));
+                debug_assert!(w_loss <= w_loss_before * 1.001, "weighted loss should not increase: {} -> {}", FMT().fmt2(w_loss), FMT().fmt2(w_loss_before));
 
                 if loss == 0.0 {
                     //layout is successfully separated
-                    log!(self.config.log_level,"[SEP] [s:{n_strikes},i:{n_iter}] (S)  min_l: {}",FMT.fmt2(loss));
+                    log!(self.config.log_level,"[SEP] [s:{n_strikes},i:{n_iter}] (S)  min_l: {}",FMT().fmt2(loss));
                     min_loss_sol = (self.prob.save(), self.ct.save());
                     break 'outer;
                 } else if loss < min_loss {
                     //layout is not separated, but absolute loss is better than before
-                    log!(self.config.log_level,"[SEP] [s:{n_strikes},i:{n_iter}] (*) min_l: {}",FMT.fmt2(loss));
+                    log!(self.config.log_level,"[SEP] [s:{n_strikes},i:{n_iter}] (*) min_l: {}",FMT().fmt2(loss));
                     self.export_svg(None, "i", true);
                     if loss < min_loss * 0.98 {
                         //only reset the iter_no_improvement counter if the loss improved significantly
@@ -130,12 +130,12 @@ impl Separator {
         }
         let secs = start.elapsed().as_secs_f32();
         log!(self.config.log_level, "[SEP] finished, evals/s: {}, evals/move: {}, moves/s: {}, iter/s: {}, #workers: {}, total {:.3}s",
-            FMT.fmt2(sep_stats.total_evals as f32 / secs),
-            FMT.fmt2(sep_stats.total_evals as f32 / sep_stats.total_moves as f32),
-            FMT.fmt2(sep_stats.total_moves as f32 / secs),
-            FMT.fmt2(n_iter as f32 / secs),
+            FMT().fmt2(sep_stats.total_evals as f32 / secs),
+            FMT().fmt2(sep_stats.total_evals as f32 / sep_stats.total_moves as f32),
+            FMT().fmt2(sep_stats.total_moves as f32 / secs),
+            FMT().fmt2(n_iter as f32 / secs),
             self.workers.len(),
-            FMT.fmt2(secs),
+            FMT().fmt2(secs),
         );
 
         (min_loss_sol.0, min_loss_sol.1)
@@ -205,7 +205,7 @@ impl Separator {
         let new_weighted_loss = self.ct.get_weighted_loss(new_pk);
 
         debug!("[MV] moved item {} from from l: {}, wl: {} to l+1: {}, wl+1: {}"
-            ,item_id,FMT.fmt2(old_loss),FMT.fmt2(old_weighted_loss),FMT.fmt2(new_loss),FMT.fmt2(new_weighted_loss));
+            ,item_id,FMT().fmt2(old_loss),FMT().fmt2(old_weighted_loss),FMT().fmt2(new_loss),FMT().fmt2(new_weighted_loss));
 
         debug_assert!(tracker_matches_layout(&self.ct, &self.prob.layout));
 

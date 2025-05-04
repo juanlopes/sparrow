@@ -1,8 +1,8 @@
 #![cfg_attr(feature = "simd", feature(portable_simd))]
 #![allow(const_item_mutation)]
 
+use std::sync::LazyLock;
 use numfmt::{Formatter, Precision, Scales};
-use once_cell::sync::Lazy;
 use std::time::Instant;
 pub mod optimizer;
 pub mod quantify;
@@ -11,13 +11,13 @@ pub mod util;
 pub mod config;
 pub mod eval;
 
-pub static EPOCH: Lazy<Instant> = Lazy::new(Instant::now);
+pub static EPOCH: LazyLock<Instant> = LazyLock::new(Instant::now);
 
-const FMT: Lazy<Formatter> = Lazy::new(|| {
+static FMT: fn() -> Formatter = || -> Formatter {
     Formatter::new()
         .scales(Scales::short())
         .precision(Precision::Significance(3))
-});
+};
 
 
 #[cfg(feature = "live_svg")]

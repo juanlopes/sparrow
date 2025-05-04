@@ -82,7 +82,7 @@ pub fn exploration_phase(instance: &SPInstance, sep: &mut Separator, term: &Term
                 let selected_idx = (sample * solution_pool.len() as f32) as usize;
 
                 let (selected_sol, loss) = &solution_pool[selected_idx];
-                info!("[EXPL] selected starting solution {}/{} from solution pool (l: {})", selected_idx, solution_pool.len(), FMT.fmt2(*loss));
+                info!("[EXPL] selected starting solution {}/{} from solution pool (l: {})", selected_idx, solution_pool.len(), FMT().fmt2(*loss));
                 selected_sol
             };
 

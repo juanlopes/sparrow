@@ -81,8 +81,8 @@ impl SeparatorWorker {
 
         let (new_l, new_w_l) = (self.ct.get_loss(new_pk), self.ct.get_weighted_loss(new_pk));
 
-        debug!("Moved {:?} (l: {}, wl: {}) to {:?} (l+1: {}, wl+1: {})", old_placement, FMT.fmt2(old_l), FMT.fmt2(old_w_l), new_placement, FMT.fmt2(new_l), FMT.fmt2(new_w_l));
-        debug_assert!(new_w_l <= old_w_l * 1.001, "weighted loss should never increase: {} > {}", FMT.fmt2(old_w_l), FMT.fmt2(new_w_l));
+        debug!("Moved {:?} (l: {}, wl: {}) to {:?} (l+1: {}, wl+1: {})", old_placement, FMT().fmt2(old_l), FMT().fmt2(old_w_l), new_placement, FMT().fmt2(new_l), FMT().fmt2(new_w_l));
+        debug_assert!(new_w_l <= old_w_l * 1.001, "weighted loss should never increase: {} > {}", FMT().fmt2(old_w_l), FMT().fmt2(new_w_l));
         debug_assert!(tracker_matches_layout(&self.ct, &self.prob.layout));
 
         new_pk
