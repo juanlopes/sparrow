@@ -14,10 +14,10 @@ use jagua_rs::collision_detection::hazards::HazardEntity;
 use jagua_rs::collision_detection::hazards::detector::HazardDetector;
 use jagua_rs::collision_detection::quadtree::{QTHazPresence, QTQueryable};
 use jagua_rs::collision_detection::quadtree::QTNode;
-use jagua_rs::entities::general::Layout;
-use jagua_rs::entities::general::PItemKey;
+use jagua_rs::entities::Layout;
+use jagua_rs::entities::PItemKey;
 use jagua_rs::geometry::DTransformation;
-use jagua_rs::geometry::geo_traits::{CollidesWith, Shape, TransformableFrom};
+use jagua_rs::geometry::geo_traits::{CollidesWith, TransformableFrom};
 use jagua_rs::geometry::primitives::SPolygon;
 use slotmap::SecondaryMap;
 
@@ -59,14 +59,14 @@ pub fn collect_poly_collisions_in_detector_custom(
     let checkpoint = det.idx_counter;
 
     // Detect all potential hazards within the bounding box of the shape.
-    cde.collect_potential_hazards_within(shape.bbox(), det);
+    cde.collect_potential_hazards_within(shape.bbox, det);
 
     if det.idx_counter > checkpoint {
         // Additional hazards were detected, check if they are contained in each other.
         // If they are not, remove them again from the detector, as they do not collide with the shape
         for haz in cde.all_hazards().filter(|h| h.active) {
             match haz.entity {
-                HazardEntity::BinExterior => {
+                HazardEntity::Exterior => {
                     if let Some((_, idx)) = det.detected_bin {
                         if idx >= checkpoint {
                             // If the bin was detected as a potential containment, remove it.
@@ -173,8 +173,8 @@ impl<'a> SpecializedHazardDetector<'a> {
                 let weight = self.ct.get_pair_weight(self.current_pk, *other_pk);
                 loss * weight
             }
-            HazardEntity::BinExterior => {
-                let loss = quantify_collision_poly_bin(shape, self.layout.bin.outer_cd.bbox());
+            HazardEntity::Exterior => {
+                let loss = quantify_collision_poly_bin(shape, self.layout.container.outer_cd.bbox);
                 let weight = self.ct.get_bin_weight(self.current_pk);
                 loss * weight
             }
@@ -189,7 +189,7 @@ impl<'a> HazardDetector for SpecializedHazardDetector<'a> {
             HazardEntity::PlacedItem { pk, .. } => {
                 *pk == self.current_pk || self.detected_pis.contains_key(*pk)
             }
-            HazardEntity::BinExterior => self.detected_bin.is_some(),
+            HazardEntity::Exterior => self.detected_bin.is_some(),
             _ => unreachable!("unsupported hazard entity"),
         }
     }
@@ -200,8 +200,8 @@ impl<'a> HazardDetector for SpecializedHazardDetector<'a> {
             HazardEntity::PlacedItem { pk, .. } => {
                 self.detected_pis.insert(pk, (haz, self.idx_counter));
             }
-            HazardEntity::BinExterior => {
-                self.detected_bin = Some((HazardEntity::BinExterior, self.idx_counter))
+            HazardEntity::Exterior => {
+                self.detected_bin = Some((HazardEntity::Exterior, self.idx_counter))
             }
             _ => unreachable!("unsupported hazard entity"),
         }
@@ -217,7 +217,7 @@ impl<'a> HazardDetector for SpecializedHazardDetector<'a> {
                     self.loss_cache = (0, 0.0);
                 }
             }
-            HazardEntity::BinExterior => {
+            HazardEntity::Exterior => {
                 let (_, idx) = self.detected_bin.take().unwrap();
                 if idx < self.loss_cache.0 {
                     //wipe the cache if a hazard was removed that was in it

@@ -1,8 +1,8 @@
 use jagua_rs::collision_detection::CDEConfig;
 use jagua_rs::geometry::fail_fast::SPSurrogateConfig;
+use jagua_rs::io::svg::{SvgDrawOptions, SvgLayoutTheme};
 use crate::optimizer::separator::SeparatorConfig;
 use crate::sample::search::SampleConfig;
-use crate::util::io::svg_util::{SvgDrawOptions, SvgLayoutTheme};
 
 pub const RNG_SEED: Option<usize> = None;
 
@@ -89,7 +89,7 @@ pub const LOG_LEVEL_FILTER_DEBUG: log::LevelFilter = log::LevelFilter::Debug;
 pub const LARGE_AREA_CH_AREA_CUTOFF_RATIO: f32 = 0.5;
 
 pub const DRAW_OPTIONS: SvgDrawOptions = SvgDrawOptions {
-    theme: SvgLayoutTheme::GRAY_THEME,
+    theme: SvgLayoutTheme::GRAY,
     quadtree: false,
     surrogate: false,
     highlight_collisions: true,

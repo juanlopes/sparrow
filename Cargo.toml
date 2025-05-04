@@ -19,8 +19,8 @@ name = "bench"
 path = "src/bench.rs"
 
 [dependencies]
-jagua-rs = { git = "https://github.com/JeroenGar/jagua-rs.git", rev = "eb78f5e255890f95bc900dd0b7fed7f5d9f7a5cd" }
-#jagua-rs = { path = "../jagua-rs/jagua-rs" }
+jagua-rs = { features = ["spp"], git = "https://github.com/JeroenGar/jagua-rs.git", rev = "154e1dfb149b8903c3715662ba3396593dc4f442" }
+#jagua-rs = { features = ["spp"], path = "../jagua-rs/jagua-rs" }
 rand = { version = "0.9", features = ["small_rng"] }
 rand_distr = "0.5"
 svg = "0.18"
@@ -41,6 +41,7 @@ ctrlc = "3.4"
 jiff = "0.2"
 test-case = "3.3"
 clap = { version = "4.5", features = ["derive"] }
+anyhow = "1.0"
 
 [profile.dev]
 overflow-checks = true

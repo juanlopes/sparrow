@@ -5,8 +5,8 @@ use crate::sample::search::SampleConfig;
 use crate::util::assertions::tracker_matches_layout;
 use crate::FMT;
 use itertools::Itertools;
-use jagua_rs::entities::general::{Instance, PItemKey};
-use jagua_rs::entities::strip_packing::{SPInstance, SPPlacement, SPProblem, SPSolution};
+use jagua_rs::entities::{Instance, PItemKey};
+use jagua_rs::probs::spp::entities::{SPInstance, SPPlacement, SPProblem, SPSolution};
 use jagua_rs::geometry::DTransformation;
 use log::debug;
 use rand::prelude::{SliceRandom, SmallRng};
@@ -25,7 +25,7 @@ pub struct SeparatorWorker {
 impl SeparatorWorker {
     pub fn load(&mut self, sol: &SPSolution, ct: &CollisionTracker) {
         // restores the state of the worker to the given solution and accompanying tracker
-        debug_assert!(sol.strip_width == self.prob.strip_width());
+        debug_assert!(sol.strip_width() == self.prob.strip_width());
         self.prob.restore(sol);
         self.ct = ct.clone();
     }

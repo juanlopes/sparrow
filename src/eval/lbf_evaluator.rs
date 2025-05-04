@@ -1,9 +1,9 @@
 use jagua_rs::collision_detection::hazards::filter::NoHazardFilter;
 use crate::eval::sample_eval::{SampleEval, SampleEvaluator};
-use jagua_rs::entities::general::Item;
-use jagua_rs::entities::general::Layout;
+use jagua_rs::entities::Item;
+use jagua_rs::entities::Layout;
 use jagua_rs::geometry::DTransformation;
-use jagua_rs::geometry::geo_traits::{Shape, TransformableFrom};
+use jagua_rs::geometry::geo_traits::TransformableFrom;
 use jagua_rs::geometry::primitives::SPolygon;
 
 pub const X_MULTIPLIER: f32 = 10.0;
@@ -44,7 +44,7 @@ impl<'a> SampleEvaluator for LBFEvaluator<'a> {
                     false => {
                         // No collisions
                         let poi = self.shape_buff.poi.center;
-                        let bbox_corner = self.shape_buff.bbox().corners()[0];
+                        let bbox_corner = self.shape_buff.bbox.corners()[0];
                         let loss = X_MULTIPLIER * (poi.0 + bbox_corner.0) + Y_MULTIPLIER * (poi.1 + bbox_corner.1);
                         SampleEval::Clear{loss}
                     }

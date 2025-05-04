@@ -1,10 +1,10 @@
 use itertools::Itertools;
 use jagua_rs::geometry::geo_enums::RotationRange;
-use jagua_rs::geometry::geo_traits::{Shape, TransformableFrom};
+use jagua_rs::geometry::geo_traits::TransformableFrom;
 use rand::prelude::IndexedRandom;
 use rand::Rng;
 use std::ops::Range;
-use jagua_rs::entities::general::Item;
+use jagua_rs::entities::Item;
 use jagua_rs::geometry::primitives::Rect;
 use jagua_rs::geometry::{DTransformation, Transformation};
 
@@ -39,7 +39,7 @@ impl UniformBBoxSampler {
         // where the item resides fully inside the bin and is within the sample bounding box
         let rot_entries = rotations.iter()
             .map(|&r| {
-                let r_shape_bbox = shape_buffer.transform_from(item.shape_cd.as_ref(), &Transformation::from_rotation(r)).bbox();
+                let r_shape_bbox = shape_buffer.transform_from(item.shape_cd.as_ref(), &Transformation::from_rotation(r)).bbox;
 
                 //narrow the bin range to account for the rotated shape
                 let bin_x_range = (bin_bbox.x_min - r_shape_bbox.x_min)..(bin_bbox.x_max - r_shape_bbox.x_max);

@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod integration_tests {
-    use jagua_rs::io::parse::Parser;
     use rand::prelude::SmallRng;
     use rand::SeedableRng;
     use sparrow::config::{CDE_CONFIG, LBF_SAMPLE_CONFIG, OUTPUT_DIR, SEP_CFG_EXPLORE, SIMPL_TOLERANCE, MIN_ITEM_SEPARATION};
@@ -11,7 +10,8 @@ mod integration_tests {
     use std::path::Path;
     use std::time::Duration;
     use test_case::test_case;
-    use sparrow::util::io::to_sp_instance;
+    use anyhow::Result;
+    use jagua_rs::io::import::Importer;
 
     const EXPLORE_TIMEOUT: Duration = Duration::from_secs(10);
     const COMPRESS_TIMEOUT: Duration = Duration::from_secs(10);
@@ -21,13 +21,12 @@ mod integration_tests {
     #[test_case("swim.json"; "swim")]
     #[test_case("shirts.json"; "shirts")]
     #[test_case("trousers.json"; "trousers")]
-    fn simulate_optimization(path: &str) {
+    fn simulate_optimization(path: &str) -> Result<()> {
         let input_file_path = format!("{INSTANCE_BASE_PATH}/{path}");
-        let json_instance = io::read_json_instance(Path::new(&input_file_path));
+        let json_instance = io::read_spp_instance_json(Path::new(&input_file_path))?;
 
-        let parser = Parser::new(CDE_CONFIG, SIMPL_TOLERANCE, MIN_ITEM_SEPARATION);
-        let any_instance = parser.parse(&json_instance);
-        let instance = to_sp_instance(any_instance.as_ref()).expect("Expected SPInstance");
+        let importer = Importer::new(CDE_CONFIG, SIMPL_TOLERANCE, MIN_ITEM_SEPARATION);
+        let instance = jagua_rs::probs::spp::io::import(&importer, &json_instance)?;
 
         println!("[TEST] loaded instance: {}", json_instance.name);
 
@@ -48,7 +47,7 @@ mod integration_tests {
         let mut terminator = Terminator::new_without_ctrlc();
         terminator.set_timeout_from_now(EXPLORE_TIMEOUT);
 
-        let builder = LBFBuilder::new(instance.clone(), CDE_CONFIG, rng, LBF_SAMPLE_CONFIG).construct();
+        let builder = LBFBuilder::new(instance.clone(), rng, LBF_SAMPLE_CONFIG).construct();
         let mut separator = Separator::new(builder.instance, builder.prob, builder.rng, output_folder_path, 0, SEP_CFG_EXPLORE);
 
         let sols = exploration_phase(&instance, &mut separator, &terminator);
@@ -56,5 +55,6 @@ mod integration_tests {
 
         terminator.set_timeout_from_now(COMPRESS_TIMEOUT);
         compression_phase(&instance, &mut separator, final_explore_sol, &terminator);
+        Ok(())
     }
 }

@@ -1,6 +1,6 @@
 use jagua_rs::collision_detection::hazards::detector::{BasicHazardDetector, HazardDetector};
 use jagua_rs::collision_detection::hazards::HazardEntity;
-use jagua_rs::entities::general::{Layout, PItemKey};
+use jagua_rs::entities::{Layout, PItemKey};
 use crate::config::{WEIGHT_DECAY, WEIGHT_MAX_INC_RATIO, WEIGHT_MIN_INC_RATIO};
 use crate::quantify::pair_matrix::PairMatrix;
 use crate::quantify::{quantify_collision_poly_bin, quantify_collision_poly_poly};
@@ -72,8 +72,8 @@ impl CollisionTracker {
                     assert!(loss > 0.0, "loss for a collision should be > 0.0");
                     self.pair_collisions[(idx, idx_other)].loss = loss;
                 }
-                HazardEntity::BinExterior => {
-                    let loss = quantify_collision_poly_bin(shape, l.bin.outer_cd.bbox);
+                HazardEntity::Exterior => {
+                    let loss = quantify_collision_poly_bin(shape, l.container.outer_cd.bbox);
                     assert!(loss > 0.0, "loss for a collision should be > 0.0");
                     self.bin_collisions[idx].loss = loss;
                 }

@@ -5,11 +5,10 @@ use crate::quantify::tracker::{CTSnapshot, CollisionTracker};
 use crate::sample::search::SampleConfig;
 use crate::util::assertions::tracker_matches_layout;
 use crate::util::io;
-use crate::util::io::layout_to_svg::{layout_to_svg, s_layout_to_svg};
 use crate::{EXPORT_LIVE_SVG, EXPORT_ONLY_FINAL_SVG, FMT};
 use itertools::Itertools;
-use jagua_rs::entities::general::PItemKey;
-use jagua_rs::entities::strip_packing::{SPInstance, SPPlacement, SPProblem, SPSolution};
+use jagua_rs::entities::PItemKey;
+use jagua_rs::probs::spp::entities::{SPInstance, SPPlacement, SPProblem, SPSolution};
 use jagua_rs::geometry::DTransformation;
 use log::{debug, log, Level};
 use ordered_float::OrderedFloat;
@@ -20,7 +19,7 @@ use rayon::iter::ParallelIterator;
 use rayon::ThreadPool;
 use std::path::Path;
 use std::time::Instant;
-use jagua_rs::geometry::geo_traits::Shape;
+use jagua_rs::io::svg::{layout_to_svg, s_layout_to_svg};
 
 pub struct SeparatorConfig {
     pub iter_no_imprv_limit: usize,
@@ -171,7 +170,7 @@ impl Separator {
     }
 
     pub fn rollback(&mut self, sol: &SPSolution, ots: Option<&CTSnapshot>) {
-        debug_assert!(sol.strip_width == self.prob.strip_width());
+        debug_assert!(sol.strip_width() == self.prob.strip_width());
         self.prob.restore(sol);
 
         match ots {
@@ -270,12 +269,12 @@ impl Separator {
                 if !Path::new(LIVE_DIR).exists() {
                     std::fs::create_dir_all(LIVE_DIR).unwrap();
                 }
-                io::write_svg(&svg, Path::new(&*format!("{}/.live_solution.svg", LIVE_DIR)), Level::Trace);
+                io::write_svg(&svg, Path::new(&*format!("{}/.live_solution.svg", LIVE_DIR)), Level::Trace).expect("failed to write live svg");
             }
 
             if !only_live {
                 let file_path = &*format!("{}/{}.svg", &self.output_svg_folder, file_name);
-                io::write_svg(&svg, Path::new(file_path), self.config.log_level);
+                io::write_svg(&svg, Path::new(file_path), self.config.log_level).expect("failed to write intermediate svg");
                 self.svg_counter += 1;
             }
         }
