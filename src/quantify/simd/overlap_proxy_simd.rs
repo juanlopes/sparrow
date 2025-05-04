@@ -62,7 +62,7 @@ pub fn poles_overlap_area_proxy_simd(sp1: &SPSurrogate, sp2: &SPSurrogate, epsil
         // process remaining elements with scalar operations
         let remaining_idx = chunks * SIMD_WIDTH;
         for j in remaining_idx..p2.x.len() {
-            let p2 = Circle::new(Point(p2.x[j], p2.y[j]), p2.r[j]);
+            let p2 = Circle::new(Point(p2.x[j], p2.y[j]), p2.r[j]).unwrap();
 
             // Penetration depth between the two poles (circles)
             let pd = (p1.radius + p2.radius) - p1.center.distance_to(&p2.center);
