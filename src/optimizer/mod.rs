@@ -131,7 +131,7 @@ fn attempt_to_compress(sep: &mut Separator, init: &SPSolution, r_shrink: f32, te
     sep.change_strip_width(init.strip_width(), None);
     sep.rollback(&init, None);
 
-    //shrink the bin at a random position
+    //shrink the container at a random position
     let new_width = init.strip_width() * (1.0 - r_shrink);
     let split_pos = sep.rng.random_range(0.0..sep.prob.strip_width());
     sep.change_strip_width(new_width, Some(split_pos));

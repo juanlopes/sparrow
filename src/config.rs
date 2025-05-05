@@ -45,7 +45,7 @@ pub const SEP_CFG_EXPLORE: SeparatorConfig = SeparatorConfig {
     log_level: log::Level::Info,
     n_workers: 3,
     sample_config: SampleConfig {
-        n_bin_samples: 50,
+        n_container_samples: 50,
         n_focussed_samples: 25,
         n_coord_descents: 3,
     }
@@ -57,7 +57,7 @@ pub const SEP_CFG_COMPRESS: SeparatorConfig = SeparatorConfig {
     log_level: log::Level::Debug,
     n_workers: 3,
     sample_config: SampleConfig {
-        n_bin_samples: 50,
+        n_container_samples: 50,
         n_focussed_samples: 25,
         n_coord_descents: 3,
     },
@@ -98,7 +98,7 @@ pub const DRAW_OPTIONS: SvgDrawOptions = SvgDrawOptions {
 };
 
 pub const LBF_SAMPLE_CONFIG: SampleConfig = SampleConfig {
-    n_bin_samples: 1000,
+    n_container_samples: 1000,
     n_focussed_samples: 0,
     n_coord_descents: 3,
 };

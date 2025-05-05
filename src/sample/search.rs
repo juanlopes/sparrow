@@ -10,7 +10,7 @@ use rand::Rng;
 
 #[derive(Debug, Clone, Copy)]
 pub struct SampleConfig {
-    pub n_bin_samples: usize,
+    pub n_container_samples: usize,
     pub n_focussed_samples: usize,
     pub n_coord_descents: usize,
 }
@@ -44,11 +44,11 @@ pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, mut e
         }
     }
 
-    let bin_sampler = UniformBBoxSampler::new(l.container.outer_cd.bbox, item, l.container.outer_cd.bbox);
+    let container_sampler = UniformBBoxSampler::new(l.container.outer_cd.bbox, item, l.container.outer_cd.bbox);
 
-    if let Some(bin_sampler) = bin_sampler {
-        for _ in 0..sample_config.n_bin_samples {
-            let dt = bin_sampler.sample(rng).into();
+    if let Some(container_sampler) = container_sampler {
+        for _ in 0..sample_config.n_container_samples {
+            let dt = container_sampler.sample(rng).into();
             let eval = evaluator.eval(dt, Some(best_samples.upper_bound()));
             best_samples.report(dt, eval);
         }

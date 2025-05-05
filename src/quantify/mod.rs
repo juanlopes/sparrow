@@ -29,19 +29,19 @@ pub fn calc_shape_penalty(s1: &SPolygon, s2: &SPolygon) -> f32 {
     (p1 * p2).sqrt() //geometric mean
 }
 
-/// Quantifies a collision between a simple polygon and the exterior of the bin.
+/// Quantifies a collision between a simple polygon and the exterior of the container.
 #[inline(always)]
-pub fn quantify_collision_poly_bin(s: &SPolygon, bin_bbox: Rect) -> f32 {
+pub fn quantify_collision_poly_container(s: &SPolygon, c_bbox: Rect) -> f32 {
     let s_bbox = s.bbox;
-    let overlap = match Rect::intersection(s_bbox, bin_bbox) {
+    let overlap = match Rect::intersection(s_bbox, c_bbox) {
         Some(r) => {
             //intersection exist, calculate the area of the intersection (+ a small value to ensure it is never zero)
             let negative_area = (s_bbox.area() - r.area()) + 0.001 * s_bbox.area();
             negative_area
         }
         None => {
-            //no intersection, guide towards intersection with bin
-            s_bbox.area() + s_bbox.centroid().distance_to(&bin_bbox.centroid())
+            //no intersection, guide towards intersection with container
+            s_bbox.area() + s_bbox.centroid().distance_to(&c_bbox.centroid())
         }
     };
     debug_assert!(overlap.is_normal());

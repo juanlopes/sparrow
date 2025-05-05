@@ -3,19 +3,19 @@ use jagua_rs::collision_detection::hazards::HazardEntity;
 use jagua_rs::entities::{Layout, PItemKey};
 use crate::config::{WEIGHT_DECAY, WEIGHT_MAX_INC_RATIO, WEIGHT_MIN_INC_RATIO};
 use crate::quantify::pair_matrix::PairMatrix;
-use crate::quantify::{quantify_collision_poly_bin, quantify_collision_poly_poly};
+use crate::quantify::{quantify_collision_poly_container, quantify_collision_poly_poly};
 use crate::util::assertions::tracker_matches_layout;
 use ordered_float::Float;
 use slotmap::SecondaryMap;
 
-/// Tracker of both collisions between pair of items and collisions with the bin.
+/// Tracker of both collisions between pair of items and collisions with the container.
 /// It also stores the weights for every pair of hazards and is used as a cache for collisions.
 #[derive(Debug, Clone)]
 pub struct CollisionTracker {
     pub size: usize,
     pub pk_idx_map: SecondaryMap<PItemKey, usize>,
     pub pair_collisions: PairMatrix,
-    pub bin_collisions: Vec<CTEntry>,
+    pub container_collisions: Vec<CTEntry>,
 }
 
 pub type CTSnapshot = CollisionTracker;
@@ -31,7 +31,7 @@ impl CollisionTracker {
                 .map(|(i, pk)| (pk, i))
                 .collect(),
             pair_collisions: PairMatrix::new(size),
-            bin_collisions: vec![CTEntry { weight: 1.0, loss: 0.0 }; size],
+            container_collisions: vec![CTEntry { weight: 1.0, loss: 0.0 }; size],
         };
 
         // Recompute the loss for all items
@@ -53,7 +53,7 @@ impl CollisionTracker {
         for i in 0..self.size {
             self.pair_collisions[(idx, i)].loss = 0.0;
         }
-        self.bin_collisions[idx].loss = 0.0;
+        self.container_collisions[idx].loss = 0.0;
 
         // Compute which hazards are currently colliding with the item
         let mut detector = BasicHazardDetector::new();
@@ -73,9 +73,9 @@ impl CollisionTracker {
                     self.pair_collisions[(idx, idx_other)].loss = loss;
                 }
                 HazardEntity::Exterior => {
-                    let loss = quantify_collision_poly_bin(shape, l.container.outer_cd.bbox);
+                    let loss = quantify_collision_poly_container(shape, l.container.outer_cd.bbox);
                     assert!(loss > 0.0, "loss for a collision should be > 0.0");
-                    self.bin_collisions[idx].loss = loss;
+                    self.container_collisions[idx].loss = loss;
                 }
                 _ => unimplemented!("unsupported hazard entity"),
             }
@@ -88,8 +88,8 @@ impl CollisionTracker {
         self.pair_collisions.data.iter_mut()
             .zip(cts.pair_collisions.data.iter())
             .for_each(|(a, b)| a.loss = b.loss);
-        self.bin_collisions.iter_mut()
-            .zip(cts.bin_collisions.iter())
+        self.container_collisions.iter_mut()
+            .zip(cts.container_collisions.iter())
             .for_each(|(a, b)| a.loss = b.loss);
         debug_assert!(tracker_matches_layout(self, layout));
     }
@@ -121,7 +121,7 @@ impl CollisionTracker {
             e.weight = (e.weight * multiplier).max(1.0);
         }
 
-        for e in self.bin_collisions.iter_mut() {
+        for e in self.container_collisions.iter_mut() {
             let multiplier = match e.loss == 0.0 {
                 true => WEIGHT_DECAY, // no collision
                 false => WEIGHT_MAX_INC_RATIO,
@@ -135,9 +135,9 @@ impl CollisionTracker {
         self.pair_collisions[(idx1, idx2)].weight
     }
 
-    pub fn get_bin_weight(&self, pk: PItemKey) -> f32 {
+    pub fn get_container_weight(&self, pk: PItemKey) -> f32 {
         let idx = self.pk_idx_map[pk];
-        self.bin_collisions[idx].weight
+        self.container_collisions[idx].weight
     }
 
     pub fn get_pair_loss(&self, pk1: PItemKey, pk2: PItemKey) -> f32 {
@@ -145,9 +145,9 @@ impl CollisionTracker {
         self.pair_collisions[(idx1, idx2)].loss
     }
 
-    pub fn get_bin_loss(&self, pk: PItemKey) -> f32 {
+    pub fn get_container_loss(&self, pk: PItemKey) -> f32 {
         let idx = self.pk_idx_map[pk];
-        self.bin_collisions[idx].loss
+        self.container_collisions[idx].loss
     }
 
     pub fn get_loss(&self, pk: PItemKey) -> f32 {
@@ -157,7 +157,7 @@ impl CollisionTracker {
             .map(|i| self.pair_collisions[(idx, i)].loss)
             .sum::<f32>();
 
-        self.bin_collisions[idx].loss + pair_loss
+        self.container_collisions[idx].loss + pair_loss
     }
 
     pub fn get_weighted_loss(&self, pk: PItemKey) -> f32 {
@@ -167,21 +167,21 @@ impl CollisionTracker {
             .map(|i| self.pair_collisions[(idx, i)].weighted_loss())
             .sum::<f32>();
 
-        self.bin_collisions[idx].weighted_loss() + w_pair_loss
+        self.container_collisions[idx].weighted_loss() + w_pair_loss
     }
 
     pub fn get_total_loss(&self) -> f32 {
-        let bin_o = self.bin_collisions.iter().map(|e| e.loss).sum::<f32>();
+        let cont_o = self.container_collisions.iter().map(|e| e.loss).sum::<f32>();
 
         let pair_o = self.pair_collisions.data.iter()
             .map(|e| e.loss)
             .sum::<f32>();
 
-        bin_o + pair_o
+        cont_o + pair_o
     }
 
     pub fn get_total_weighted_loss(&self) -> f32 {
-        let bin_w_o = self.bin_collisions.iter()
+        let cont_w_o = self.container_collisions.iter()
             .map(|e| e.weighted_loss())
             .sum::<f32>();
 
@@ -189,7 +189,7 @@ impl CollisionTracker {
             .map(|e| e.weighted_loss())
             .sum::<f32>();
 
-        bin_w_o + pair_w_o
+        cont_w_o + pair_w_o
     }
 }
 
