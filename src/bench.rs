@@ -1,6 +1,5 @@
 extern crate core;
 
-use jagua_rs::io::parse::Parser;
 use ordered_float::OrderedFloat;
 use rand::prelude::SmallRng;
 use rand::{Rng, RngCore, SeedableRng};
@@ -9,15 +8,16 @@ use sparrow::optimizer::lbf::LBFBuilder;
 use sparrow::optimizer::separator::Separator;
 use sparrow::optimizer::{compression_phase, exploration_phase, Terminator};
 use sparrow::util::io;
-use sparrow::util::io::layout_to_svg::s_layout_to_svg;
 use std::env::args;
 use std::fs;
 use std::path::Path;
 use std::time::{Duration, Instant};
-use jagua_rs::geometry::geo_traits::Shape;
-use sparrow::util::io::to_sp_instance;
 
-fn main() {
+use anyhow::Result;
+use jagua_rs::io::import::Importer;
+use jagua_rs::io::svg::s_layout_to_svg;
+
+fn main() -> Result<()> {
     //the input file is the first argument
     let input_file_path = args().nth(1).expect("first argument must be the input file");
     let time_limit: Duration = args().nth(2).expect("second argument must be the time limit [s]")
@@ -27,9 +27,7 @@ fn main() {
         .parse().expect("third argument must be the number of runs");
 
     fs::create_dir_all(OUTPUT_DIR).expect("could not create output directory");
-
-    let json_instance = io::read_json_instance(Path::new(&input_file_path));
-
+    
     println!("[BENCH] git commit hash: {}", get_git_commit_hash());
     println!("[BENCH] system time: {}", jiff::Timestamp::now());
 
@@ -48,14 +46,15 @@ fn main() {
     let n_runs_per_iter = (num_cpus::get_physical() / SEP_CFG_EXPLORE.n_workers).min(n_runs_total);
     let n_batches = (n_runs_total as f32 / n_runs_per_iter as f32).ceil() as usize;
 
+    let ext_intance = io::read_spp_instance_json(Path::new(&input_file_path))?;
+
     println!(
         "[BENCH] starting bench for {} ({}x{} runs across {} cores, {:?} timelimit)",
-        json_instance.name, n_batches, n_runs_per_iter, num_cpus::get_physical(), time_limit
+        ext_intance.name, n_batches, n_runs_per_iter, num_cpus::get_physical(), time_limit
     );
 
-    let parser = Parser::new(CDE_CONFIG, SIMPL_TOLERANCE, MIN_ITEM_SEPARATION);
-    let any_instance = parser.parse(&json_instance);
-    let instance = to_sp_instance(any_instance.as_ref()).expect("Expected SPInstance");
+    let importer = Importer::new(CDE_CONFIG, SIMPL_TOLERANCE, MIN_ITEM_SEPARATION);
+    let instance = jagua_rs::probs::spp::io::import(&importer, &ext_intance)?;
 
     let mut final_solutions = vec![];
 
@@ -68,14 +67,14 @@ fn main() {
         rayon::scope(|s| {
             for (j, sol_slice) in iter_solutions.iter_mut().enumerate() {
                 let bench_idx = i * n_runs_per_iter + j;
-                let output_folder_path = format!("{OUTPUT_DIR}/bench_{}_sols_{}", bench_idx, json_instance.name);
+                let output_folder_path = format!("{OUTPUT_DIR}/bench_{}_sols_{}", bench_idx, ext_intance.name);
                 let instance = instance.clone();
                 let mut rng = SmallRng::seed_from_u64(rng.random());
                 let mut terminator = dummy_terminator.clone();
 
                 s.spawn(move |_| {
                     let mut next_rng = || SmallRng::seed_from_u64(rng.next_u64());
-                    let builder = LBFBuilder::new(instance.clone(), CDE_CONFIG, next_rng(), LBF_SAMPLE_CONFIG).construct();
+                    let builder = LBFBuilder::new(instance.clone(), next_rng(), LBF_SAMPLE_CONFIG).construct();
                     let mut expl_separator = Separator::new(builder.instance, builder.prob, next_rng(), output_folder_path, 0, SEP_CFG_EXPLORE);
 
                     terminator.set_timeout_from_now(time_limit.mul_f32(EXPLORE_TIME_RATIO));
@@ -100,7 +99,7 @@ fn main() {
                         &s_layout_to_svg(&cmpr_sol.layout_snapshot, &instance, DRAW_OPTIONS, &*format!("final_bench_{}", bench_idx)),
                         Path::new(&format!("{OUTPUT_DIR}/final_bench_{}.svg", bench_idx)),
                         log::Level::Info,
-                    );
+                    ).expect(&*format!("could not write svg output of bench {}", bench_idx));
 
                     *sol_slice = Some(cmpr_sol);
                 })
@@ -113,7 +112,7 @@ fn main() {
     let (final_widths, final_usages): (Vec<f32>, Vec<f32>) = final_solutions
         .iter()
         .map(|s| {
-            let width = s.layout_snapshot.bin.outer_orig.bbox().width();
+            let width = s.strip_width();
             let usage = s.layout_snapshot.density(&instance);
             (width, usage * 100.0)
         })
@@ -123,9 +122,9 @@ fn main() {
 
     io::write_svg(
         &s_layout_to_svg(&best_final_solution.layout_snapshot, &instance, DRAW_OPTIONS, "final_best"),
-        Path::new(format!("{OUTPUT_DIR}/final_best_{}.svg", json_instance.name).as_str()),
+        Path::new(format!("{OUTPUT_DIR}/final_best_{}.svg", ext_intance.name).as_str()),
         log::Level::Info,
-    );
+    )?;
 
     println!("==== BENCH FINISHED ====");
 
@@ -150,6 +149,8 @@ fn main() {
     println!("stddev: {:.3}", calculate_stddev(&final_usages));
     println!("======================");
     println!("[BENCH] system time: {}", jiff::Timestamp::now());
+    
+    Ok(())
 }
 
 

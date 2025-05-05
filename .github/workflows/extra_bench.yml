@@ -40,18 +40,18 @@ jobs:
       run_time_s: ${{ fromJSON(inputs.run_time_s) }}
       cpu_tag: ${{ inputs.cpu_tag }}
 
-#  jakobs1:
-#    needs: fu
-#    uses: ./.github/workflows/single_bench.yml
-#    with:
-#      instance: jakobs1
-#      n_runs: ${{ fromJSON(inputs.n_runs) }}
-#      run_time_s: ${{ fromJSON(inputs.run_time_s) }}
-#      cpu_tag: ${{ inputs.cpu_tag }}
-#
-  jakobs2:
-    #needs: jakobs1
+  jakobs1:
     needs: fu
+    uses: ./.github/workflows/single_bench.yml
+    with:
+      instance: jakobs1
+      n_runs: ${{ fromJSON(inputs.n_runs) }}
+      run_time_s: ${{ fromJSON(inputs.run_time_s) }}
+      cpu_tag: ${{ inputs.cpu_tag }}
+
+  jakobs2:
+    needs: jakobs1
+#    needs: fu
     uses: ./.github/workflows/single_bench.yml
     with:
       instance: jakobs2

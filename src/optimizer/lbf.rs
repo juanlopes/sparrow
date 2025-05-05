@@ -8,9 +8,8 @@ use rand::prelude::SmallRng;
 use std::cmp::Reverse;
 use std::iter;
 use std::time::Instant;
-use jagua_rs::collision_detection::CDEConfig;
-use jagua_rs::entities::general::Instance;
-use jagua_rs::entities::strip_packing::{SPInstance, SPPlacement, SPProblem};
+use jagua_rs::entities::Instance;
+use jagua_rs::probs::spp::entities::{SPInstance, SPPlacement, SPProblem};
 
 pub struct LBFBuilder {
     pub instance: SPInstance,
@@ -22,12 +21,10 @@ pub struct LBFBuilder {
 impl LBFBuilder {
     pub fn new(
         instance: SPInstance,
-        cde_config: CDEConfig,
         rng: SmallRng,
         sample_config: SampleConfig,
     ) -> Self {
-        let init_strip_width = instance.item_area / instance.strip_height; //100% utilization
-        let prob = SPProblem::new(instance.clone(), init_strip_width, cde_config);
+        let prob = SPProblem::new(instance.clone());
 
         Self {
             instance,
@@ -39,16 +36,16 @@ impl LBFBuilder {
 
     pub fn construct(mut self) -> Self {
         let start = Instant::now();
-        let n_items = self.instance.items().len();
+        let n_items = self.instance.items.len();
         let sorted_item_indices = (0..n_items)
             .sorted_by_cached_key(|id| {
-                let item_shape = self.instance.items()[*id].0.shape_cd.as_ref();
+                let item_shape = self.instance.item(*id).shape_cd.as_ref();
                 let convex_hull_area = item_shape.surrogate().convex_hull_area;
                 let diameter = item_shape.diameter;
                 Reverse(OrderedFloat(convex_hull_area * diameter))
             })
             .map(|id| {
-                let missing_qty = self.prob.missing_item_qtys[id].max(0) as usize;
+                let missing_qty = self.prob.item_demand_qtys[id];
                 iter::repeat(id).take(missing_qty)
             })
             .flatten()

@@ -11,9 +11,8 @@ use rand_distr::Distribution;
 use rand_distr::Normal;
 use std::time::{Duration, Instant};
 use float_cmp::approx_eq;
-use jagua_rs::entities::general::Instance;
-use jagua_rs::entities::strip_packing::{SPInstance, SPSolution};
-use jagua_rs::geometry::geo_traits::Shape;
+use jagua_rs::entities::Instance;
+use jagua_rs::probs::spp::entities::{SPInstance, SPSolution};
 
 pub mod lbf;
 pub mod separator;
@@ -23,7 +22,7 @@ pub mod terminator;
 // All high-level heuristic logic
 pub fn optimize(instance: SPInstance, mut rng: SmallRng, output_folder_path: String, mut terminator: Terminator, explore_dur: Duration, compress_dur: Duration) -> SPSolution {
     let mut next_rng = || SmallRng::seed_from_u64(rng.next_u64());
-    let builder = LBFBuilder::new(instance.clone(), CDE_CONFIG, next_rng(), LBF_SAMPLE_CONFIG).construct();
+    let builder = LBFBuilder::new(instance.clone(), next_rng(), LBF_SAMPLE_CONFIG).construct();
 
     terminator.set_timeout_from_now(explore_dur);
     let mut expl_separator = Separator::new(builder.instance, builder.prob, next_rng(), output_folder_path.clone(), 0, SEP_CFG_EXPLORE);
@@ -83,7 +82,7 @@ pub fn exploration_phase(instance: &SPInstance, sep: &mut Separator, term: &Term
                 let selected_idx = (sample * solution_pool.len() as f32) as usize;
 
                 let (selected_sol, loss) = &solution_pool[selected_idx];
-                info!("[EXPL] selected starting solution {}/{} from solution pool (l: {})", selected_idx, solution_pool.len(), FMT.fmt2(*loss));
+                info!("[EXPL] selected starting solution {}/{} from solution pool (l: {})", selected_idx, solution_pool.len(), FMT().fmt2(*loss));
                 selected_sol
             };
 
@@ -115,7 +114,7 @@ pub fn compression_phase(instance: &SPInstance, sep: &mut Separator, init: &SPSo
         info!("[CMPR] attempting {:.3}%", step * 100.0);
         match attempt_to_compress(sep, &best, step, &term) {
             Some(compacted_sol) => {
-                info!("[CMPR] compressed to {:.3} ({:.3}%)", compacted_sol.strip_width, compacted_sol.density(instance) * 100.0);
+                info!("[CMPR] compressed to {:.3} ({:.3}%)", compacted_sol.strip_width(), compacted_sol.density(instance) * 100.0);
                 sep.export_svg(Some(compacted_sol.clone()), "cmpr", false);
                 best = compacted_sol;
             }
@@ -129,11 +128,11 @@ pub fn compression_phase(instance: &SPInstance, sep: &mut Separator, init: &SPSo
 
 fn attempt_to_compress(sep: &mut Separator, init: &SPSolution, r_shrink: f32, term: &Terminator) -> Option<SPSolution> {
     //restore to the initial solution and width
-    sep.change_strip_width(init.strip_width, None);
+    sep.change_strip_width(init.strip_width(), None);
     sep.rollback(&init, None);
 
-    //shrink the bin at a random position
-    let new_width = init.strip_width * (1.0 - r_shrink);
+    //shrink the container at a random position
+    let new_width = init.strip_width() * (1.0 - r_shrink);
     let split_pos = sep.rng.random_range(0.0..sep.prob.strip_width());
     sep.change_strip_width(new_width, Some(split_pos));
 
@@ -148,8 +147,8 @@ fn attempt_to_compress(sep: &mut Separator, init: &SPSolution, r_shrink: f32, te
 fn swap_large_pair_of_items(sep: &mut Separator) {
     //TODO: make a more elaborate way of selecting between significant and non-significant items
     //      to make the disruption more robust across instances
-    let large_area_ch_area_cutoff = sep.instance.items().iter()
-        .map(|(item, _)| item.shape_cd.surrogate().convex_hull_area)
+    let large_area_ch_area_cutoff = sep.instance.items()
+        .map(|item| item.shape_cd.surrogate().convex_hull_area)
         .max_by_key(|&x| OrderedFloat(x))
         .unwrap() * LARGE_AREA_CH_AREA_CUTOFF_RATIO;
 
@@ -164,7 +163,7 @@ fn swap_large_pair_of_items(sep: &mut Separator) {
     //Choose a second item with a large enough convex hull and different enough from the first.
     //If no such item is found, choose a random one.
     let (pk2, pi2) = layout.placed_items.iter()
-        .filter(|(_, pi)| !approx_eq!(f32, pi.shape.area(),pi1.shape.area(), epsilon = pi1.shape.area() * 0.1))
+        .filter(|(_, pi)| !approx_eq!(f32, pi.shape.area,pi1.shape.area, epsilon = pi1.shape.area * 0.1))
         .filter(|(_, pi)| pi.shape.surrogate().convex_hull_area > large_area_ch_area_cutoff)
         .choose(&mut sep.rng)
         .unwrap_or(layout.placed_items.iter()

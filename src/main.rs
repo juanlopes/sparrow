@@ -1,27 +1,27 @@
 extern crate core;
 
 use clap::Parser as Clap;
-use jagua_rs::entities::general::Instance;
 use log::{info, warn, Level};
 use rand::prelude::SmallRng;
 use rand::SeedableRng;
 use sparrow::config::*;
 use sparrow::optimizer::{optimize, Terminator};
 use sparrow::util::io;
-use sparrow::util::io::cli::MainCli;
-use sparrow::util::io::layout_to_svg::s_layout_to_svg;
+use sparrow::util::io::{MainCli, SPOutput};
 use std::fs;
 use std::path::Path;
 use std::time::Duration;
-use jagua_rs::io::parse::Parser;
-use sparrow::util::io::json_export::JsonOutput;
-use sparrow::util::io::to_sp_instance;
+use jagua_rs::io::import::Importer;
+use jagua_rs::io::svg::s_layout_to_svg;
+use sparrow::EPOCH;
 
-fn main() {
-    fs::create_dir_all(OUTPUT_DIR).expect("could not create output directory");
+use anyhow::{bail, Result};
+
+fn main() -> Result<()>{
+    fs::create_dir_all(OUTPUT_DIR)?;
     match cfg!(debug_assertions) {
-        true => io::init_logger(LOG_LEVEL_FILTER_DEBUG),
-        false => io::init_logger(LOG_LEVEL_FILTER_RELEASE),
+        true => io::init_logger(LOG_LEVEL_FILTER_DEBUG)?,
+        false => io::init_logger(LOG_LEVEL_FILTER_RELEASE)?,
     }
 
     let args = MainCli::parse();
@@ -37,7 +37,7 @@ fn main() {
             warn!("[MAIN] No time limit specified");
             (Duration::from_secs(600).mul_f32(EXPLORE_TIME_RATIO), Duration::from_secs(600).mul_f32(COMPRESS_TIME_RATIO))
         },
-        _ => unreachable!("invalid cli pattern (clap should have caught this)"),
+        _ => bail!("invalid cli pattern (clap should have caught this)"),
     };
 
     info!("[MAIN] Configured to explore for {}s and compress for {}s", explore_dur.as_secs(), compress_dur.as_secs());
@@ -56,15 +56,14 @@ fn main() {
 
     info!("[MAIN] system time: {}", jiff::Timestamp::now());
 
-    let json_instance = io::read_json_instance(Path::new(&input_file_path));
+    let ext_instance = io::read_spp_instance_json(Path::new(&input_file_path))?;
 
-    let parser = Parser::new(CDE_CONFIG, SIMPL_TOLERANCE, MIN_ITEM_SEPARATION);
-    let any_instance = parser.parse(&json_instance);
-    let instance = to_sp_instance(any_instance.as_ref()).expect("Expected SPInstance");
+    let importer = Importer::new(CDE_CONFIG, SIMPL_TOLERANCE, MIN_ITEM_SEPARATION);
+    let instance = jagua_rs::probs::spp::io::import(&importer, &ext_instance)?;
 
-    info!("[MAIN] loaded instance {} with #{} items", json_instance.name, instance.total_item_qty());
+    info!("[MAIN] loaded instance {} with #{} items", ext_instance.name, instance.total_item_qty());
 
-    let output_folder_path = format!("{OUTPUT_DIR}/sols_{}", json_instance.name);
+    let output_folder_path = format!("{OUTPUT_DIR}/sols_{}", ext_instance.name);
 
     let terminator = Terminator::new_with_ctrlc_handler();
 
@@ -72,12 +71,17 @@ fn main() {
 
     {
         let svg = s_layout_to_svg(&solution.layout_snapshot, &instance, DRAW_OPTIONS, "final");
-        io::write_svg(&svg, Path::new(format!("{OUTPUT_DIR}/final_{}.svg", json_instance.name).as_str()), Level::Info);
+        io::write_svg(&svg, Path::new(format!("{OUTPUT_DIR}/final_{}.svg", ext_instance.name).as_str()), Level::Info)?;
         if cfg!(feature = "live_svg") {
-            io::write_svg(&svg, Path::new(format!("{LIVE_DIR}/.live_solution.svg").as_str()), Level::Trace);
+            io::write_svg(&svg, Path::new(format!("{LIVE_DIR}/.live_solution.svg").as_str()), Level::Trace)?;
         }
-        let json_output = JsonOutput::new(json_instance.clone(), &solution, &instance);
-        let json_path = format!("{OUTPUT_DIR}/final_{}.json", json_instance.name);
-        io::write_json_output(&json_output, Path::new(json_path.as_str()), Level::Info);
+        let json_path = format!("{OUTPUT_DIR}/final_{}.json", ext_instance.name);
+        let json_output = SPOutput {
+            instance: ext_instance,
+            solution: jagua_rs::probs::spp::io::export(&instance, &solution, *EPOCH)
+        };
+        io::write_json(&json_output, Path::new(json_path.as_str()), Level::Info)?;
     }
+    
+    Ok(())
 }

@@ -1,8 +1,8 @@
 use jagua_rs::collision_detection::CDEConfig;
 use jagua_rs::geometry::fail_fast::SPSurrogateConfig;
+use jagua_rs::io::svg::{SvgDrawOptions, SvgLayoutTheme};
 use crate::optimizer::separator::SeparatorConfig;
 use crate::sample::search::SampleConfig;
-use crate::util::io::svg_util::{SvgDrawOptions, SvgLayoutTheme};
 
 pub const RNG_SEED: Option<usize> = None;
 
@@ -45,7 +45,7 @@ pub const SEP_CFG_EXPLORE: SeparatorConfig = SeparatorConfig {
     log_level: log::Level::Info,
     n_workers: 3,
     sample_config: SampleConfig {
-        n_bin_samples: 50,
+        n_container_samples: 50,
         n_focussed_samples: 25,
         n_coord_descents: 3,
     }
@@ -57,7 +57,7 @@ pub const SEP_CFG_COMPRESS: SeparatorConfig = SeparatorConfig {
     log_level: log::Level::Debug,
     n_workers: 3,
     sample_config: SampleConfig {
-        n_bin_samples: 50,
+        n_container_samples: 50,
         n_focussed_samples: 25,
         n_coord_descents: 3,
     },
@@ -89,7 +89,7 @@ pub const LOG_LEVEL_FILTER_DEBUG: log::LevelFilter = log::LevelFilter::Debug;
 pub const LARGE_AREA_CH_AREA_CUTOFF_RATIO: f32 = 0.5;
 
 pub const DRAW_OPTIONS: SvgDrawOptions = SvgDrawOptions {
-    theme: SvgLayoutTheme::GRAY_THEME,
+    theme: SvgLayoutTheme::GRAY,
     quadtree: false,
     surrogate: false,
     highlight_collisions: true,
@@ -98,7 +98,7 @@ pub const DRAW_OPTIONS: SvgDrawOptions = SvgDrawOptions {
 };
 
 pub const LBF_SAMPLE_CONFIG: SampleConfig = SampleConfig {
-    n_bin_samples: 1000,
+    n_container_samples: 1000,
     n_focussed_samples: 0,
     n_coord_descents: 3,
 };

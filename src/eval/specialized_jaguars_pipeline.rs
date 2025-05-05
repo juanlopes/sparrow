@@ -1,4 +1,4 @@
-use crate::quantify::quantify_collision_poly_bin;
+use crate::quantify::quantify_collision_poly_container;
 #[cfg(not(feature = "simd"))]
 use crate::quantify::quantify_collision_poly_poly;
 #[cfg(feature = "simd")]
@@ -14,10 +14,10 @@ use jagua_rs::collision_detection::hazards::HazardEntity;
 use jagua_rs::collision_detection::hazards::detector::HazardDetector;
 use jagua_rs::collision_detection::quadtree::{QTHazPresence, QTQueryable};
 use jagua_rs::collision_detection::quadtree::QTNode;
-use jagua_rs::entities::general::Layout;
-use jagua_rs::entities::general::PItemKey;
+use jagua_rs::entities::Layout;
+use jagua_rs::entities::PItemKey;
 use jagua_rs::geometry::DTransformation;
-use jagua_rs::geometry::geo_traits::{CollidesWith, Shape, TransformableFrom};
+use jagua_rs::geometry::geo_traits::{CollidesWith, TransformableFrom};
 use jagua_rs::geometry::primitives::SPolygon;
 use slotmap::SecondaryMap;
 
@@ -59,18 +59,18 @@ pub fn collect_poly_collisions_in_detector_custom(
     let checkpoint = det.idx_counter;
 
     // Detect all potential hazards within the bounding box of the shape.
-    cde.collect_potential_hazards_within(shape.bbox(), det);
+    cde.collect_potential_hazards_within(shape.bbox, det);
 
     if det.idx_counter > checkpoint {
         // Additional hazards were detected, check if they are contained in each other.
         // If they are not, remove them again from the detector, as they do not collide with the shape
         for haz in cde.all_hazards().filter(|h| h.active) {
             match haz.entity {
-                HazardEntity::BinExterior => {
-                    if let Some((_, idx)) = det.detected_bin {
+                HazardEntity::Exterior => {
+                    if let Some((_, idx)) = det.detected_container {
                         if idx >= checkpoint {
-                            // If the bin was detected as a potential containment, remove it.
-                            // For this specific problem, an item can never be entirely outside the bin (rectangle).
+                            // If the exterior of the container was detected as a potential containment, remove it.
+                            // For this specific problem, an item can never be entirely outside the container (rectangle).
                             det.remove(&haz.entity)
                         }
                     }
@@ -102,7 +102,7 @@ pub struct SpecializedHazardDetector<'a> {
     pub ct: &'a CollisionTracker,
     pub current_pk: PItemKey,
     pub detected_pis: SecondaryMap<PItemKey, (HazardEntity, usize)>,
-    pub detected_bin: Option<(HazardEntity, usize)>,
+    pub detected_container: Option<(HazardEntity, usize)>,
     pub idx_counter: usize,
     pub loss_cache: (usize, f32),
     pub loss_bound: f32,
@@ -121,7 +121,7 @@ impl<'a> SpecializedHazardDetector<'a> {
             ct,
             current_pk,
             detected_pis: SecondaryMap::new(),
-            detected_bin: None,
+            detected_container: None,
             idx_counter: 0,
             loss_cache: (0, 0.0),
             loss_bound: f32::INFINITY,
@@ -132,14 +132,14 @@ impl<'a> SpecializedHazardDetector<'a> {
 
     pub fn reload(&mut self, loss_bound: f32) {
         self.detected_pis.clear();
-        self.detected_bin = None;
+        self.detected_container = None;
         self.idx_counter = 0;
         self.loss_cache = (0, 0.0);
         self.loss_bound = loss_bound;
     }
 
     pub fn iter_with_index(&self) -> impl Iterator<Item=&(HazardEntity, usize)> {
-        self.detected_pis.values().chain(self.detected_bin.iter())
+        self.detected_pis.values().chain(self.detected_container.iter())
     }
 
     pub fn early_terminate(&mut self, shape: &SPolygon) -> bool {
@@ -173,9 +173,9 @@ impl<'a> SpecializedHazardDetector<'a> {
                 let weight = self.ct.get_pair_weight(self.current_pk, *other_pk);
                 loss * weight
             }
-            HazardEntity::BinExterior => {
-                let loss = quantify_collision_poly_bin(shape, self.layout.bin.outer_cd.bbox());
-                let weight = self.ct.get_bin_weight(self.current_pk);
+            HazardEntity::Exterior => {
+                let loss = quantify_collision_poly_container(shape, self.layout.container.outer_cd.bbox);
+                let weight = self.ct.get_container_weight(self.current_pk);
                 loss * weight
             }
             _ => unimplemented!("unsupported hazard entity"),
@@ -189,7 +189,7 @@ impl<'a> HazardDetector for SpecializedHazardDetector<'a> {
             HazardEntity::PlacedItem { pk, .. } => {
                 *pk == self.current_pk || self.detected_pis.contains_key(*pk)
             }
-            HazardEntity::BinExterior => self.detected_bin.is_some(),
+            HazardEntity::Exterior => self.detected_container.is_some(),
             _ => unreachable!("unsupported hazard entity"),
         }
     }
@@ -200,8 +200,8 @@ impl<'a> HazardDetector for SpecializedHazardDetector<'a> {
             HazardEntity::PlacedItem { pk, .. } => {
                 self.detected_pis.insert(pk, (haz, self.idx_counter));
             }
-            HazardEntity::BinExterior => {
-                self.detected_bin = Some((HazardEntity::BinExterior, self.idx_counter))
+            HazardEntity::Exterior => {
+                self.detected_container = Some((HazardEntity::Exterior, self.idx_counter))
             }
             _ => unreachable!("unsupported hazard entity"),
         }
@@ -217,8 +217,8 @@ impl<'a> HazardDetector for SpecializedHazardDetector<'a> {
                     self.loss_cache = (0, 0.0);
                 }
             }
-            HazardEntity::BinExterior => {
-                let (_, idx) = self.detected_bin.take().unwrap();
+            HazardEntity::Exterior => {
+                let (_, idx) = self.detected_container.take().unwrap();
                 if idx < self.loss_cache.0 {
                     //wipe the cache if a hazard was removed that was in it
                     self.loss_cache = (0, 0.0);
@@ -229,12 +229,12 @@ impl<'a> HazardDetector for SpecializedHazardDetector<'a> {
     }
 
     fn len(&self) -> usize {
-        self.detected_pis.len() + self.detected_bin.is_some() as usize
+        self.detected_pis.len() + self.detected_container.is_some() as usize
     }
 
     fn iter(&self) -> impl Iterator<Item=&HazardEntity> {
         self.detected_pis.iter().map(|(_, (h, _))| h)
-            .chain(self.detected_bin.iter().map(|(h, _)| h))
+            .chain(self.detected_container.iter().map(|(h, _)| h))
     }
 }
 

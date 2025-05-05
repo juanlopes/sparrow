@@ -1,10 +1,10 @@
 use itertools::Itertools;
 use jagua_rs::geometry::geo_enums::RotationRange;
-use jagua_rs::geometry::geo_traits::{Shape, TransformableFrom};
+use jagua_rs::geometry::geo_traits::TransformableFrom;
 use rand::prelude::IndexedRandom;
 use rand::Rng;
 use std::ops::Range;
-use jagua_rs::entities::general::Item;
+use jagua_rs::entities::Item;
 use jagua_rs::geometry::primitives::Rect;
 use jagua_rs::geometry::{DTransformation, Transformation};
 
@@ -23,7 +23,7 @@ struct RotEntry {
 }
 
 impl UniformBBoxSampler {
-    pub fn new(sample_bbox: Rect, item: &Item, bin_bbox: Rect) -> Option<Self> {
+    pub fn new(sample_bbox: Rect, item: &Item, cont_bbox: Rect) -> Option<Self> {
         let rotations = match &item.allowed_rotation {
             RotationRange::None => &vec![0.0],
             RotationRange::Discrete(r) => r,
@@ -36,18 +36,18 @@ impl UniformBBoxSampler {
         let sample_y_range = sample_bbox.y_min..sample_bbox.y_max;
 
         // for each possible rotation, calculate the sample ranges (x and y)
-        // where the item resides fully inside the bin and is within the sample bounding box
+        // where the item resides fully inside the container and is within the sample bounding box
         let rot_entries = rotations.iter()
             .map(|&r| {
-                let r_shape_bbox = shape_buffer.transform_from(item.shape_cd.as_ref(), &Transformation::from_rotation(r)).bbox();
+                let r_shape_bbox = shape_buffer.transform_from(item.shape_cd.as_ref(), &Transformation::from_rotation(r)).bbox;
 
-                //narrow the bin range to account for the rotated shape
-                let bin_x_range = (bin_bbox.x_min - r_shape_bbox.x_min)..(bin_bbox.x_max - r_shape_bbox.x_max);
-                let bin_y_range = (bin_bbox.y_min - r_shape_bbox.y_min)..(bin_bbox.y_max - r_shape_bbox.y_max);
+                //narrow the container range to account for the rotated shape
+                let cont_x_range = (cont_bbox.x_min - r_shape_bbox.x_min)..(cont_bbox.x_max - r_shape_bbox.x_max);
+                let cont_y_range = (cont_bbox.y_min - r_shape_bbox.y_min)..(cont_bbox.y_max - r_shape_bbox.y_max);
 
                 //intersect with the sample bbox
-                let x_range = intersect_range(&bin_x_range, &sample_x_range);
-                let y_range = intersect_range(&bin_y_range, &sample_y_range);
+                let x_range = intersect_range(&cont_x_range, &sample_x_range);
+                let y_range = intersect_range(&cont_y_range, &sample_y_range);
 
                 //make sure the ranges are not empty
                 if x_range.is_empty() || y_range.is_empty() {

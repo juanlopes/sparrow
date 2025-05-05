@@ -1,7 +1,6 @@
 use crate::eval::specialized_jaguars_pipeline::SpecializedHazardDetector;
 use crate::quantify::tracker::CollisionTracker;
-use crate::quantify::{quantify_collision_poly_bin, quantify_collision_poly_poly};
-use crate::util::io::svg_util::SvgDrawOptions;
+use crate::quantify::{quantify_collision_poly_container, quantify_collision_poly_poly};
 use float_cmp::{approx_eq, assert_approx_eq};
 use itertools::Itertools;
 use jagua_rs::util::assertions;
@@ -9,9 +8,9 @@ use log::warn;
 use std::collections::HashSet;
 use jagua_rs::collision_detection::hazards::detector::{BasicHazardDetector, HazardDetector};
 use jagua_rs::collision_detection::hazards::HazardEntity;
-use jagua_rs::entities::general::Layout;
-use jagua_rs::geometry::geo_traits::Shape;
+use jagua_rs::entities::Layout;
 use jagua_rs::geometry::primitives::SPolygon;
+use jagua_rs::io::svg::SvgDrawOptions;
 
 pub fn tracker_matches_layout(ct: &CollisionTracker, l: &Layout) -> bool {
     assert!(l.placed_items.keys().all(|k| ct.pk_idx_map.contains_key(k)));
@@ -116,12 +115,12 @@ pub fn tracker_matches_layout(ct: &CollisionTracker, l: &Layout) -> bool {
                 }
             }
         }
-        if detector.contains(&HazardEntity::BinExterior) {
-            let stored_loss = ct.get_bin_loss(pk1);
-            let calc_loss = quantify_collision_poly_bin(&pi1.shape, l.bin.outer_cd.bbox());
+        if detector.contains(&HazardEntity::Exterior) {
+            let stored_loss = ct.get_container_loss(pk1);
+            let calc_loss = quantify_collision_poly_container(&pi1.shape, l.container.outer_cd.bbox);
             assert_approx_eq!(f32, stored_loss, calc_loss, ulps = 5);
         } else {
-            assert_eq!(ct.get_bin_loss(pk1), 0.0);
+            assert_eq!(ct.get_container_loss(pk1), 0.0);
         }
     }
 

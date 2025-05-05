@@ -5,11 +5,10 @@ use crate::quantify::tracker::{CTSnapshot, CollisionTracker};
 use crate::sample::search::SampleConfig;
 use crate::util::assertions::tracker_matches_layout;
 use crate::util::io;
-use crate::util::io::layout_to_svg::{layout_to_svg, s_layout_to_svg};
 use crate::{EXPORT_LIVE_SVG, EXPORT_ONLY_FINAL_SVG, FMT};
 use itertools::Itertools;
-use jagua_rs::entities::general::PItemKey;
-use jagua_rs::entities::strip_packing::{SPInstance, SPPlacement, SPProblem, SPSolution};
+use jagua_rs::entities::PItemKey;
+use jagua_rs::probs::spp::entities::{SPInstance, SPPlacement, SPProblem, SPSolution};
 use jagua_rs::geometry::DTransformation;
 use log::{debug, log, Level};
 use ordered_float::OrderedFloat;
@@ -20,7 +19,7 @@ use rayon::iter::ParallelIterator;
 use rayon::ThreadPool;
 use std::path::Path;
 use std::time::Instant;
-use jagua_rs::geometry::geo_traits::Shape;
+use jagua_rs::io::svg::{layout_to_svg, s_layout_to_svg};
 
 pub struct SeparatorConfig {
     pub iter_no_imprv_limit: usize,
@@ -72,7 +71,7 @@ impl Separator {
     pub fn separate(&mut self, term: &Terminator) -> (SPSolution, CTSnapshot) {
         let mut min_loss_sol = (self.prob.save(), self.ct.save());
         let mut min_loss = self.ct.get_total_loss();
-        log!(self.config.log_level,"[SEP] separating at width: {:.3} and loss: {} ", self.prob.strip_width(), FMT.fmt2(min_loss));
+        log!(self.config.log_level,"[SEP] separating at width: {:.3} and loss: {} ", self.prob.strip_width(), FMT().fmt2(min_loss));
 
         let mut n_strikes = 0;
         let mut n_iter = 0;
@@ -83,7 +82,7 @@ impl Separator {
             let mut n_iter_no_improvement = 0;
 
             let initial_strike_loss = self.ct.get_total_loss();
-            debug!("[SEP] [s:{n_strikes},i:{n_iter}]     init_l: {}",FMT.fmt2(initial_strike_loss));
+            debug!("[SEP] [s:{n_strikes},i:{n_iter}]     init_l: {}",FMT().fmt2(initial_strike_loss));
 
             while n_iter_no_improvement < self.config.iter_no_imprv_limit {
                 let (loss_before, w_loss_before) = (
@@ -96,17 +95,17 @@ impl Separator {
                     self.ct.get_total_weighted_loss(),
                 );
 
-                debug!("[SEP] [s:{n_strikes},i:{n_iter}] ( ) l: {} -> {}, wl: {} -> {}, (min l: {})", FMT.fmt2(loss_before), FMT.fmt2(loss), FMT.fmt2(w_loss_before), FMT.fmt2(w_loss), FMT.fmt2(min_loss));
-                debug_assert!(w_loss <= w_loss_before * 1.001, "weighted loss should not increase: {} -> {}", FMT.fmt2(w_loss), FMT.fmt2(w_loss_before));
+                debug!("[SEP] [s:{n_strikes},i:{n_iter}] ( ) l: {} -> {}, wl: {} -> {}, (min l: {})", FMT().fmt2(loss_before), FMT().fmt2(loss), FMT().fmt2(w_loss_before), FMT().fmt2(w_loss), FMT().fmt2(min_loss));
+                debug_assert!(w_loss <= w_loss_before * 1.001, "weighted loss should not increase: {} -> {}", FMT().fmt2(w_loss), FMT().fmt2(w_loss_before));
 
                 if loss == 0.0 {
                     //layout is successfully separated
-                    log!(self.config.log_level,"[SEP] [s:{n_strikes},i:{n_iter}] (S)  min_l: {}",FMT.fmt2(loss));
+                    log!(self.config.log_level,"[SEP] [s:{n_strikes},i:{n_iter}] (S)  min_l: {}",FMT().fmt2(loss));
                     min_loss_sol = (self.prob.save(), self.ct.save());
                     break 'outer;
                 } else if loss < min_loss {
                     //layout is not separated, but absolute loss is better than before
-                    log!(self.config.log_level,"[SEP] [s:{n_strikes},i:{n_iter}] (*) min_l: {}",FMT.fmt2(loss));
+                    log!(self.config.log_level,"[SEP] [s:{n_strikes},i:{n_iter}] (*) min_l: {}",FMT().fmt2(loss));
                     self.export_svg(None, "i", true);
                     if loss < min_loss * 0.98 {
                         //only reset the iter_no_improvement counter if the loss improved significantly
@@ -131,12 +130,12 @@ impl Separator {
         }
         let secs = start.elapsed().as_secs_f32();
         log!(self.config.log_level, "[SEP] finished, evals/s: {}, evals/move: {}, moves/s: {}, iter/s: {}, #workers: {}, total {:.3}s",
-            FMT.fmt2(sep_stats.total_evals as f32 / secs),
-            FMT.fmt2(sep_stats.total_evals as f32 / sep_stats.total_moves as f32),
-            FMT.fmt2(sep_stats.total_moves as f32 / secs),
-            FMT.fmt2(n_iter as f32 / secs),
+            FMT().fmt2(sep_stats.total_evals as f32 / secs),
+            FMT().fmt2(sep_stats.total_evals as f32 / sep_stats.total_moves as f32),
+            FMT().fmt2(sep_stats.total_moves as f32 / secs),
+            FMT().fmt2(n_iter as f32 / secs),
             self.workers.len(),
-            FMT.fmt2(secs),
+            FMT().fmt2(secs),
         );
 
         (min_loss_sol.0, min_loss_sol.1)
@@ -171,7 +170,7 @@ impl Separator {
     }
 
     pub fn rollback(&mut self, sol: &SPSolution, ots: Option<&CTSnapshot>) {
-        debug_assert!(sol.strip_width == self.prob.strip_width());
+        debug_assert!(sol.strip_width() == self.prob.strip_width());
         self.prob.restore(sol);
 
         match ots {
@@ -206,7 +205,7 @@ impl Separator {
         let new_weighted_loss = self.ct.get_weighted_loss(new_pk);
 
         debug!("[MV] moved item {} from from l: {}, wl: {} to l+1: {}, wl+1: {}"
-            ,item_id,FMT.fmt2(old_loss),FMT.fmt2(old_weighted_loss),FMT.fmt2(new_loss),FMT.fmt2(new_weighted_loss));
+            ,item_id,FMT().fmt2(old_loss),FMT().fmt2(old_weighted_loss),FMT().fmt2(new_loss),FMT().fmt2(new_weighted_loss));
 
         debug_assert!(tracker_matches_layout(&self.ct, &self.prob.layout));
 
@@ -270,12 +269,12 @@ impl Separator {
                 if !Path::new(LIVE_DIR).exists() {
                     std::fs::create_dir_all(LIVE_DIR).unwrap();
                 }
-                io::write_svg(&svg, Path::new(&*format!("{}/.live_solution.svg", LIVE_DIR)), Level::Trace);
+                io::write_svg(&svg, Path::new(&*format!("{}/.live_solution.svg", LIVE_DIR)), Level::Trace).expect("failed to write live svg");
             }
 
             if !only_live {
                 let file_path = &*format!("{}/{}.svg", &self.output_svg_folder, file_name);
-                io::write_svg(&svg, Path::new(file_path), self.config.log_level);
+                io::write_svg(&svg, Path::new(file_path), self.config.log_level).expect("failed to write intermediate svg");
                 self.svg_counter += 1;
             }
         }
