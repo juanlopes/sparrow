@@ -5,11 +5,6 @@ edition = "2024"
 default-run = "sparrow"
 description = "State-of-the-art nesting heuristic for 2D irregular strip packing problems"
 
-[features]
-live_svg = []
-only_final_svg = []
-simd = []
-
 [[bin]]
 name = "sparrow"
 path = "src/main.rs"
@@ -19,7 +14,7 @@ name = "bench"
 path = "src/bench.rs"
 
 [dependencies]
-jagua-rs = { features = ["spp"], git = "https://github.com/JeroenGar/jagua-rs.git", rev = "19291ebbddb07c380149130ce29c88146ef404cb" }
+jagua-rs = { features = ["spp"], git = "https://github.com/JeroenGar/jagua-rs.git", rev = "06152d8654d8b9b0652c14ccd1f5d693b703b5de", default-features = false }
 #jagua-rs = { features = ["spp"], path = "../jagua-rs/jagua-rs" }
 rand = { version = "0.9", features = ["small_rng"] }
 rand_distr = "0.5"
@@ -41,6 +36,14 @@ jiff = "0.2"
 test-case = "3.3"
 clap = { version = "4.5", features = ["derive"] }
 anyhow = "1.0"
+
+
+[features]
+default = ["separation-distance"]
+live_svg = []
+only_final_svg = []
+simd = []
+separation-distance = ["jagua-rs/separation-distance"]
 
 [profile.dev]
 overflow-checks = true
