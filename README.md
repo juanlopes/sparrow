@@ -11,7 +11,7 @@ This optimization algorithm builds on [`jagua-rs`](https://github.com/JeroenGar/
     <img src="data/sparrow_logo.png" alt="logo" height=120>
 </p>
 
-## Built by `sparrow`
+## Nested by `sparrow`
 <p align="center">
     <img src="data/records/final_best_trousers.svg" height=200/>
     <img src="data/records/final_best_mao.svg" height=200/>
