@@ -11,6 +11,7 @@ use jagua_rs::collision_detection::hazards::HazardEntity;
 use jagua_rs::entities::Layout;
 use jagua_rs::geometry::primitives::SPolygon;
 use jagua_rs::io::svg::SvgDrawOptions;
+use jagua_rs::probs::spp::entities::SPProblem;
 
 pub fn tracker_matches_layout(ct: &CollisionTracker, l: &Layout) -> bool {
     assert!(l.placed_items.keys().all(|k| ct.pk_idx_map.contains_key(k)));
@@ -145,4 +146,12 @@ pub fn custom_pipeline_matches_jaguars(shape: &SPolygon, det: &SpecializedHazard
 
     assert_eq!(default_set, custom_set, "custom cde pipeline does not match jagua-rs!");
     true
+}
+
+pub fn strip_width_is_in_check(prob: &SPProblem) -> bool {
+    let diameters_of_all_items = prob.instance.items.iter().map(
+        |(i,q)| i.shape_cd.diameter * *q as f32
+    ).sum::<f32>();
+    
+    prob.strip_width() < diameters_of_all_items
 }
