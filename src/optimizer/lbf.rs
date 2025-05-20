@@ -10,6 +10,7 @@ use std::iter;
 use std::time::Instant;
 use jagua_rs::entities::Instance;
 use jagua_rs::probs::spp::entities::{SPInstance, SPPlacement, SPProblem};
+use crate::util::assertions;
 
 pub struct LBFBuilder {
     pub instance: SPInstance,
@@ -71,6 +72,7 @@ impl LBFBuilder {
             None => {
                 debug!("[CONSTR] failed to place item with id {}, expanding strip width",item_id);
                 self.prob.change_strip_width(self.prob.strip_width() * 1.2);
+                assert!(assertions::strip_width_is_in_check(&self.prob), "strip-width is running away (>{:.3}), item {item_id} does not seem to fit into the strip", self.prob.strip_width());          
                 self.place_item(item_id);
             }
         }
