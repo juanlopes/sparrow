@@ -44,7 +44,7 @@ pub fn collect_poly_collisions_in_detector_custom(
     }
 
     // Find the virtual root of the quadtree for the shape's bounding box. So we do not have to start from the root every time.
-    let v_qt_root = cde.get_virtual_root(shape);
+    let v_qt_root = cde.get_virtual_root(shape.bbox);
 
     // Collect collisions for all edges.
     // Iterate over them in a bit-reversed order to maximize detecting new hazards early.
@@ -65,7 +65,7 @@ pub fn collect_poly_collisions_in_detector_custom(
             QTHazPresence::Partial(qt_par_haz) => {
                 if !det.contains(&qt_haz.entity) {
                     // Partially present hazards which are currently not detected have to be checked for containment.
-                    if cde.poly_or_hazard_are_contained(shape, &qt_par_haz.shape, qt_haz.entity)
+                    if cde.detect_containment_collision(shape, &qt_par_haz.shape, qt_haz.entity)
                     {
                         det.push(qt_haz.entity);
                         if det.early_terminate(shape) { return; }
