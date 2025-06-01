@@ -28,7 +28,7 @@ impl Ord for SampleEval {
             (Clear{..}, Collision{..}) => Ordering::Less,
             (Collision{loss: l1}, Collision{loss: l2}) |
             (Clear{loss: l1}, Clear { loss: l2 }) => {
-                FPA(*l1).partial_cmp(&FPA(*l2)).expect(&*format!("Comparing {:?} and {:?} failed", l1, l2))
+                FPA(*l1).partial_cmp(&FPA(*l2)).unwrap()
             }
         }
     }

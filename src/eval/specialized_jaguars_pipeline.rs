@@ -105,7 +105,7 @@ impl<'a> SpecializedHazardDetector<'a> {
             layout,
             ct,
             current_pk,
-            detected_pis: SecondaryMap::new(),
+            detected_pis: SecondaryMap::with_capacity(layout.placed_items.len()),
             detected_container: None,
             idx_counter: 0,
             loss_cache: (0, 0.0),
