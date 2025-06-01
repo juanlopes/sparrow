@@ -47,7 +47,7 @@ impl<'a> SampleEvaluator for SeparationEvaluator<'a> {
             Some(SampleEval::Clear { .. }) => 0.0,
             _ => f32::INFINITY,
         };
-        // reload the detection map for the new query and update the loss bound
+        // Reload the detection map for the new query and update the loss bound
         self.detection_map.reload(loss_bound);
 
         // Query the CDE, all colliding hazards will be stored in the detection map
