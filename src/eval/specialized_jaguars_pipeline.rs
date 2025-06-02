@@ -12,16 +12,16 @@ use float_cmp::approx_eq;
 use jagua_rs::collision_detection::CDEngine;
 use jagua_rs::collision_detection::hazards::HazardEntity;
 use jagua_rs::collision_detection::hazards::detector::HazardDetector;
-use jagua_rs::collision_detection::quadtree::{QTHazPresence, QTQueryable};
-use jagua_rs::collision_detection::quadtree::QTNode;
+use jagua_rs::collision_detection::quadtree::QTHazPresence;
 use jagua_rs::entities::Layout;
 use jagua_rs::entities::PItemKey;
 use jagua_rs::geometry::DTransformation;
-use jagua_rs::geometry::geo_traits::{CollidesWith, TransformableFrom};
+use jagua_rs::geometry::geo_traits::{TransformableFrom};
 use jagua_rs::geometry::primitives::SPolygon;
 use slotmap::SecondaryMap;
 
-/// Functionally the same as [`CDEngine::collect_poly_collisions_in_detector`], but with early termination.
+/// Functionally identical to [`CDEngine::collect_poly_collisions`], but with early return.
+/// Collision collection will stop as soon as the loss exceeds the `loss_bound` of the detector.
 /// Saving quite a bit of CPU time since over 90% of the time is spent in this function.
 pub fn collect_poly_collisions_in_detector_custom(
     cde: &CDEngine,
@@ -32,69 +32,54 @@ pub fn collect_poly_collisions_in_detector_custom(
 ) {
     let t = dt.compose();
     // transform the shape buffer to the new position
-    shape_buffer.transform_from(reference_shape, &t);
-    let shape = shape_buffer;
+    let shape = shape_buffer.transform_from(reference_shape, &t);
 
     #[cfg(feature = "simd")]
     det.poles_soa.load(&shape.surrogate().poles);
-
+    
     // Start off by checking a few poles to detect obvious collisions quickly
     for pole in shape.surrogate().ff_poles() {
-        qt_collect_collisions_custom(&cde.quadtree, pole, det);
+        cde.quadtree.collect_collisions(pole, det);
         if det.early_terminate(shape) { return; }
     }
 
-    // Collect collisions for all edges of the shape.
+    // Find the virtual root of the quadtree for the shape's bounding box. So we do not have to start from the root every time.
+    let v_qt_root = cde.get_virtual_root(shape.bbox);
+
+    // Collect collisions for all edges.
     // Iterate over them in a bit-reversed order to maximize detecting new hazards early.
     let custom_edge_iter = BitReversalIterator::new(shape.n_vertices())
         .map(|i| shape.edge(i));
     for edge in custom_edge_iter {
-        qt_collect_collisions_custom(&cde.quadtree, &edge, det);
+        v_qt_root.collect_collisions(&edge, det);
         if det.early_terminate(shape) { return; }
     }
 
     // At this point, all collisions due to edge-edge intersection are detected.
     // The only type of collisions that possibly remain is containment.
-
-    let checkpoint = det.idx_counter;
-
-    // Detect all potential hazards within the bounding box of the shape.
-    cde.collect_potential_hazards_within(shape.bbox, det);
-
-    if det.idx_counter > checkpoint {
-        // Additional hazards were detected, check if they are contained in each other.
-        // If they are not, remove them again from the detector, as they do not collide with the shape
-        for haz in cde.all_hazards().filter(|h| h.active) {
-            match haz.entity {
-                HazardEntity::Exterior => {
-                    if let Some((_, idx)) = det.detected_container {
-                        if idx >= checkpoint {
-                            // If the exterior of the container was detected as a potential containment, remove it.
-                            // For this specific problem, an item can never be entirely outside the container (rectangle).
-                            det.remove(&haz.entity)
-                        }
+    v_qt_root.hazards.active_hazards().iter().for_each(|qt_haz| {
+        match &qt_haz.presence {
+            QTHazPresence::None => (),
+            // Hazards which are entirely present in the virtual root are guaranteed to be caught by any edge.
+            QTHazPresence::Entire => (),
+            QTHazPresence::Partial(qt_par_haz) => {
+                if !det.contains(&qt_haz.entity) {
+                    // Partially present hazards which are currently not detected have to be checked for containment.
+                    if cde.detect_containment_collision(shape, &qt_par_haz.shape, qt_haz.entity)
+                    {
+                        det.push(qt_haz.entity);
+                        if det.early_terminate(shape) { return; }
                     }
                 }
-                HazardEntity::PlacedItem { pk, .. } => {
-                    if let Some((_, idx)) = det.detected_pis.get(pk) {
-                        if *idx >= checkpoint {
-                            // The item was not detected during the quadtree query, but was detected as a potential containment.
-                            if !cde.poly_or_hazard_are_contained(shape, haz) {
-                                //The item is not contained in the shape, remove it from the detector
-                                det.remove(&haz.entity)
-                            }
-                        }
-                    }
-                }
-                _ => unreachable!("unsupported hazard entity"),
             }
         }
-    }
+    });
+    
     // At this point, all collisions should be present in the detector.
-    debug_assert!(assertions::custom_pipeline_matches_jaguars(shape, det));
+    debug_assert!(assertions::custom_pipeline_matches_jaguars(shape, det), "Custom pipeline deviates from native jagua-rs pipeline");
 }
 
-/// Modified version of [`jagua_rs::collision_detection::hazard_helpers::DetectionMap`]
+/// Modified version of [`jagua_rs::collision_detection::hazards::detector::BasicHazardDetector`]
 /// This struct computes the loss incrementally on the fly and caches the result.
 /// Allows for early termination if the loss exceeds a certain upperbound.
 pub struct SpecializedHazardDetector<'a> {
@@ -120,7 +105,7 @@ impl<'a> SpecializedHazardDetector<'a> {
             layout,
             ct,
             current_pk,
-            detected_pis: SecondaryMap::new(),
+            detected_pis: SecondaryMap::with_capacity(layout.placed_items.len()),
             detected_container: None,
             idx_counter: 0,
             loss_cache: (0, 0.0),
@@ -235,38 +220,5 @@ impl<'a> HazardDetector for SpecializedHazardDetector<'a> {
     fn iter(&self) -> impl Iterator<Item=&HazardEntity> {
         self.detected_pis.iter().map(|(_, (h, _))| h)
             .chain(self.detected_container.iter().map(|(h, _)| h))
-    }
-}
-
-/// Mirrors [`QTNode::collect_collisions`] but slightly faster for this specific use case.
-pub fn qt_collect_collisions_custom<T: QTQueryable>(qtn: &QTNode, entity: &T, detector: &mut SpecializedHazardDetector) {
-    match entity.collides_with(&qtn.bbox) {
-        false => return, //Entity does not collide with the node
-        true => match qtn.children.as_ref() {
-            Some(children) => {
-                //Do not perform any CD on this level, check the children
-                children.iter().for_each(|child| qt_collect_collisions_custom(child, entity, detector));
-            }
-            None => {
-                //No children, detect all Entire hazards and check the Partial ones
-                for hz in qtn.hazards.active_hazards().iter() {
-                    match &hz.presence {
-                        QTHazPresence::None => (),
-                        QTHazPresence::Entire => {
-                            if !detector.contains(&hz.entity) {
-                                detector.push(hz.entity)
-                            }
-                        }
-                        QTHazPresence::Partial(p_haz) => {
-                            if !detector.contains(&hz.entity) {
-                                if p_haz.collides_with(entity) {
-                                    detector.push(hz.entity);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
     }
 }
