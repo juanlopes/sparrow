@@ -7,6 +7,8 @@ use std::ops::Range;
 use jagua_rs::entities::Item;
 use jagua_rs::geometry::primitives::Rect;
 use jagua_rs::geometry::{DTransformation, Transformation};
+use ordered_float::{NotNan, OrderedFloat};
+use rand_distr::num_traits::Zero;
 
 /// A sampler that creates uniform samples for an item within a bounding box
 #[derive(Clone, Debug)]
@@ -80,4 +82,24 @@ fn intersect_range(a: &Range<f32>, b: &Range<f32>) -> Range<f32> {
     let min = f32::max(a.start, b.start);
     let max = f32::min(a.end, b.end);
     min..max
+}
+
+/// Converts a sample transformation to the closest feasible transformation. (for now just mapping rotation to the closest allowed one)
+pub fn convert_sample_to_closest_feasible(dt: DTransformation, item: &Item) -> DTransformation {
+    let feas_rotation = match &item.allowed_rotation {
+        RotationRange::None => NotNan::zero(),
+        RotationRange::Discrete(v) => {
+            // find the closest rotation to the sample
+            let r = v.iter().min_by_key(|&&r| OrderedFloat((r - *dt.rotation).abs())).unwrap();
+            NotNan::new(*r).unwrap()
+        }
+        RotationRange::Continuous => {
+            // for continuous rotation, we can just use the sample rotation
+            dt.rotation
+        }
+    };
+    DTransformation{
+        rotation: feas_rotation,
+        translation: dt.translation,
+    }
 }

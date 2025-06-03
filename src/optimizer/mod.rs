@@ -13,6 +13,7 @@ use std::time::{Duration, Instant};
 use float_cmp::approx_eq;
 use jagua_rs::entities::Instance;
 use jagua_rs::probs::spp::entities::{SPInstance, SPSolution};
+use crate::sample::uniform_sampler::convert_sample_to_closest_feasible;
 
 pub mod lbf;
 pub mod separator;
@@ -169,12 +170,12 @@ fn swap_large_pair_of_items(sep: &mut Separator) {
         .unwrap_or(layout.placed_items.iter()
             .filter(|(pk2, _)| *pk2 != pk1)
             .choose(&mut sep.rng).unwrap());
-
-    let dt1 = pi1.d_transf;
-    let dt2 = pi2.d_transf;
+    
+    let dt1 = convert_sample_to_closest_feasible(pi2.d_transf, sep.prob.instance.item(pi1.item_id));
+    let dt2 = convert_sample_to_closest_feasible(pi1.d_transf, sep.prob.instance.item(pi2.item_id));
 
     info!("[EXPL] swapped two large items (ids: {} <-> {})", pi1.item_id, pi2.item_id);
 
-    sep.move_item(pk1, dt2);
-    sep.move_item(pk2, dt1);
+    sep.move_item(pk1, dt1);
+    sep.move_item(pk2, dt2);
 }
