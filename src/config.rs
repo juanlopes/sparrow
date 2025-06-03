@@ -7,10 +7,10 @@ use crate::sample::search::SampleConfig;
 pub const RNG_SEED: Option<usize> = None;
 
 pub const CDE_CONFIG: CDEConfig = CDEConfig {
-    quadtree_depth: 3,
+    quadtree_depth: 2,
     item_surrogate_config: SPSurrogateConfig {
         n_pole_limits: [(64, 0.0), (16, 0.8), (8, 0.9)],
-        n_ff_poles: 2,
+        n_ff_poles: 1,
         n_ff_piers: 0,
     },
 };
@@ -90,7 +90,7 @@ pub const LARGE_AREA_CH_AREA_CUTOFF_RATIO: f32 = 0.5;
 
 pub const DRAW_OPTIONS: SvgDrawOptions = SvgDrawOptions {
     theme: SvgLayoutTheme::GRAY,
-    quadtree: false,
+    quadtree: true,
     surrogate: false,
     highlight_collisions: true,
     draw_cd_shapes: false,
