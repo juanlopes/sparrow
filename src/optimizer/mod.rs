@@ -2,18 +2,20 @@ use crate::config::*;
 use crate::optimizer::lbf::LBFBuilder;
 use crate::optimizer::separator::Separator;
 pub use crate::optimizer::terminator::Terminator;
+use crate::sample::uniform_sampler::convert_sample_to_closest_feasible;
 use crate::FMT;
+use float_cmp::approx_eq;
+use itertools::Itertools;
+use jagua_rs::entities::Instance;
+use jagua_rs::probs::spp::entities::{SPInstance, SPSolution};
 use log::info;
 use ordered_float::OrderedFloat;
 use rand::prelude::{IteratorRandom, SmallRng};
 use rand::{Rng, RngCore, SeedableRng};
 use rand_distr::Distribution;
 use rand_distr::Normal;
+use std::iter;
 use std::time::{Duration, Instant};
-use float_cmp::approx_eq;
-use jagua_rs::entities::Instance;
-use jagua_rs::probs::spp::entities::{SPInstance, SPSolution};
-use crate::sample::uniform_sampler::convert_sample_to_closest_feasible;
 
 pub mod lbf;
 pub mod separator;
@@ -148,10 +150,18 @@ fn attempt_to_compress(sep: &mut Separator, init: &SPSolution, r_shrink: f32, te
 fn swap_large_pair_of_items(sep: &mut Separator) {
     //TODO: make a more elaborate way of selecting between significant and non-significant items
     //      to make the disruption more robust across instances
-    let large_area_ch_area_cutoff = sep.instance.items()
-        .map(|item| item.shape_cd.surrogate().convex_hull_area)
-        .max_by_key(|&x| OrderedFloat(x))
-        .unwrap() * LARGE_AREA_CH_AREA_CUTOFF_RATIO;
+
+    let ascending_ch_areas = sep.prob.instance.items.iter()
+        .sorted_by_key(|(item, _)| OrderedFloat(item.shape_cd.surrogate().convex_hull_area))
+        .rev()
+        .map(|(i, q)| iter::repeat(i.shape_cd.surrogate().convex_hull_area).take(*q))
+        .flatten()
+        .collect_vec();
+
+    //Calculate the convex hull area of the LARGE_AREA_CH_AREA_CUTOFF_PERCENTILE item
+    let idx = (ascending_ch_areas.len() as f32 * LARGE_AREA_CH_AREA_CUTOFF_PERCENTILE) as usize;
+    let large_area_ch_area_cutoff = ascending_ch_areas[idx];
+
 
     let layout = &sep.prob.layout;
 
@@ -170,7 +180,7 @@ fn swap_large_pair_of_items(sep: &mut Separator) {
         .unwrap_or(layout.placed_items.iter()
             .filter(|(pk2, _)| *pk2 != pk1)
             .choose(&mut sep.rng).unwrap());
-    
+
     let dt1 = convert_sample_to_closest_feasible(pi2.d_transf, sep.prob.instance.item(pi1.item_id));
     let dt2 = convert_sample_to_closest_feasible(pi1.d_transf, sep.prob.instance.item(pi2.item_id));
 
