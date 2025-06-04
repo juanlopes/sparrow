@@ -8,9 +8,10 @@ pub const RNG_SEED: Option<usize> = None;
 
 pub const CDE_CONFIG: CDEConfig = CDEConfig {
     quadtree_depth: 3,
+    cd_threshold: 8,
     item_surrogate_config: SPSurrogateConfig {
         n_pole_limits: [(64, 0.0), (16, 0.8), (8, 0.9)],
-        n_ff_poles: 2,
+        n_ff_poles: 1,
         n_ff_piers: 0,
     },
 };

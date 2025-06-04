@@ -35,7 +35,7 @@ impl<'a> SampleEvaluator for LBFEvaluator<'a> {
         self.n_evals += 1;
         let cde = self.layout.cde();
         let transf = dt.into();
-        match cde.detect_surr_collision(self.item.shape_cd.surrogate(), &transf, &NoHazardFilter) {
+        match cde.detect_surrogate_collision(self.item.shape_cd.surrogate(), &transf, &NoHazardFilter) {
             true => SampleEval::Invalid, // Surrogate collides with something
             false => {
                 self.shape_buff.transform_from(&self.item.shape_cd, &transf);
