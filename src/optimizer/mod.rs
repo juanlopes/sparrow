@@ -2,20 +2,25 @@ use crate::config::*;
 use crate::optimizer::lbf::LBFBuilder;
 use crate::optimizer::separator::Separator;
 pub use crate::optimizer::terminator::Terminator;
-use crate::sample::uniform_sampler::convert_sample_to_closest_feasible;
+use crate::sample::uniform_sampler::{convert_sample_to_closest_feasible, UniformBBoxSampler};
 use crate::FMT;
 use float_cmp::approx_eq;
 use itertools::Itertools;
-use jagua_rs::entities::Instance;
+use jagua_rs::entities::{Instance, Layout};
 use jagua_rs::probs::spp::entities::{SPInstance, SPSolution};
 use log::info;
 use ordered_float::OrderedFloat;
 use rand::prelude::{IteratorRandom, SmallRng};
-use rand::{Rng, RngCore, SeedableRng};
+use rand::{random_range, Rng, RngCore, SeedableRng};
 use rand_distr::Distribution;
 use rand_distr::Normal;
 use std::iter;
 use std::time::{Duration, Instant};
+use jagua_rs::collision_detection::hazards::detector::{BasicHazardDetector, HazardDetector};
+use jagua_rs::collision_detection::hazards::HazardEntity;
+use jagua_rs::geometry::geo_traits::CollidesWith;
+use jagua_rs::geometry::primitives::Rect;
+use rand::distr::Uniform;
 
 pub mod lbf;
 pub mod separator;
@@ -91,7 +96,8 @@ pub fn exploration_phase(instance: &SPInstance, sep: &mut Separator, term: &Term
 
             //restore and swap two large items
             sep.rollback(selected_sol, None);
-            swap_large_pair_of_items(sep);
+            //swap_large_pair_of_items(sep);
+            move_large_item(sep)
         }
     }
 
@@ -188,4 +194,99 @@ fn swap_large_pair_of_items(sep: &mut Separator) {
 
     sep.move_item(pk1, dt1);
     sep.move_item(pk2, dt2);
+}
+
+fn move_large_item(sep: &mut Separator) {
+    //sep.export_svg(None, "before_disruption", false);
+
+    // let ascending_ch_areas = sep.prob.instance.items.iter()
+    //     .sorted_by_key(|(item, _)| OrderedFloat(item.shape_cd.surrogate().convex_hull_area))
+    //     .rev()
+    //     .map(|(i, q)| iter::repeat(i.shape_cd.surrogate().convex_hull_area).take(*q))
+    //     .flatten()
+    //     .collect_vec();
+    // 
+    // //Calculate the convex hull area of the LARGE_AREA_CH_AREA_CUTOFF_PERCENTILE item
+    // let idx = (ascending_ch_areas.len() as f32 * LARGE_AREA_CH_AREA_CUTOFF_PERCENTILE) as usize;
+    // let large_area_ch_area_cutoff = ascending_ch_areas[idx];
+
+    let large_area_ch_area_cutoff = sep.instance.items()
+        .map(|item| item.shape_cd.surrogate().convex_hull_area)
+        .max_by_key(|&x| OrderedFloat(x))
+        .unwrap() * LARGE_AREA_CH_AREA_CUTOFF_PERCENTILE;
+
+
+    let layout = &sep.prob.layout;
+
+    //Choose an item with a large enough convex hull
+    let (pk, pi) = layout.placed_items.iter()
+        .filter(|(_, pi)| pi.shape.surrogate().convex_hull_area > large_area_ch_area_cutoff)
+        .choose(&mut sep.rng)
+        .unwrap();
+
+    let dt = pi.d_transf;
+    
+    //Choose a random place to move it to
+    let sampler = UniformBBoxSampler::new(
+        sep.prob.layout.cde().bbox(),
+        sep.instance.item(pi.item_id),
+        sep.prob.layout.cde().bbox()
+    ).unwrap();
+    let new_dt = sampler.sample(&mut sep.rng);
+
+    //Move it there
+    let new_pk = sep.move_item(pk, new_dt);
+
+    //sep.export_svg(None, "during_disruption", false);
+
+    let colliding_items = {
+        let layout = &sep.prob.layout;
+        let new_pi = &layout.placed_items[new_pk];
+        let cde = layout.cde();
+        let mut hazard_detector = BasicHazardDetector::new();
+        layout.cde().collect_poly_collisions(&new_pi.shape, &mut hazard_detector);
+        hazard_detector.iter()
+            .filter_map(|he| {
+                match he {
+                    HazardEntity::PlacedItem{pk, ..} => {
+                        if *pk == new_pk {
+                            //Skip the item itself
+                            return None;
+                        }
+                        else {
+                            Some(*pk)
+                        }
+                    },
+                    _ => None
+                }
+            })
+            .collect_vec()
+    };
+
+    dbg!(&colliding_items.len());
+    
+    let moved_item_bbox = sep.prob.layout.placed_items[new_pk].shape.bbox;
+    
+    let new_t = new_dt.compose();
+    let inv_new_t = new_t.clone().inverse();
+    let t = dt.compose();
+    let inv_t = t.clone().inverse();
+
+    //Move all colliding items to the "empty space" created by the moved item
+    for c_pk in colliding_items {
+        let c_pi = &sep.prob.layout.placed_items[c_pk];
+        let c_pi_bbox = c_pi.shape.bbox;
+        let intersect_area = Rect::intersection(moved_item_bbox, c_pi_bbox).expect("colliding items should have intersecting bounding boxes").area();
+        //only move smaller items
+        if intersect_area > f32::min(moved_item_bbox.area(), c_pi_bbox.area()) * 0.5 {
+            let new_dt = c_pi.d_transf.compose().transform(&inv_new_t).transform(&t).decompose();
+            //make sure the new position is feasible
+            let new_feasible_dt = convert_sample_to_closest_feasible(new_dt, sep.prob.instance.item(c_pi.item_id));
+            dbg!(new_dt, new_feasible_dt);
+
+            sep.move_item(c_pk, new_feasible_dt);
+        }
+    }
+
+    //sep.export_svg(None, "after_disruption", false);
 }

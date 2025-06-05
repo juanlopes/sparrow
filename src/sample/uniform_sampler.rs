@@ -25,7 +25,7 @@ struct RotEntry {
 }
 
 impl UniformBBoxSampler {
-    pub fn new(sample_bbox: Rect, item: &Item, cont_bbox: Rect) -> Option<Self> {
+    pub fn new(sample_bbox: Rect, item: &Item, container_bbox: Rect) -> Option<Self> {
         let rotations = match &item.allowed_rotation {
             RotationRange::None => &vec![0.0],
             RotationRange::Discrete(r) => r,
@@ -44,8 +44,8 @@ impl UniformBBoxSampler {
                 let r_shape_bbox = shape_buffer.transform_from(item.shape_cd.as_ref(), &Transformation::from_rotation(r)).bbox;
 
                 //narrow the container range to account for the rotated shape
-                let cont_x_range = (cont_bbox.x_min - r_shape_bbox.x_min)..(cont_bbox.x_max - r_shape_bbox.x_max);
-                let cont_y_range = (cont_bbox.y_min - r_shape_bbox.y_min)..(cont_bbox.y_max - r_shape_bbox.y_max);
+                let cont_x_range = (container_bbox.x_min - r_shape_bbox.x_min)..(container_bbox.x_max - r_shape_bbox.x_max);
+                let cont_y_range = (container_bbox.y_min - r_shape_bbox.y_min)..(container_bbox.y_max - r_shape_bbox.y_max);
 
                 //intersect with the sample bbox
                 let x_range = intersect_range(&cont_x_range, &sample_x_range);
