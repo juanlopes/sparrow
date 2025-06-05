@@ -263,7 +263,7 @@ fn move_large_item(sep: &mut Separator) {
             .collect_vec()
     };
 
-    dbg!(&colliding_items.len());
+    //dbg!(&colliding_items.len());
     
     let moved_item_bbox = sep.prob.layout.placed_items[new_pk].shape.bbox;
     
@@ -282,7 +282,7 @@ fn move_large_item(sep: &mut Separator) {
             let new_dt = c_pi.d_transf.compose().transform(&inv_new_t).transform(&t).decompose();
             //make sure the new position is feasible
             let new_feasible_dt = convert_sample_to_closest_feasible(new_dt, sep.prob.instance.item(c_pi.item_id));
-            dbg!(new_dt, new_feasible_dt);
+            //dbg!(new_dt, new_feasible_dt);
 
             sep.move_item(c_pk, new_feasible_dt);
         }
