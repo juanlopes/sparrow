@@ -199,22 +199,21 @@ fn swap_large_pair_of_items(sep: &mut Separator) {
 fn move_large_item(sep: &mut Separator) {
     //sep.export_svg(None, "before_disruption", false);
 
-    // let ascending_ch_areas = sep.prob.instance.items.iter()
-    //     .sorted_by_key(|(item, _)| OrderedFloat(item.shape_cd.surrogate().convex_hull_area))
-    //     .rev()
-    //     .map(|(i, q)| iter::repeat(i.shape_cd.surrogate().convex_hull_area).take(*q))
-    //     .flatten()
-    //     .collect_vec();
-    // 
-    // //Calculate the convex hull area of the LARGE_AREA_CH_AREA_CUTOFF_PERCENTILE item
-    // let idx = (ascending_ch_areas.len() as f32 * LARGE_AREA_CH_AREA_CUTOFF_PERCENTILE) as usize;
-    // let large_area_ch_area_cutoff = ascending_ch_areas[idx];
+    let ascending_ch_areas = sep.prob.instance.items.iter()
+        .sorted_by_key(|(item, _)| OrderedFloat(item.shape_cd.surrogate().convex_hull_area))
+        .rev()
+        .map(|(i, q)| iter::repeat(i.shape_cd.surrogate().convex_hull_area).take(*q))
+        .flatten()
+        .collect_vec();
+    
+    //Calculate the convex hull area of the LARGE_AREA_CH_AREA_CUTOFF_PERCENTILE item
+    let idx = (ascending_ch_areas.len() as f32 * LARGE_AREA_CH_AREA_CUTOFF_PERCENTILE) as usize;
+    let large_area_ch_area_cutoff = ascending_ch_areas[idx];
 
-    let large_area_ch_area_cutoff = sep.instance.items()
-        .map(|item| item.shape_cd.surrogate().convex_hull_area)
-        .max_by_key(|&x| OrderedFloat(x))
-        .unwrap() * LARGE_AREA_CH_AREA_CUTOFF_PERCENTILE;
-
+    // let large_area_ch_area_cutoff = sep.instance.items()
+    //     .map(|item| item.shape_cd.surrogate().convex_hull_area)
+    //     .max_by_key(|&x| OrderedFloat(x))
+    //     .unwrap() * LARGE_AREA_CH_AREA_CUTOFF_PERCENTILE;
 
     let layout = &sep.prob.layout;
 
