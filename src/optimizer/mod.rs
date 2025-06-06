@@ -159,17 +159,17 @@ fn swap_large_pair_of_items(sep: &mut Separator) {
     //      to make the disruption more robust across instances
 
     //sep.export_svg(None, "before_disruption", false);
-    
+
     let ch_area_sum_percentile = sep.prob.instance.items.iter()
         .map(|(item, q)| item.shape_cd.surrogate().convex_hull_area * (*q as f32))
         .sum::<f32>() * LARGE_AREA_CH_AREA_CUTOFF_PERCENTILE;
 
     let descending_ch_areas = sep.prob.instance.items.iter()
         .sorted_by_key(|(item, _)| Reverse(OrderedFloat(item.shape_cd.surrogate().convex_hull_area)));
-    
+
     let mut large_ch_area_cutoff = 0.0;
     let mut ch_area_sum = 0.0;
-    
+
     for (item, q) in descending_ch_areas {
         let ch_area = item.shape_cd.surrogate().convex_hull_area;
         ch_area_sum += ch_area * (*q as f32);
@@ -179,7 +179,7 @@ fn swap_large_pair_of_items(sep: &mut Separator) {
             break;
         }
     }
-    
+
     let layout = &sep.prob.layout;
 
     //Choose a first item with a large enough convex hull
@@ -197,7 +197,7 @@ fn swap_large_pair_of_items(sep: &mut Separator) {
         .unwrap_or(layout.placed_items.iter()
             .filter(|(pk2, _)| *pk2 != pk1)
             .choose(&mut sep.rng).unwrap());
-    
+
     let dt1_old = pi1.d_transf;
     let dt2_old = pi2.d_transf;
 
@@ -210,19 +210,19 @@ fn swap_large_pair_of_items(sep: &mut Separator) {
     let pk2 = sep.move_item(pk2, dt2_new);
 
     //sep.export_svg(None, "mid_disruption", false);
-    
+
     {
         let conv_t = dt1_new.compose().inverse()
             .transform(&dt1_old.compose());
-        
+
         //Move all colliding items to the "empty space" created by the moved item
-        for c1_pk in practically_contained_items(&sep.prob.layout, pk1) {
+        for c1_pk in practically_contained_items(&sep.prob.layout, pk1).iter().filter(|c1_pk| *c1_pk != pk2) {
             let c1_pi = &sep.prob.layout.placed_items[c1_pk];
             let new_dt = c1_pi.d_transf
                 .compose()
                 .transform(&conv_t)
                 .decompose();
-            
+
             //make sure the new position is feasible
             let new_feasible_dt = convert_sample_to_closest_feasible(new_dt, sep.prob.instance.item(c1_pi.item_id));
             //let new_feasible_dt = new_dt;
@@ -235,13 +235,13 @@ fn swap_large_pair_of_items(sep: &mut Separator) {
             .transform(&dt2_old.compose());
 
         //Move all colliding items to the "empty space" created by the moved item
-        for c2_pk in practically_contained_items(&sep.prob.layout, pk2) {
+        for c2_pk in practically_contained_items(&sep.prob.layout, pk2).iter().filter(|c2_pk| *c2_pk != pk1) {
             let c2_pi = &sep.prob.layout.placed_items[c2_pk];
             let new_dt = c2_pi.d_transf
                 .compose()
                 .transform(&conv_t)
                 .decompose();
-            
+
             //make sure the new position is feasible
             let new_feasible_dt = convert_sample_to_closest_feasible(new_dt, sep.prob.instance.item(c2_pi.item_id));
             //let new_feasible_dt = new_dt;
@@ -273,6 +273,6 @@ fn practically_contained_items(layout: &Layout, pk_c: PItemKey) -> Vec<PItemKey>
             new_pi.shape.collides_with(&poi.center)
         })
         .collect_vec();
-    
+
     items
 }
