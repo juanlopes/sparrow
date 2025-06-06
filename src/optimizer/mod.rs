@@ -1,3 +1,4 @@
+use std::cmp::Reverse;
 use crate::config::*;
 use crate::optimizer::lbf::LBFBuilder;
 use crate::optimizer::separator::Separator;
@@ -6,7 +7,7 @@ use crate::sample::uniform_sampler::{convert_sample_to_closest_feasible, Uniform
 use crate::FMT;
 use float_cmp::approx_eq;
 use itertools::Itertools;
-use jagua_rs::entities::{Instance, Layout};
+use jagua_rs::entities::{Instance, Layout, PItemKey};
 use jagua_rs::probs::spp::entities::{SPInstance, SPSolution};
 use log::info;
 use ordered_float::OrderedFloat;
@@ -96,8 +97,7 @@ pub fn exploration_phase(instance: &SPInstance, sep: &mut Separator, term: &Term
 
             //restore and swap two large items
             sep.rollback(selected_sol, None);
-            //swap_large_pair_of_items(sep);
-            move_large_item(sep)
+            swap_large_pair_of_items(sep);
         }
     }
 
@@ -153,139 +153,127 @@ fn attempt_to_compress(sep: &mut Separator, init: &SPSolution, r_shrink: f32, te
     }
 }
 
+//TODO: polish
 fn swap_large_pair_of_items(sep: &mut Separator) {
     //TODO: make a more elaborate way of selecting between significant and non-significant items
     //      to make the disruption more robust across instances
 
-    let ascending_ch_areas = sep.prob.instance.items.iter()
-        .sorted_by_key(|(item, _)| OrderedFloat(item.shape_cd.surrogate().convex_hull_area))
-        .rev()
-        .map(|(i, q)| iter::repeat(i.shape_cd.surrogate().convex_hull_area).take(*q))
-        .flatten()
-        .collect_vec();
+    //sep.export_svg(None, "before_disruption", false);
+    
+    let ch_area_sum_percentile = sep.prob.instance.items.iter()
+        .map(|(item, q)| item.shape_cd.surrogate().convex_hull_area * (*q as f32))
+        .sum::<f32>() * LARGE_AREA_CH_AREA_CUTOFF_PERCENTILE;
 
-    //Calculate the convex hull area of the LARGE_AREA_CH_AREA_CUTOFF_PERCENTILE item
-    let idx = (ascending_ch_areas.len() as f32 * LARGE_AREA_CH_AREA_CUTOFF_PERCENTILE) as usize;
-    let large_area_ch_area_cutoff = ascending_ch_areas[idx];
-
-
+    let descending_ch_areas = sep.prob.instance.items.iter()
+        .sorted_by_key(|(item, _)| Reverse(OrderedFloat(item.shape_cd.surrogate().convex_hull_area)));
+    
+    let mut large_ch_area_cutoff = 0.0;
+    let mut ch_area_sum = 0.0;
+    
+    for (item, q) in descending_ch_areas {
+        let ch_area = item.shape_cd.surrogate().convex_hull_area;
+        ch_area_sum += ch_area * (*q as f32);
+        if ch_area_sum > ch_area_sum_percentile {
+            large_ch_area_cutoff = ch_area;
+            info!("[DSRP] cutoff is {}, bbox: {:?}", item.id, item.shape_cd.bbox);
+            break;
+        }
+    }
+    
     let layout = &sep.prob.layout;
 
     //Choose a first item with a large enough convex hull
     let (pk1, pi1) = layout.placed_items.iter()
-        .filter(|(_, pi)| pi.shape.surrogate().convex_hull_area > large_area_ch_area_cutoff)
+        .filter(|(_, pi)| pi.shape.surrogate().convex_hull_area >= large_ch_area_cutoff)
         .choose(&mut sep.rng)
         .unwrap();
 
     //Choose a second item with a large enough convex hull and different enough from the first.
     //If no such item is found, choose a random one.
     let (pk2, pi2) = layout.placed_items.iter()
-        .filter(|(_, pi)| !approx_eq!(f32, pi.shape.area,pi1.shape.area, epsilon = pi1.shape.area * 0.1))
-        .filter(|(_, pi)| pi.shape.surrogate().convex_hull_area > large_area_ch_area_cutoff)
+        .filter(|(_, pi)| !approx_eq!(f32, pi.shape.area,pi1.shape.area, epsilon = pi1.shape.area * 0.01))
+        .filter(|(_, pi)| pi.shape.surrogate().convex_hull_area >= large_ch_area_cutoff)
         .choose(&mut sep.rng)
         .unwrap_or(layout.placed_items.iter()
             .filter(|(pk2, _)| *pk2 != pk1)
             .choose(&mut sep.rng).unwrap());
+    
+    let dt1_old = pi1.d_transf;
+    let dt2_old = pi2.d_transf;
 
-    let dt1 = convert_sample_to_closest_feasible(pi2.d_transf, sep.prob.instance.item(pi1.item_id));
-    let dt2 = convert_sample_to_closest_feasible(pi1.d_transf, sep.prob.instance.item(pi2.item_id));
+    let dt1_new = convert_sample_to_closest_feasible(dt2_old, sep.prob.instance.item(pi1.item_id));
+    let dt2_new = convert_sample_to_closest_feasible(dt1_old, sep.prob.instance.item(pi2.item_id));
 
     info!("[EXPL] swapped two large items (ids: {} <-> {})", pi1.item_id, pi2.item_id);
 
-    sep.move_item(pk1, dt1);
-    sep.move_item(pk2, dt2);
-}
+    let pk1 = sep.move_item(pk1, dt1_new);
+    let pk2 = sep.move_item(pk2, dt2_new);
 
-fn move_large_item(sep: &mut Separator) {
-    //sep.export_svg(None, "before_disruption", false);
-
-    let ascending_ch_areas = sep.prob.instance.items.iter()
-        .sorted_by_key(|(item, _)| OrderedFloat(item.shape_cd.surrogate().convex_hull_area))
-        .rev()
-        .map(|(i, q)| iter::repeat(i.shape_cd.surrogate().convex_hull_area).take(*q))
-        .flatten()
-        .collect_vec();
+    //sep.export_svg(None, "mid_disruption", false);
     
-    //Calculate the convex hull area of the LARGE_AREA_CH_AREA_CUTOFF_PERCENTILE item
-    let idx = (ascending_ch_areas.len() as f32 * LARGE_AREA_CH_AREA_CUTOFF_PERCENTILE) as usize;
-    let large_area_ch_area_cutoff = ascending_ch_areas[idx];
-
-    // let large_area_ch_area_cutoff = sep.instance.items()
-    //     .map(|item| item.shape_cd.surrogate().convex_hull_area)
-    //     .max_by_key(|&x| OrderedFloat(x))
-    //     .unwrap() * LARGE_AREA_CH_AREA_CUTOFF_PERCENTILE;
-
-    let layout = &sep.prob.layout;
-
-    //Choose an item with a large enough convex hull
-    let (pk, pi) = layout.placed_items.iter()
-        .filter(|(_, pi)| pi.shape.surrogate().convex_hull_area > large_area_ch_area_cutoff)
-        .choose(&mut sep.rng)
-        .unwrap();
-
-    let dt = pi.d_transf;
-    
-    //Choose a random place to move it to
-    let sampler = UniformBBoxSampler::new(
-        sep.prob.layout.cde().bbox(),
-        sep.instance.item(pi.item_id),
-        sep.prob.layout.cde().bbox()
-    ).unwrap();
-    let new_dt = sampler.sample(&mut sep.rng);
-
-    //Move it there
-    let new_pk = sep.move_item(pk, new_dt);
-
-    //sep.export_svg(None, "during_disruption", false);
-
-    let colliding_items = {
-        let layout = &sep.prob.layout;
-        let new_pi = &layout.placed_items[new_pk];
-        let cde = layout.cde();
-        let mut hazard_detector = BasicHazardDetector::new();
-        layout.cde().collect_poly_collisions(&new_pi.shape, &mut hazard_detector);
-        hazard_detector.iter()
-            .filter_map(|he| {
-                match he {
-                    HazardEntity::PlacedItem{pk, ..} => {
-                        if *pk == new_pk {
-                            //Skip the item itself
-                            return None;
-                        }
-                        else {
-                            Some(*pk)
-                        }
-                    },
-                    _ => None
-                }
-            })
-            .collect_vec()
-    };
-
-    //dbg!(&colliding_items.len());
-    
-    let moved_item_bbox = sep.prob.layout.placed_items[new_pk].shape.bbox;
-    
-    let new_t = new_dt.compose();
-    let inv_new_t = new_t.clone().inverse();
-    let t = dt.compose();
-    let inv_t = t.clone().inverse();
-
-    //Move all colliding items to the "empty space" created by the moved item
-    for c_pk in colliding_items {
-        let c_pi = &sep.prob.layout.placed_items[c_pk];
-        let c_pi_bbox = c_pi.shape.bbox;
-        let intersect_area = Rect::intersection(moved_item_bbox, c_pi_bbox).expect("colliding items should have intersecting bounding boxes").area();
-        //only move smaller items
-        if intersect_area > f32::min(moved_item_bbox.area(), c_pi_bbox.area()) * 0.5 {
-            let new_dt = c_pi.d_transf.compose().transform(&inv_new_t).transform(&t).decompose();
+    {
+        let conv_t = dt1_new.compose().inverse()
+            .transform(&dt1_old.compose());
+        
+        //Move all colliding items to the "empty space" created by the moved item
+        for c1_pk in practically_contained_items(&sep.prob.layout, pk1) {
+            let c1_pi = &sep.prob.layout.placed_items[c1_pk];
+            let new_dt = c1_pi.d_transf
+                .compose()
+                .transform(&conv_t)
+                .decompose();
+            
             //make sure the new position is feasible
-            let new_feasible_dt = convert_sample_to_closest_feasible(new_dt, sep.prob.instance.item(c_pi.item_id));
-            //dbg!(new_dt, new_feasible_dt);
-
-            sep.move_item(c_pk, new_feasible_dt);
+            let new_feasible_dt = convert_sample_to_closest_feasible(new_dt, sep.prob.instance.item(c1_pi.item_id));
+            //let new_feasible_dt = new_dt;
+            sep.move_item(c1_pk, new_feasible_dt);
         }
     }
 
+    {
+        let conv_t = dt2_new.compose().inverse()
+            .transform(&dt2_old.compose());
+
+        //Move all colliding items to the "empty space" created by the moved item
+        for c2_pk in practically_contained_items(&sep.prob.layout, pk2) {
+            let c2_pi = &sep.prob.layout.placed_items[c2_pk];
+            let new_dt = c2_pi.d_transf
+                .compose()
+                .transform(&conv_t)
+                .decompose();
+            
+            //make sure the new position is feasible
+            let new_feasible_dt = convert_sample_to_closest_feasible(new_dt, sep.prob.instance.item(c2_pi.item_id));
+            //let new_feasible_dt = new_dt;
+            sep.move_item(c2_pk, new_feasible_dt);
+        }
+    }
     //sep.export_svg(None, "after_disruption", false);
+}
+
+fn practically_contained_items(layout: &Layout, pk_c: PItemKey) -> Vec<PItemKey> {
+    let new_pi = &layout.placed_items[pk_c];
+    let mut hazard_detector = BasicHazardDetector::new();
+    layout.cde().collect_poly_collisions(&new_pi.shape, &mut hazard_detector);
+    let items = hazard_detector.iter()
+        .filter_map(|he| {
+            match he {
+                HazardEntity::PlacedItem{pk, ..} => {
+                   if *pk == pk_c {
+                        //Skip the item itself
+                        return None;
+                    }
+                    Some(*pk)
+                },
+                _ => None
+            }
+        })
+        .filter(|pk| {
+            let poi = layout.placed_items[*pk].shape.poi;
+            new_pi.shape.collides_with(&poi.center)
+        })
+        .collect_vec();
+    dbg!(&items.len());
+    
+    items
 }
