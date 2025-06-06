@@ -273,7 +273,6 @@ fn practically_contained_items(layout: &Layout, pk_c: PItemKey) -> Vec<PItemKey>
             new_pi.shape.collides_with(&poi.center)
         })
         .collect_vec();
-    dbg!(&items.len());
     
     items
 }
