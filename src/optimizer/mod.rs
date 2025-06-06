@@ -216,7 +216,7 @@ fn swap_large_pair_of_items(sep: &mut Separator) {
             .transform(&dt1_old.compose());
 
         //Move all colliding items to the "empty space" created by the moved item
-        for c1_pk in practically_contained_items(&sep.prob.layout, pk1).iter().filter(|c1_pk| *c1_pk != pk2) {
+        for c1_pk in practically_contained_items(&sep.prob.layout, pk1).into_iter().filter(|c1_pk| *c1_pk != pk2) {
             let c1_pi = &sep.prob.layout.placed_items[c1_pk];
             let new_dt = c1_pi.d_transf
                 .compose()
@@ -235,7 +235,7 @@ fn swap_large_pair_of_items(sep: &mut Separator) {
             .transform(&dt2_old.compose());
 
         //Move all colliding items to the "empty space" created by the moved item
-        for c2_pk in practically_contained_items(&sep.prob.layout, pk2).iter().filter(|c2_pk| *c2_pk != pk1) {
+        for c2_pk in practically_contained_items(&sep.prob.layout, pk2).into_iter().filter(|c2_pk| *c2_pk != pk1) {
             let c2_pi = &sep.prob.layout.placed_items[c2_pk];
             let new_dt = c2_pi.d_transf
                 .compose()
