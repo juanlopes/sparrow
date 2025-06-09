@@ -1,4 +1,3 @@
-use std::f32::consts::PI;
 use itertools::Itertools;
 use jagua_rs::geometry::geo_enums::RotationRange;
 use jagua_rs::geometry::geo_traits::TransformableFrom;
@@ -8,8 +7,7 @@ use std::ops::Range;
 use jagua_rs::entities::Item;
 use jagua_rs::geometry::primitives::Rect;
 use jagua_rs::geometry::{normalize_rotation, DTransformation, Transformation};
-use ordered_float::{NotNan, OrderedFloat};
-use rand_distr::num_traits::Zero;
+use ordered_float::{OrderedFloat};
 
 /// A sampler that creates uniform samples for an item within a bounding box
 #[derive(Clone, Debug)]
