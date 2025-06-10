@@ -14,7 +14,7 @@ name = "bench"
 path = "src/bench.rs"
 
 [dependencies]
-jagua-rs = { features = ["spp"], git = "https://github.com/JeroenGar/jagua-rs.git", rev = "af841a7ed210ff36ec790bcfc0eac753f7046f35", default-features = false }
+jagua-rs = { features = ["spp"], git = "https://github.com/JeroenGar/jagua-rs.git", rev = "25efc5afcace4703a27d842e7a7d021575db2c5c", default-features = false }
 #jagua-rs = { features = ["spp"], path = "../jagua-rs/jagua-rs" }
 rand = { version = "0.9", features = ["small_rng"] }
 rand_distr = "0.5"
@@ -39,11 +39,9 @@ anyhow = "1.0"
 
 
 [features]
-default = ["separation-distance"]
 live_svg = []
 only_final_svg = []
 simd = []
-separation-distance = ["jagua-rs/separation-distance"]
 
 [profile.dev]
 overflow-checks = true
