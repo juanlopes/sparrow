@@ -87,7 +87,7 @@ pub const LOG_LEVEL_FILTER_RELEASE: log::LevelFilter = log::LevelFilter::Info;
 
 pub const LOG_LEVEL_FILTER_DEBUG: log::LevelFilter = log::LevelFilter::Debug;
 
-pub const LARGE_AREA_CH_AREA_CUTOFF_PERCENTILE: f32 = 0.5;
+pub const LARGE_AREA_CH_AREA_CUTOFF_PERCENTILE: f32 = 0.75;
 
 pub const DRAW_OPTIONS: SvgDrawOptions = SvgDrawOptions {
     theme: SvgLayoutTheme::GRAY,

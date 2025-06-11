@@ -2,19 +2,22 @@ use crate::config::*;
 use crate::optimizer::lbf::LBFBuilder;
 use crate::optimizer::separator::Separator;
 pub use crate::optimizer::terminator::Terminator;
-use crate::sample::uniform_sampler::convert_sample_to_closest_feasible;
+use crate::sample::uniform_sampler::{convert_sample_to_closest_feasible};
 use crate::FMT;
 use float_cmp::approx_eq;
 use itertools::Itertools;
-use jagua_rs::entities::Instance;
+use jagua_rs::collision_detection::hazards::detector::{BasicHazardDetector, HazardDetector};
+use jagua_rs::collision_detection::hazards::HazardEntity;
+use jagua_rs::entities::{Instance, Layout, PItemKey};
+use jagua_rs::geometry::geo_traits::CollidesWith;
 use jagua_rs::probs::spp::entities::{SPInstance, SPSolution};
-use log::info;
+use log::{debug, info};
 use ordered_float::OrderedFloat;
 use rand::prelude::{IteratorRandom, SmallRng};
 use rand::{Rng, RngCore, SeedableRng};
 use rand_distr::Distribution;
 use rand_distr::Normal;
-use std::iter;
+use std::cmp::Reverse;
 use std::time::{Duration, Instant};
 
 pub mod lbf;
@@ -89,9 +92,8 @@ pub fn exploration_phase(instance: &SPInstance, sep: &mut Separator, term: &Term
                 selected_sol
             };
 
-            //restore and swap two large items
             sep.rollback(selected_sol, None);
-            swap_large_pair_of_items(sep);
+            disrupt_solution(sep);
         }
     }
 
@@ -147,45 +149,151 @@ fn attempt_to_compress(sep: &mut Separator, init: &SPSolution, r_shrink: f32, te
     }
 }
 
-fn swap_large_pair_of_items(sep: &mut Separator) {
-    //TODO: make a more elaborate way of selecting between significant and non-significant items
-    //      to make the disruption more robust across instances
+// ...existing code...
+fn disrupt_solution(sep: &mut Separator) {
+    // The general idea is to disrupt a solution by swapping two 'large' items in the layout.
+    // 'Large' items are those whose convex hull area falls within a certain top percentile
+    // of the total convex hull area of all items in the layout.
 
-    let ascending_ch_areas = sep.prob.instance.items.iter()
-        .sorted_by_key(|(item, _)| OrderedFloat(item.shape_cd.surrogate().convex_hull_area))
-        .rev()
-        .map(|(i, q)| iter::repeat(i.shape_cd.surrogate().convex_hull_area).take(*q))
-        .flatten()
-        .collect_vec();
+    // Step 1: Define what constitutes a 'large' item.
 
-    //Calculate the convex hull area of the LARGE_AREA_CH_AREA_CUTOFF_PERCENTILE item
-    let idx = (ascending_ch_areas.len() as f32 * LARGE_AREA_CH_AREA_CUTOFF_PERCENTILE) as usize;
-    let large_area_ch_area_cutoff = ascending_ch_areas[idx];
+    // Calculate the total convex hull area of all items, considering quantities.
+    let total_convex_hull_area: f32 = sep
+        .prob
+        .instance
+        .items
+        .iter()
+        .map(|(item, quantity)| item.shape_cd.surrogate().convex_hull_area * (*quantity as f32))
+        .sum();
 
+    let cutoff_threshold_area = total_convex_hull_area * LARGE_AREA_CH_AREA_CUTOFF_PERCENTILE;
 
-    let layout = &sep.prob.layout;
+    // Sort items by convex hull area in descending order.
+    let sorted_items_by_ch_area = sep
+        .prob
+        .instance
+        .items
+        .iter()
+        .sorted_by_key(|(item, _)| Reverse(OrderedFloat(item.shape_cd.surrogate().convex_hull_area)))
+        .peekable();
+
+    let mut cumulative_ch_area = 0.0;
+    let mut ch_area_cutoff = 0.0;
+
+    // Iterate through items, accumulating their convex hull areas until the cumulative sum
+    // exceeds the cutoff_threshold_area. The convex hull area of the item that causes
+    // this excess becomes the ch_area_cutoff.
+    for (item, quantity) in sorted_items_by_ch_area {
+        let item_ch_area = item.shape_cd.surrogate().convex_hull_area;
+        cumulative_ch_area += item_ch_area * (*quantity as f32);
+        if cumulative_ch_area > cutoff_threshold_area {
+            ch_area_cutoff = item_ch_area;
+            debug!("[DSRP] cutoff ch area: {}, for item id: {}, bbox: {:?}",ch_area_cutoff, item.id, item.shape_cd.bbox);
+            break;
+        }
+    }
+
+    // Step 2: Select two 'large' items and 'swap' them.
+
+    let large_items = sep.prob.layout.placed_items.iter()
+        .filter(|(_, pi)| pi.shape.surrogate().convex_hull_area >= ch_area_cutoff);
 
     //Choose a first item with a large enough convex hull
-    let (pk1, pi1) = layout.placed_items.iter()
-        .filter(|(_, pi)| pi.shape.surrogate().convex_hull_area > large_area_ch_area_cutoff)
-        .choose(&mut sep.rng)
-        .unwrap();
+    let (pk1, pi1) = large_items.clone().choose(&mut sep.rng).expect("[DSRP] failed to choose first item");
 
     //Choose a second item with a large enough convex hull and different enough from the first.
     //If no such item is found, choose a random one.
-    let (pk2, pi2) = layout.placed_items.iter()
-        .filter(|(_, pi)| !approx_eq!(f32, pi.shape.area,pi1.shape.area, epsilon = pi1.shape.area * 0.1))
-        .filter(|(_, pi)| pi.shape.surrogate().convex_hull_area > large_area_ch_area_cutoff)
+    let (pk2, pi2) = large_items.clone()
+        .filter(|(_, pi)|
+            // Ensure the second item is different from the first
+            !approx_eq!(f32, pi.shape.area,pi1.shape.area, epsilon = pi1.shape.area * 0.01) &&
+                !approx_eq!(f32, pi.shape.diameter, pi1.shape.diameter, epsilon = pi1.shape.diameter * 0.01)
+        )
         .choose(&mut sep.rng)
-        .unwrap_or(layout.placed_items.iter()
-            .filter(|(pk2, _)| *pk2 != pk1)
-            .choose(&mut sep.rng).unwrap());
+        .or_else(|| {
+            sep.prob.layout.placed_items.iter()
+                .filter(|(pk, _)| pk != &pk1) // Ensure the second item is not the same as the first
+                .choose(&mut sep.rng)
+        }) // As a fallback, choose any item
+        .expect("[DSRP] failed to choose second item");
 
-    let dt1 = convert_sample_to_closest_feasible(pi2.d_transf, sep.prob.instance.item(pi1.item_id));
-    let dt2 = convert_sample_to_closest_feasible(pi1.d_transf, sep.prob.instance.item(pi2.item_id));
+    // Step 3: Swap the two items' positions in the layout.
+
+    let dt1_old = pi1.d_transf;
+    let dt2_old = pi2.d_transf;
+
+    // Make sure the swaps do not violate feasibility (rotation).
+    let dt1_new = convert_sample_to_closest_feasible(dt2_old, sep.prob.instance.item(pi1.item_id));
+    let dt2_new = convert_sample_to_closest_feasible(dt1_old, sep.prob.instance.item(pi2.item_id));
 
     info!("[EXPL] swapped two large items (ids: {} <-> {})", pi1.item_id, pi2.item_id);
 
-    sep.move_item(pk1, dt1);
-    sep.move_item(pk2, dt2);
+    let pk1 = sep.move_item(pk1, dt1_new);
+    let pk2 = sep.move_item(pk2, dt2_new);
+
+
+    // Step 4: Move all items that are practically contained by one of the swapped items to the "empty space" created by the moved item.
+    //         This is particularly important when huge items are swapped with smaller items. 
+    //         The huge item will create a large empty space and many of the items which previously 
+    //         surrounded the smaller one will be contained by the huge one.
+    {
+        // transformation to convert the contained items' position (relative to the old and new positions of the swapped items)
+        let converting_transformation = dt1_new.compose().inverse()
+            .transform(&dt1_old.compose());
+
+        for c1_pk in practically_contained_items(&sep.prob.layout, pk1).into_iter().filter(|c1_pk| *c1_pk != pk2) {
+            let c1_pi = &sep.prob.layout.placed_items[c1_pk];
+
+            let new_dt = c1_pi.d_transf
+                .compose()
+                .transform(&converting_transformation)
+                .decompose();
+
+            //Ensure the sure the new position is feasible
+            let new_feasible_dt = convert_sample_to_closest_feasible(new_dt, sep.prob.instance.item(c1_pi.item_id));
+            sep.move_item(c1_pk, new_feasible_dt);
+        }
+    }
+
+    // Do the same for the second item, but using the second transformation
+    {
+        let converting_transformation = dt2_new.compose().inverse()
+            .transform(&dt2_old.compose());
+
+        for c2_pk in practically_contained_items(&sep.prob.layout, pk2).into_iter().filter(|c2_pk| *c2_pk != pk1) {
+            let c2_pi = &sep.prob.layout.placed_items[c2_pk];
+            let new_dt = c2_pi.d_transf
+                .compose()
+                .transform(&converting_transformation)
+                .decompose();
+
+            //make sure the new position is feasible
+            let new_feasible_dt = convert_sample_to_closest_feasible(new_dt, sep.prob.instance.item(c2_pi.item_id));
+            sep.move_item(c2_pk, new_feasible_dt);
+        }
+    }
+}
+
+/// Collects all items which point of inaccessibility (POI) is contained by pk_c's shape.
+fn practically_contained_items(layout: &Layout, pk_c: PItemKey) -> Vec<PItemKey> {
+    let pi_c = &layout.placed_items[pk_c];
+    // Detect all collisions with the item pk_c's shape.
+    let mut hazard_detector = BasicHazardDetector::new();
+    layout.cde().collect_poly_collisions(&pi_c.shape, &mut hazard_detector);
+
+    // Filter out the items that have their POI contained by pk_c's shape.
+    hazard_detector.iter()
+        .filter_map(|he| {
+            match he {
+                HazardEntity::PlacedItem { pk, .. } => Some(*pk),
+                _ => None
+            }
+        })
+        .filter(|pk| *pk != pk_c) // Ensure we don't include the item itself
+        .filter(|pk| {
+            // Check if the POI of the item is contained by pk_c's shape
+            let poi = layout.placed_items[*pk].shape.poi;
+            pi_c.shape.collides_with(&poi.center)
+        })
+        .collect_vec()
 }
