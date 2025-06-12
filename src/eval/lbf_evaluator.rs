@@ -1,4 +1,4 @@
-use jagua_rs::collision_detection::hazards::filter::NoHazardFilter;
+use jagua_rs::collision_detection::hazards::filter::NoFilter;
 use crate::eval::sample_eval::{SampleEval, SampleEvaluator};
 use jagua_rs::entities::Item;
 use jagua_rs::entities::Layout;
@@ -35,11 +35,11 @@ impl<'a> SampleEvaluator for LBFEvaluator<'a> {
         self.n_evals += 1;
         let cde = self.layout.cde();
         let transf = dt.into();
-        match cde.detect_surrogate_collision(self.item.shape_cd.surrogate(), &transf, &NoHazardFilter) {
+        match cde.detect_surrogate_collision(self.item.shape_cd.surrogate(), &transf, &NoFilter) {
             true => SampleEval::Invalid, // Surrogate collides with something
             false => {
                 self.shape_buff.transform_from(&self.item.shape_cd, &transf);
-                match cde.detect_poly_collision(&self.shape_buff, &NoHazardFilter) {
+                match cde.detect_poly_collision(&self.shape_buff, &NoFilter) {
                     true => SampleEval::Invalid, // Exact shape collides with something
                     false => {
                         // No collisions

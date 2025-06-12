@@ -73,7 +73,7 @@ impl SeparatorWorker {
         let (old_l, old_w_l) = (self.ct.get_loss(pk), self.ct.get_weighted_loss(pk));
 
         //modify the problem, by removing the item and placing it in the new position
-        let old_placement = self.prob.remove_item(pk, true);
+        let old_placement = self.prob.remove_item(pk);
         let new_placement = SPPlacement { d_transf, item_id: item.id };
         let new_pk = self.prob.place_item(new_placement);
         //update the collision tracker to reflect the changes

@@ -10,8 +10,8 @@ use crate::util::assertions;
 use crate::util::bit_reversal_iterator::BitReversalIterator;
 use float_cmp::approx_eq;
 use jagua_rs::collision_detection::CDEngine;
-use jagua_rs::collision_detection::hazards::HazardEntity;
-use jagua_rs::collision_detection::hazards::detector::HazardDetector;
+use jagua_rs::collision_detection::hazards::collector::HazardCollector;
+use jagua_rs::collision_detection::hazards::{HazKey, HazardEntity};
 use jagua_rs::collision_detection::quadtree::QTHazPresence;
 use jagua_rs::entities::Layout;
 use jagua_rs::entities::PItemKey;
@@ -28,66 +28,63 @@ pub fn collect_poly_collisions_in_detector_custom(
     dt: &DTransformation,
     shape_buffer: &mut SPolygon,
     reference_shape: &SPolygon,
-    det: &mut SpecializedHazardDetector,
+    collector: &mut SpecializedHazardCollector,
 ) {
     let t = dt.compose();
     // transform the shape buffer to the new position
     let shape = shape_buffer.transform_from(reference_shape, &t);
 
     #[cfg(feature = "simd")]
-    det.poles_soa.load(&shape.surrogate().poles);
+    collector.poles_soa.load(&shape.surrogate().poles);
     
     // Start off by checking a few poles to detect obvious collisions quickly
     for pole in shape.surrogate().ff_poles() {
-        cde.quadtree.collect_collisions(pole, det);
-        if det.early_terminate(shape) { return; }
+        cde.quadtree.collect_collisions(pole, collector);
+        if collector.early_terminate(shape) { return; }
     }
 
     // Find the virtual root of the quadtree for the shape's bounding box. So we do not have to start from the root every time.
-    let v_qt_root = cde.get_virtual_root(shape.bbox);
+    let v_quadtree = cde.get_virtual_root(shape.bbox);
 
     // Collect collisions for all edges.
     // Iterate over them in a bit-reversed order to maximize detecting new hazards early.
     let custom_edge_iter = BitReversalIterator::new(shape.n_vertices())
         .map(|i| shape.edge(i));
     for edge in custom_edge_iter {
-        v_qt_root.collect_collisions(&edge, det);
-        if det.early_terminate(shape) { return; }
+        v_quadtree.collect_collisions(&edge, collector);
+        if collector.early_terminate(shape) { return; }
     }
 
-    // At this point, all collisions due to edge-edge intersection are detected.
-    // The only type of collisions that possibly remain is containment.
-    v_qt_root.hazards.active_hazards().iter().for_each(|qt_haz| {
+    //Check if there are any other collisions due to containment
+    for qt_haz in v_quadtree.hazards.iter() {
         match &qt_haz.presence {
-            QTHazPresence::None => (),
-            // Hazards which are entirely present in the virtual root are guaranteed to be caught by any edge.
-            QTHazPresence::Entire => (),
-            QTHazPresence::Partial(qt_par_haz) => {
-                if !det.contains(&qt_haz.entity) {
-                    // Partially present hazards which are currently not detected have to be checked for containment.
-                    if cde.detect_containment_collision(shape, &qt_par_haz.shape, qt_haz.entity)
-                    {
-                        det.push(qt_haz.entity);
-                        if det.early_terminate(shape) { return; }
+            // No need to check these, guaranteed to be detected by edge intersection
+            QTHazPresence::None | QTHazPresence::Entire => {}
+            QTHazPresence::Partial(_) => {
+                if !collector.contains_key(qt_haz.hkey) {
+                    let h_shape = &cde.hazards_map[qt_haz.hkey].shape;
+                    if cde.detect_containment_collision(shape, h_shape, qt_haz.entity) {
+                        collector.insert(qt_haz.hkey, qt_haz.entity);
+                        if collector.early_terminate(shape) { return; }
                     }
                 }
             }
         }
-    });
+    }
     
     // At this point, all collisions should be present in the detector.
-    debug_assert!(assertions::custom_pipeline_matches_jaguars(shape, det), "Custom pipeline deviates from native jagua-rs pipeline");
+    debug_assert!(assertions::custom_pipeline_matches_jaguars(shape, collector), "Custom pipeline deviates from native jagua-rs pipeline");
 }
 
-/// Modified version of [`jagua_rs::collision_detection::hazards::detector::BasicHazardDetector`]
+/// Specialized version of [`HazardCollector`]
 /// This struct computes the loss incrementally on the fly and caches the result.
 /// Allows for early termination if the loss exceeds a certain upperbound.
-pub struct SpecializedHazardDetector<'a> {
+pub struct SpecializedHazardCollector<'a> {
     pub layout: &'a Layout,
     pub ct: &'a CollisionTracker,
     pub current_pk: PItemKey,
-    pub detected_pis: SecondaryMap<PItemKey, (HazardEntity, usize)>,
-    pub detected_container: Option<(HazardEntity, usize)>,
+    pub current_haz_key: HazKey,
+    pub detected: SecondaryMap<HazKey, (HazardEntity, usize)>,
     pub idx_counter: usize,
     pub loss_cache: (usize, f32),
     pub loss_bound: f32,
@@ -95,18 +92,19 @@ pub struct SpecializedHazardDetector<'a> {
     pub poles_soa: CirclesSoA,
 }
 
-impl<'a> SpecializedHazardDetector<'a> {
+impl<'a> SpecializedHazardCollector<'a> {
     pub fn new(
         layout: &'a Layout,
         ct: &'a CollisionTracker,
         current_pk: PItemKey,
     ) -> Self {
+        let current_haz_key = layout.cde().haz_key_from_pi_key(current_pk).expect("placed item should be registered in the CDE");
         Self {
             layout,
             ct,
             current_pk,
-            detected_pis: SecondaryMap::with_capacity(layout.placed_items.len()),
-            detected_container: None,
+            current_haz_key,
+            detected: SecondaryMap::with_capacity(layout.placed_items.len() + 1),
             idx_counter: 0,
             loss_cache: (0, 0.0),
             loss_bound: f32::INFINITY,
@@ -116,15 +114,14 @@ impl<'a> SpecializedHazardDetector<'a> {
     }
 
     pub fn reload(&mut self, loss_bound: f32) {
-        self.detected_pis.clear();
-        self.detected_container = None;
+        self.detected.clear();
         self.idx_counter = 0;
         self.loss_cache = (0, 0.0);
         self.loss_bound = loss_bound;
     }
 
     pub fn iter_with_index(&self) -> impl Iterator<Item=&(HazardEntity, usize)> {
-        self.detected_pis.values().chain(self.detected_container.iter())
+        self.detected.values()
     }
 
     pub fn early_terminate(&mut self, shape: &SPolygon) -> bool {
@@ -141,7 +138,7 @@ impl<'a> SpecializedHazardDetector<'a> {
                 .sum();
             self.loss_cache = (self.idx_counter, cached_loss + extra_loss);
         }
-        debug_assert!(approx_eq!(f32, self.loss_cache.1, self.iter().map(|h| self.calc_weighted_loss(h, shape)).sum()));
+        debug_assert!(approx_eq!(f32, self.loss_cache.1, self.iter().map(|(_, he)| self.calc_weighted_loss(he, shape)).sum()));
         self.loss_cache.1
     }
 
@@ -168,57 +165,35 @@ impl<'a> SpecializedHazardDetector<'a> {
     }
 }
 
-impl<'a> HazardDetector for SpecializedHazardDetector<'a> {
-    fn contains(&self, haz: &HazardEntity) -> bool {
-        match haz {
-            HazardEntity::PlacedItem { pk, .. } => {
-                *pk == self.current_pk || self.detected_pis.contains_key(*pk)
-            }
-            HazardEntity::Exterior => self.detected_container.is_some(),
-            _ => unreachable!("unsupported hazard entity"),
-        }
+impl<'a> HazardCollector for SpecializedHazardCollector<'a> {
+    fn contains_key(&self, hkey: HazKey) -> bool {
+        self.detected.contains_key(hkey) || hkey == self.current_haz_key
     }
 
-    fn push(&mut self, haz: HazardEntity) {
-        debug_assert!(!self.contains(&haz));
-        match haz {
-            HazardEntity::PlacedItem { pk, .. } => {
-                self.detected_pis.insert(pk, (haz, self.idx_counter));
-            }
-            HazardEntity::Exterior => {
-                self.detected_container = Some((HazardEntity::Exterior, self.idx_counter))
-            }
-            _ => unreachable!("unsupported hazard entity"),
-        }
+    fn insert(&mut self, hkey: HazKey, entity: HazardEntity) {
+        debug_assert!(!self.contains_key(hkey));
+        self.detected.insert(hkey, (entity, self.idx_counter));
         self.idx_counter += 1;
     }
-
-    fn remove(&mut self, haz: &HazardEntity) {
-        match haz {
-            HazardEntity::PlacedItem { pk, .. } => {
-                let (_, idx) = self.detected_pis.remove(*pk).unwrap();
-                if idx < self.loss_cache.0 {
-                    //wipe the cache if a hazard was removed that was in it
-                    self.loss_cache = (0, 0.0);
-                }
-            }
-            HazardEntity::Exterior => {
-                let (_, idx) = self.detected_container.take().unwrap();
-                if idx < self.loss_cache.0 {
-                    //wipe the cache if a hazard was removed that was in it
-                    self.loss_cache = (0, 0.0);
-                }
-            }
-            _ => unreachable!("unsupported hazard entity"),
+    
+    fn remove_by_key(&mut self, hkey: HazKey) {
+        let (_, idx) = self.detected.remove(hkey).expect("key should be present in the collector");
+        if idx < self.loss_cache.0 {
+            //wipe the cache if a hazard was removed that was in it
+            self.loss_cache = (0, 0.0);
         }
+    }
+
+    fn is_empty(&self) -> bool {
+        self.detected.is_empty()
     }
 
     fn len(&self) -> usize {
-        self.detected_pis.len() + self.detected_container.is_some() as usize
+        self.detected.len()
     }
 
-    fn iter(&self) -> impl Iterator<Item=&HazardEntity> {
-        self.detected_pis.iter().map(|(_, (h, _))| h)
-            .chain(self.detected_container.iter().map(|(h, _)| h))
+    fn iter(&self) -> impl Iterator<Item=(HazKey, &HazardEntity)> {
+        self.detected.iter()
+            .map(|(k, (h, _))| (k, h))
     }
 }
