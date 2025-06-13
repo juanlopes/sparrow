@@ -194,7 +194,7 @@ impl Separator {
         let old_weighted_loss = self.ct.get_weighted_loss(pk);
 
         //Remove the item from the problem
-        self.prob.remove_item(pk, true);
+        self.prob.remove_item(pk);
 
         //Place the item again but with a new transformation
         let new_pk = self.prob.place_item(SPPlacement{d_transf,item_id});

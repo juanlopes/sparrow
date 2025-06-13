@@ -1,7 +1,7 @@
+use jagua_rs::collision_detection::hazards::collector::HazardCollector;
 use crate::eval::sample_eval::{SampleEval, SampleEvaluator};
-use crate::eval::specialized_jaguars_pipeline::{collect_poly_collisions_in_detector_custom, SpecializedHazardDetector};
+use crate::eval::specialized_jaguars_pipeline::{collect_poly_collisions_in_detector_custom, SpecializedHazardCollector};
 use crate::quantify::tracker::CollisionTracker;
-use jagua_rs::collision_detection::hazards::detector::HazardDetector;
 use jagua_rs::entities::Item;
 use jagua_rs::entities::Layout;
 use jagua_rs::entities::PItemKey;
@@ -11,7 +11,7 @@ use jagua_rs::geometry::primitives::SPolygon;
 pub struct SeparationEvaluator<'a> {
     layout: &'a Layout,
     item: &'a Item,
-    detection_map: SpecializedHazardDetector<'a>,
+    collector: SpecializedHazardCollector<'a>,
     shape_buff: SPolygon,
     n_evals: usize,
 }
@@ -23,12 +23,12 @@ impl<'a> SeparationEvaluator<'a> {
         current_pk: PItemKey,
         ct: &'a CollisionTracker,
     ) -> Self {
-        let detection_map = SpecializedHazardDetector::new(layout, ct, current_pk);
+        let collector = SpecializedHazardCollector::new(layout, ct, current_pk);
 
         Self {
             layout,
             item,
-            detection_map,
+            collector,
             shape_buff: item.shape_cd.as_ref().clone(),
             n_evals: 0,
         }
@@ -48,20 +48,20 @@ impl<'a> SampleEvaluator for SeparationEvaluator<'a> {
             _ => f32::INFINITY,
         };
         // Reload the detection map for the new query and update the loss bound
-        self.detection_map.reload(loss_bound);
+        self.collector.reload(loss_bound);
 
         // Query the CDE, all colliding hazards will be stored in the detection map
-        collect_poly_collisions_in_detector_custom(cde, &dt, &mut self.shape_buff, self.item.shape_cd.as_ref(), &mut self.detection_map);
+        collect_poly_collisions_in_detector_custom(cde, &dt, &mut self.shape_buff, self.item.shape_cd.as_ref(), &mut self.collector);
 
-        if self.detection_map.early_terminate(&self.shape_buff) {
+        if self.collector.early_terminate(&self.shape_buff) {
             //the detection map is in early termination state, this means potentially not all collisions were detected,
             //but its loss was above the loss bound anyway
             SampleEval::Invalid
-        } else if self.detection_map.is_empty() {
+        } else if self.collector.is_empty() {
             SampleEval::Clear { loss: 0.0 }
         } else {
             SampleEval::Collision {
-                loss: self.detection_map.loss(&self.shape_buff),
+                loss: self.collector.loss(&self.shape_buff),
             }
         }
     }

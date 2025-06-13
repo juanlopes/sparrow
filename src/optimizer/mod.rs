@@ -6,7 +6,6 @@ use crate::sample::uniform_sampler::{convert_sample_to_closest_feasible};
 use crate::FMT;
 use float_cmp::approx_eq;
 use itertools::Itertools;
-use jagua_rs::collision_detection::hazards::detector::{BasicHazardDetector, HazardDetector};
 use jagua_rs::collision_detection::hazards::HazardEntity;
 use jagua_rs::entities::{Instance, Layout, PItemKey};
 use jagua_rs::geometry::geo_traits::CollidesWith;
@@ -19,6 +18,7 @@ use rand_distr::Distribution;
 use rand_distr::Normal;
 use std::cmp::Reverse;
 use std::time::{Duration, Instant};
+use slotmap::SecondaryMap;
 
 pub mod lbf;
 pub mod separator;
@@ -278,12 +278,12 @@ fn disrupt_solution(sep: &mut Separator) {
 fn practically_contained_items(layout: &Layout, pk_c: PItemKey) -> Vec<PItemKey> {
     let pi_c = &layout.placed_items[pk_c];
     // Detect all collisions with the item pk_c's shape.
-    let mut hazard_detector = BasicHazardDetector::new();
-    layout.cde().collect_poly_collisions(&pi_c.shape, &mut hazard_detector);
+    let mut collector = SecondaryMap::new();
+    layout.cde().collect_poly_collisions(&pi_c.shape, &mut collector);
 
     // Filter out the items that have their POI contained by pk_c's shape.
-    hazard_detector.iter()
-        .filter_map(|he| {
+    collector.iter()
+        .filter_map(|(_,he)| {
             match he {
                 HazardEntity::PlacedItem { pk, .. } => Some(*pk),
                 _ => None
