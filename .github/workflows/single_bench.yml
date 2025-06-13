@@ -21,7 +21,7 @@ on:
         description: 'Instance (ignored if custom JSON URL is provided)'
         required: true
         type: choice
-        options: [ swim, trousers, shirts, mao, dagli, albano, marques, blaz1, fu, shapes0, shapes1, jakobs1, jakobs2 ]
+        options: [ swim, trousers, shirts, mao, dagli, albano, marques, blaz1, fu, shapes0, shapes1, jakobs1, jakobs2, swim_cr]
       custom_instance_url:
         description: 'URL to custom instance JSON (e.g. GitHub Gist raw link)'
         required: false
