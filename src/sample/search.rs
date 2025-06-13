@@ -32,7 +32,7 @@ pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, mut e
 
             //create a sampler around the current placement
             let pi_bbox = l.placed_items[ref_pk].shape.bbox;
-            UniformBBoxSampler::new(pi_bbox, item, l.container.outer_cd.bbox, Some(dt.rotation()))
+            UniformBBoxSampler::new(pi_bbox, item, l.container.outer_cd.bbox)
         }
         None => None,
     };
@@ -45,7 +45,7 @@ pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, mut e
         }
     }
 
-    let container_sampler = UniformBBoxSampler::new(l.container.outer_cd.bbox, item, l.container.outer_cd.bbox, None);
+    let container_sampler = UniformBBoxSampler::new(l.container.outer_cd.bbox, item, l.container.outer_cd.bbox);
 
     if let Some(container_sampler) = container_sampler {
         for _ in 0..sample_config.n_container_samples {
