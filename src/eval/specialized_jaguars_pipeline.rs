@@ -1,3 +1,4 @@
+use std::f32::consts::PI;
 use crate::quantify::quantify_collision_poly_container;
 #[cfg(not(feature = "simd"))]
 use crate::quantify::quantify_collision_poly_poly;
@@ -38,9 +39,19 @@ pub fn collect_poly_collisions_in_detector_custom(
     collector.poles_soa.load(&shape.surrogate().poles);
     
     // Start off by checking a few poles to detect obvious collisions quickly
-    for pole in shape.surrogate().ff_poles() {
-        cde.quadtree.collect_collisions(pole, collector);
-        if collector.early_terminate(shape) { return; }
+    {
+        //TODO: clean this up
+        let area_threshold = shape.area * 0.5 / PI;
+        let mut area_sum = 0.0;
+        for pole in shape.surrogate().poles.iter() {
+            cde.quadtree.collect_collisions(pole, collector);
+            if collector.early_terminate(shape) { return; }
+            area_sum += pole.radius * pole.radius;
+            if area_sum > area_threshold {
+                // If the area of the poles exceeds 80% of the shape's area, we can stop early.
+                break;
+            }
+        }
     }
 
     // Find the virtual root of the quadtree for the shape's bounding box. So we do not have to start from the root every time.

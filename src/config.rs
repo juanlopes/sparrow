@@ -1,8 +1,8 @@
+use crate::optimizer::separator::SeparatorConfig;
+use crate::sample::search::SampleConfig;
 use jagua_rs::collision_detection::CDEConfig;
 use jagua_rs::geometry::fail_fast::SPSurrogateConfig;
 use jagua_rs::io::svg::{SvgDrawOptions, SvgLayoutTheme};
-use crate::optimizer::separator::SeparatorConfig;
-use crate::sample::search::SampleConfig;
 
 pub const RNG_SEED: Option<usize> = None;
 
@@ -71,10 +71,16 @@ pub const CD_STEP_SUCCESS: f32 = 1.1;
 pub const CD_STEP_FAIL: f32 = 0.5;
 
 /// Ratio of the item's min dimension to be used as initial and limit step size for the first refinement
-pub const PRE_REF_CD_RATIOS: (f32, f32) = (0.25, 0.02);
+pub const PRE_REFINE_CD_TL_RATIOS: (f32, f32) = (0.25, 0.02);
 
-/// Ratio of the item's min dimension to be used as initial and limit step size for the final refinement
-pub const FIN_REF_CD_RATIOS: (f32, f32) = (0.01, 0.001);
+/// Step sizes for rotation in the first refinement
+pub const PRE_REFINE_CD_R_STEPS: (f32, f32) = (f32::to_radians(5.0), f32::to_radians(1.0));
+
+/// Ratio of the item's min dimension to be used as initial and limit step size for the second (final) refinement
+pub const SND_REFINE_CD_TL_RATIOS: (f32, f32) = (0.01, 0.001);
+
+/// Step sizes for rotation in the second (final) refinement
+pub const SND_REFINE_CD_R_STEPS: (f32, f32) = (f32::to_radians(0.5), f32::to_radians(0.05));
 
 /// If two samples are closer than this ratio of the item's min dimension, they are considered duplicates
 pub const UNIQUE_SAMPLE_THRESHOLD: f32 = 0.05;

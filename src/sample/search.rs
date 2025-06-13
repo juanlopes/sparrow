@@ -1,9 +1,10 @@
 use jagua_rs::entities::{Item, Layout, PItemKey};
 use jagua_rs::geometry::DTransformation;
-use crate::config::{FIN_REF_CD_RATIOS, PRE_REF_CD_RATIOS, UNIQUE_SAMPLE_THRESHOLD};
+use jagua_rs::geometry::geo_enums::RotationRange;
+use crate::config::{SND_REFINE_CD_TL_RATIOS, PRE_REFINE_CD_TL_RATIOS, UNIQUE_SAMPLE_THRESHOLD, PRE_REFINE_CD_R_STEPS, SND_REFINE_CD_R_STEPS};
 use crate::eval::sample_eval::{SampleEval, SampleEvaluator};
 use crate::sample::best_samples::BestSamples;
-use crate::sample::coord_descent::refine_coord_desc;
+use crate::sample::coord_descent::{refine_coord_desc, CDConfig};
 use crate::sample::uniform_sampler::UniformBBoxSampler;
 use log::debug;
 use rand::Rng;
@@ -53,24 +54,53 @@ pub fn search_placement(l: &Layout, item: &Item, ref_pk: Option<PItemKey>, mut e
             best_samples.report(dt, eval);
         }
     }
-
+    
     //Prerefine the best samples
     for start in best_samples.samples.clone() {
         let descended = refine_coord_desc(
             start.clone(),
             &mut evaluator,
-            item_min_dim * PRE_REF_CD_RATIOS.0,
-            item_min_dim * PRE_REF_CD_RATIOS.1,
-            rng);
+            prerefine_cd_config(item),
+            rng,
+        );
         best_samples.report(descended.0, descended.1);
     }
 
 
     //Do a final refine on the best one
     let final_sample = best_samples.best().map(|s|
-        refine_coord_desc(s, &mut evaluator, item_min_dim * FIN_REF_CD_RATIOS.0, item_min_dim * FIN_REF_CD_RATIOS.1, rng)
+        refine_coord_desc(
+            s, 
+            &mut evaluator, 
+            final_refine_cd_config(item), 
+            rng,
+        )
     );
 
     debug!("[S] {} samples evaluated, final: {:?}",evaluator.n_evals(),final_sample);
     (final_sample, evaluator.n_evals())
+}
+
+fn prerefine_cd_config(item: &Item) -> CDConfig {
+    let item_min_dim = f32::min(item.shape_cd.bbox.width(), item.shape_cd.bbox.height());
+    let wiggle = item.allowed_rotation == RotationRange::Continuous;
+    CDConfig {
+        t_step_init: item_min_dim * PRE_REFINE_CD_TL_RATIOS.0,
+        t_step_limit: item_min_dim * PRE_REFINE_CD_TL_RATIOS.1,
+        r_step_init: PRE_REFINE_CD_R_STEPS.0,
+        r_step_limit: PRE_REFINE_CD_R_STEPS.1,
+        wiggle,
+    }
+}
+
+fn final_refine_cd_config(item: &Item) -> CDConfig {
+    let item_min_dim = f32::min(item.shape_cd.bbox.width(), item.shape_cd.bbox.height());
+    let wiggle = item.allowed_rotation == RotationRange::Continuous;
+    CDConfig {
+        t_step_init: item_min_dim * SND_REFINE_CD_TL_RATIOS.0,
+        t_step_limit: item_min_dim * SND_REFINE_CD_TL_RATIOS.1,
+        r_step_init: SND_REFINE_CD_R_STEPS.0,
+        r_step_limit: SND_REFINE_CD_R_STEPS.1,
+        wiggle
+    }
 }
