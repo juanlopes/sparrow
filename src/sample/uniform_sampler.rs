@@ -1,15 +1,15 @@
-use std::f32::consts::PI;
 use itertools::Itertools;
+use jagua_rs::entities::Item;
 use jagua_rs::geometry::geo_enums::RotationRange;
 use jagua_rs::geometry::geo_traits::TransformableFrom;
-use rand::prelude::IndexedRandom;
-use rand::Rng;
-use std::ops::Range;
-use jagua_rs::entities::Item;
 use jagua_rs::geometry::primitives::Rect;
 use jagua_rs::geometry::{normalize_rotation, DTransformation, Transformation};
-use ndarray::Array;
-use ordered_float::{OrderedFloat};
+use ndarray::{Array};
+use ordered_float::OrderedFloat;
+use rand::prelude::IndexedRandom;
+use rand::Rng;
+use std::f32::consts::PI;
+use std::ops::Range;
 
 const ROT_N_SAMPLES: usize = 16; // number of rotations to sample for continuous rotation
 
@@ -28,13 +28,19 @@ struct RotEntry {
 }
 
 impl UniformBBoxSampler {
-    pub fn new(sample_bbox: Rect, item: &Item, container_bbox: Rect) -> Option<Self> {
+    pub fn new(sample_bbox: Rect, item: &Item, container_bbox: Rect, focussed_rotation: Option<f32>) -> Option<Self> {
         let rotations = match &item.allowed_rotation {
-            RotationRange::None => &vec![0.0],
-            RotationRange::Discrete(r) => r,
+            RotationRange::None => vec![0.0],
+            RotationRange::Discrete(r) => r.clone(),
             RotationRange::Continuous => {
                 // for continuous rotation, we sample a set of rotations spaced evenly
-                &Array::linspace(0.0, 2.0 * PI, ROT_N_SAMPLES).to_vec()
+                let mut rotations = Array::linspace(0.0, 2.0 * PI, ROT_N_SAMPLES).to_vec();
+                if let Some(fr) = focussed_rotation {
+                    // if a focussed rotation is provided, include it in the set
+                    let focussed_range = Array::linspace(fr - (PI / 8.0), fr + (PI / 8.0), ROT_N_SAMPLES);
+                    rotations.extend(focussed_range.iter());
+                }
+                rotations
             }
         };
 
