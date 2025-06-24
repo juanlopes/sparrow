@@ -46,7 +46,7 @@ pub fn quantify_collision_poly_container(s: &SPolygon, c_bbox: Rect) -> f32 {
     };
     debug_assert!(overlap.is_normal());
 
-    let penalty = s.surrogate().convex_hull_area;
+    let penalty = calc_shape_penalty(s, s);
 
-    10.0 * (overlap * penalty).sqrt()
+    10.0 * overlap.sqrt() * penalty
 }
