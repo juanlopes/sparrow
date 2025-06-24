@@ -5,6 +5,7 @@ use std::simd::Simd;
 use jagua_rs::geometry::fail_fast::SPSurrogate;
 use jagua_rs::geometry::geo_traits::DistanceTo;
 use jagua_rs::geometry::primitives::{Circle, Point};
+use std::f32::consts::PI;
 
 /// Width of the SIMD vector
 const SIMD_WIDTH: usize = 8;
@@ -78,6 +79,8 @@ pub fn poles_overlap_area_proxy_simd(sp1: &SPSurrogate, sp2: &SPSurrogate, epsil
             total_overlap += pd_decay * f32::min(p1.radius, p2.radius);
         }
     }
+    
+    total_overlap *= PI;
 
     debug_assert!(
         approx_eq!(f32, total_overlap, overlap_area_proxy(sp1, sp2, epsilon),

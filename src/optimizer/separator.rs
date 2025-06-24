@@ -150,7 +150,7 @@ impl Separator {
                 // Sync the workers with the master
                 worker.load(&master_sol, &self.ct);
                 // Let them modify
-                worker.separate()
+                worker.move_colliding_items()
             }).sum()
         });
 

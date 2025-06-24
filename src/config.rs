@@ -7,7 +7,7 @@ use jagua_rs::io::svg::{SvgDrawOptions, SvgLayoutTheme};
 pub const RNG_SEED: Option<usize> = None;
 
 pub const CDE_CONFIG: CDEConfig = CDEConfig {
-    quadtree_depth: 3,
+    quadtree_depth: 4,
     cd_threshold: 8,
     item_surrogate_config: SPSurrogateConfig {
         n_pole_limits: [(64, 0.0), (16, 0.8), (8, 0.9)],
@@ -94,6 +94,8 @@ pub const LOG_LEVEL_FILTER_RELEASE: log::LevelFilter = log::LevelFilter::Info;
 pub const LOG_LEVEL_FILTER_DEBUG: log::LevelFilter = log::LevelFilter::Debug;
 
 pub const LARGE_AREA_CH_AREA_CUTOFF_PERCENTILE: f32 = 0.75;
+
+pub const SEPARATOR_CANDIDATE_THRESHOLD: f32 = 0.1;
 
 pub const DRAW_OPTIONS: SvgDrawOptions = SvgDrawOptions {
     theme: SvgLayoutTheme::GRAY,

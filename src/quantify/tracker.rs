@@ -109,14 +109,15 @@ impl CollisionTracker {
     }
 
     pub fn increment_weights(&mut self) {
-        let max_o = self.pair_collisions.data.iter()
+        let max_loss = self.pair_collisions.data.iter()
+            .chain(self.container_collisions.iter())
             .map(|e| e.loss)
             .fold(0.0, |a, b| a.max(b));
 
         for e in self.pair_collisions.data.iter_mut() {
             let multiplier = match e.loss == 0.0 {
                 true => WEIGHT_DECAY, // no collision
-                false => WEIGHT_MIN_INC_RATIO + (WEIGHT_MAX_INC_RATIO - WEIGHT_MIN_INC_RATIO) * (e.loss / max_o),
+                false => WEIGHT_MIN_INC_RATIO + (WEIGHT_MAX_INC_RATIO - WEIGHT_MIN_INC_RATIO) * (e.loss / max_loss),
             };
             e.weight = (e.weight * multiplier).max(1.0);
         }
@@ -124,7 +125,7 @@ impl CollisionTracker {
         for e in self.container_collisions.iter_mut() {
             let multiplier = match e.loss == 0.0 {
                 true => WEIGHT_DECAY, // no collision
-                false => WEIGHT_MAX_INC_RATIO,
+                false => WEIGHT_MIN_INC_RATIO + (WEIGHT_MAX_INC_RATIO - WEIGHT_MIN_INC_RATIO) * (e.loss / max_loss),
             };
             e.weight = (e.weight * multiplier).max(1.0);
         }
