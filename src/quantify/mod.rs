@@ -48,5 +48,5 @@ pub fn quantify_collision_poly_container(s: &SPolygon, c_bbox: Rect) -> f32 {
 
     let penalty = calc_shape_penalty(s, s);
 
-    overlap.sqrt() * penalty
+    2.0 * overlap.sqrt() * penalty
 }

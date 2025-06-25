@@ -47,7 +47,7 @@ impl CollisionTracker {
     fn recompute_loss_for_item(&mut self, pk: PItemKey, l: &Layout) {
         let idx = self.pk_idx_map[pk];
         let pi = &l.placed_items[pk];
-        let shape = pi.shape.as_ref();
+        let shape = &pi.shape;
 
         // Reset all current loss values for the item
         for i in 0..self.size {

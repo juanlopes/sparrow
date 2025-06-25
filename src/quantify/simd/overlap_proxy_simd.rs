@@ -8,7 +8,7 @@ use jagua_rs::geometry::primitives::{Circle, Point};
 use std::f32::consts::PI;
 
 /// Width of the SIMD vector
-const SIMD_WIDTH: usize = 8;
+const SIMD_WIDTH: usize = 4;
 
 #[allow(non_camel_case_types)]
 type f32xN = Simd<f32,SIMD_WIDTH>;
