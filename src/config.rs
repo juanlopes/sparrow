@@ -7,8 +7,8 @@ use jagua_rs::io::svg::{SvgDrawOptions, SvgLayoutTheme};
 pub const RNG_SEED: Option<usize> = None;
 
 pub const CDE_CONFIG: CDEConfig = CDEConfig {
-    quadtree_depth: 4,
-    cd_threshold: 8,
+    quadtree_depth: 3,
+    cd_threshold: 16,
     item_surrogate_config: SPSurrogateConfig {
         n_pole_limits: [(64, 0.0), (16, 0.8), (8, 0.9)],
         n_ff_poles: 1,
@@ -28,7 +28,7 @@ pub const SIMPL_TOLERANCE: Option<f32> = Some(0.001);
 pub const MIN_ITEM_SEPARATION: Option<f32> = None;
 
 pub const EXPLORE_SHRINK_STEP: f32 = 0.001;
-pub const EXPLORE_SOL_DISTR_STDDEV: f32 = 0.25;
+pub const EXPLORE_SOL_DISTR_STDDEV: f32 = 0.1;
 pub const EXPLORE_TIME_RATIO: f32 = 0.8;
 
 pub const COMPRESS_SHRINK_RANGE: (f32, f32) = (0.0005, 0.00001);
