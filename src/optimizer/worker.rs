@@ -13,7 +13,6 @@ use rand::prelude::{SliceRandom, SmallRng};
 use std::iter::Sum;
 use std::ops::AddAssign;
 use tap::Tap;
-use crate::config::SEPARATOR_CANDIDATE_THRESHOLD;
 
 pub struct SeparatorWorker {
     pub instance: SPInstance,
@@ -33,12 +32,8 @@ impl SeparatorWorker {
 
     pub fn move_colliding_items(&mut self) -> SepStats {
         //collect all colliding items and shuffle them
-        let biggest_loss_item = self.prob.layout.placed_items.keys()
-            .map(|pk| self.ct.get_weighted_loss(pk))
-            .fold(0.0_f32, |a, b| a.max(b));
-        
         let candidates = self.prob.layout.placed_items.keys()
-            .filter(|pk| self.ct.get_weighted_loss(*pk) > biggest_loss_item * SEPARATOR_CANDIDATE_THRESHOLD)
+            .filter(|pk| self.ct.get_loss(*pk) > 0.0)
             .collect_vec()
             .tap_mut(|v| v.shuffle(&mut self.rng));
 

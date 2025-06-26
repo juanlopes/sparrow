@@ -79,12 +79,6 @@ pub fn exploration_phase(instance: &SPInstance, sep: &mut Separator, term: &Term
                 Ok(idx) | Err(idx) => solution_pool.insert(idx, (local_best.0.clone(), total_loss)),
             }
 
-            if solution_pool.len() >= 20 {
-                info!("[EXPL] solution pool is too large: {:#?}, trimming it", solution_pool.iter().map(|(_,l)| FMT().fmt2(*l).to_string()).collect_vec());
-                solution_pool.drain(12..);
-                solution_pool.drain(..8);
-            }
-
             //restore to a random solution from the tabu list, better solutions have more chance to be selected
             let selected_sol = {
                 //sample a value in range [0.0, 1.0[ from a normal distribution

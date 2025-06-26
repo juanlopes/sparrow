@@ -28,7 +28,7 @@ pub const SIMPL_TOLERANCE: Option<f32> = Some(0.001);
 pub const MIN_ITEM_SEPARATION: Option<f32> = None;
 
 pub const EXPLORE_SHRINK_STEP: f32 = 0.001;
-pub const EXPLORE_SOL_DISTR_STDDEV: f32 = 0.1;
+pub const EXPLORE_SOL_DISTR_STDDEV: f32 = 0.25;
 pub const EXPLORE_TIME_RATIO: f32 = 0.8;
 
 pub const COMPRESS_SHRINK_RANGE: (f32, f32) = (0.0005, 0.00001);
@@ -94,8 +94,6 @@ pub const LOG_LEVEL_FILTER_RELEASE: log::LevelFilter = log::LevelFilter::Info;
 pub const LOG_LEVEL_FILTER_DEBUG: log::LevelFilter = log::LevelFilter::Debug;
 
 pub const LARGE_AREA_CH_AREA_CUTOFF_PERCENTILE: f32 = 0.75;
-
-pub const SEPARATOR_CANDIDATE_THRESHOLD: f32 = 0.1;
 
 pub const DRAW_OPTIONS: SvgDrawOptions = SvgDrawOptions {
     theme: SvgLayoutTheme::GRAY,
