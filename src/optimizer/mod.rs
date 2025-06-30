@@ -1,7 +1,6 @@
 use crate::config::*;
 use crate::optimizer::lbf::LBFBuilder;
 use crate::optimizer::separator::Separator;
-pub use crate::optimizer::terminator::Terminator;
 use crate::sample::uniform_sampler::{convert_sample_to_closest_feasible};
 use crate::FMT;
 use float_cmp::approx_eq;
@@ -19,60 +18,63 @@ use rand_distr::Normal;
 use std::cmp::Reverse;
 use std::time::{Duration, Instant};
 use slotmap::SecondaryMap;
+use crate::util::listener::{ReportType, SolutionListener};
+use crate::util::terminator::Terminator;
 
 pub mod lbf;
 pub mod separator;
 mod worker;
-pub mod terminator;
 
 // All high-level heuristic logic
-pub fn optimize(instance: SPInstance, mut rng: SmallRng, output_folder_path: String, mut terminator: Terminator, explore_dur: Duration, compress_dur: Duration) -> SPSolution {
+pub fn optimize(instance: SPInstance, mut rng: SmallRng, sol_listener: &mut impl SolutionListener, terminator: &mut impl Terminator, explore_dur: Duration, compress_dur: Duration) -> SPSolution {
     let mut next_rng = || SmallRng::seed_from_u64(rng.next_u64());
     let builder = LBFBuilder::new(instance.clone(), next_rng(), LBF_SAMPLE_CONFIG).construct();
 
-    terminator.set_timeout_from_now(explore_dur);
-    let mut expl_separator = Separator::new(builder.instance, builder.prob, next_rng(), output_folder_path.clone(), 0, SEP_CFG_EXPLORE);
-    let solutions = exploration_phase(&instance, &mut expl_separator, &terminator);
+    terminator.new_timeout(explore_dur);
+    let mut expl_separator = Separator::new(builder.instance, builder.prob, next_rng(),SEP_CFG_EXPLORE);
+    let solutions = exploration_phase(&instance, &mut expl_separator, terminator, sol_listener);
     let final_explore_sol = solutions.last().unwrap().clone();
 
-    terminator.set_timeout_from_now(compress_dur).reset_ctrlc();
-    let mut cmpr_separator = Separator::new(expl_separator.instance, expl_separator.prob, next_rng(), expl_separator.output_svg_folder, expl_separator.svg_counter, SEP_CFG_COMPRESS);
-    let cmpr_sol = compression_phase(&instance, &mut cmpr_separator, &final_explore_sol, &terminator);
+    terminator.new_timeout(compress_dur);
+    let mut cmpr_separator = Separator::new(expl_separator.instance, expl_separator.prob, next_rng(), SEP_CFG_COMPRESS);
+    let cmpr_sol = compression_phase(&instance, &mut cmpr_separator, &final_explore_sol, terminator, sol_listener);
+    
+    sol_listener.report(ReportType::Final, &cmpr_sol, &instance);
 
     cmpr_sol
 }
 
-pub fn exploration_phase(instance: &SPInstance, sep: &mut Separator, term: &Terminator) -> Vec<SPSolution> {
+pub fn exploration_phase(instance: &SPInstance, sep: &mut Separator, term: &impl Terminator, sol_listener: &mut impl SolutionListener) -> Vec<SPSolution> {
     let mut current_width = sep.prob.strip_width();
     let mut best_width = current_width;
 
     let mut feasible_solutions = vec![sep.prob.save()];
 
-    sep.export_svg(None, "init", false);
+    sol_listener.report(ReportType::ExplFeas, &feasible_solutions[0], instance);
     info!("[EXPL] starting optimization with initial width: {:.3} ({:.3}%)",current_width,sep.prob.density() * 100.0);
 
     let mut solution_pool: Vec<(SPSolution, f32)> = vec![];
 
-    while !term.is_kill() {
-        let local_best = sep.separate(&term);
+    while !term.kill() {
+        let local_best = sep.separate(term, sol_listener);
         let total_loss = local_best.1.get_total_loss();
 
         if total_loss == 0.0 {
             //layout is successfully separated
             if current_width < best_width {
-                info!("[EXPL] new best at width: {:.3} ({:.3}%)",current_width,sep.prob.density() * 100.0);
+                info!("[EXPL] feasible solution found! (width: {:.3}, dens: {:.3}%)",current_width,sep.prob.density() * 100.0);
                 best_width = current_width;
                 feasible_solutions.push(local_best.0.clone());
-                sep.export_svg(Some(local_best.0.clone()), "expl_f", false);
+                sol_listener.report(ReportType::ExplFeas, &local_best.0, instance);
             }
             let next_width = current_width * (1.0 - EXPLORE_SHRINK_STEP);
-            info!("[EXPL] shrinking width by {}%: {:.3} -> {:.3}", EXPLORE_SHRINK_STEP * 100.0, current_width, next_width);
+            info!("[EXPL] shrinking strip by {}%: {:.3} -> {:.3}", EXPLORE_SHRINK_STEP * 100.0, current_width, next_width);
             sep.change_strip_width(next_width, None);
             current_width = next_width;
             solution_pool.clear();
         } else {
-            info!("[EXPL] layout separation unsuccessful, exporting min loss solution");
-            sep.export_svg(Some(local_best.0.clone()), "expl_nf", false);
+            info!("[EXPL] unable to reach feasibility (width: {:.3}, dens: {:.3}%, min loss: {:.3})", current_width, sep.prob.density() * 100.0, FMT().fmt2(total_loss));
+            sol_listener.report(ReportType::ExplInfeas, &local_best.0, instance);
 
             //layout was not successfully separated, add to local bests
             match solution_pool.binary_search_by(|(_, o)| o.partial_cmp(&total_loss).unwrap()) {
@@ -88,7 +90,7 @@ pub fn exploration_phase(instance: &SPInstance, sep: &mut Separator, term: &Term
                 let selected_idx = (sample * solution_pool.len() as f32) as usize;
 
                 let (selected_sol, loss) = &solution_pool[selected_idx];
-                info!("[EXPL] selected starting solution {}/{} from solution pool (l: {})", selected_idx, solution_pool.len(), FMT().fmt2(*loss));
+                info!("[EXPL] selected starting solution {}/{} from solution pool (l: {}) to disrupt", selected_idx, solution_pool.len(), FMT().fmt2(*loss));
                 selected_sol
             };
 
@@ -97,15 +99,15 @@ pub fn exploration_phase(instance: &SPInstance, sep: &mut Separator, term: &Term
         }
     }
 
-    info!("[EXPL] time limit reached, best solution found: {:.3} ({:.3}%)",best_width,feasible_solutions.last().unwrap().density(instance) * 100.0);
+    info!("[EXPL] terminating exploration phase, returning best feasible solution (width: {:.3}, dens: {:.3}%)",best_width,feasible_solutions.last().unwrap().density(instance) * 100.0);
 
     feasible_solutions
 }
 
-pub fn compression_phase(instance: &SPInstance, sep: &mut Separator, init: &SPSolution, term: &Terminator) -> SPSolution {
+pub fn compression_phase(instance: &SPInstance, sep: &mut Separator, init: &SPSolution, term: &impl Terminator, sol_listener: &mut impl SolutionListener) -> SPSolution {
     let mut best = init.clone();
     let start = Instant::now();
-    let end = term.timeout.expect("compression running without timeout");
+    let end = term.timeout_at().expect("compression phase cannot operate without timeout");
     let step_size = || -> f32 {
         //map the range [COMPRESS_SHRINK_RANGE.0, COMPRESS_SHRINK_RANGE.1] to timeout
         let range = COMPRESS_SHRINK_RANGE.1 - COMPRESS_SHRINK_RANGE.0;
@@ -114,13 +116,13 @@ pub fn compression_phase(instance: &SPInstance, sep: &mut Separator, init: &SPSo
         let ratio = elapsed.as_secs_f32() / (elapsed + remaining).as_secs_f32();
         COMPRESS_SHRINK_RANGE.0 + ratio * range
     };
-    while !term.is_kill() {
+    while !term.kill() {
         let step = step_size();
         info!("[CMPR] attempting {:.3}%", step * 100.0);
-        match attempt_to_compress(sep, &best, step, &term) {
+        match attempt_to_compress(sep, &best, step, term, sol_listener) {
             Some(compacted_sol) => {
-                info!("[CMPR] compressed to {:.3} ({:.3}%)", compacted_sol.strip_width(), compacted_sol.density(instance) * 100.0);
-                sep.export_svg(Some(compacted_sol.clone()), "cmpr", false);
+                info!("[CMPR] successfully compressed to {:.3} ({:.3}%)", compacted_sol.strip_width(), compacted_sol.density(instance) * 100.0);
+                sol_listener.report(ReportType::CmprFeas, &compacted_sol, instance);
                 best = compacted_sol;
             }
             None => {}
@@ -131,7 +133,7 @@ pub fn compression_phase(instance: &SPInstance, sep: &mut Separator, init: &SPSo
 }
 
 
-fn attempt_to_compress(sep: &mut Separator, init: &SPSolution, r_shrink: f32, term: &Terminator) -> Option<SPSolution> {
+fn attempt_to_compress(sep: &mut Separator, init: &SPSolution, r_shrink: f32, term: &impl Terminator, sol_listener: &mut impl SolutionListener) -> Option<SPSolution> {
     //restore to the initial solution and width
     sep.change_strip_width(init.strip_width(), None);
     sep.rollback(&init, None);
@@ -142,7 +144,7 @@ fn attempt_to_compress(sep: &mut Separator, init: &SPSolution, r_shrink: f32, te
     sep.change_strip_width(new_width, Some(split_pos));
 
     //try to separate layout, if all collisions are eliminated, return the solution
-    let (compacted_sol, ot) = sep.separate(term);
+    let (compacted_sol, ot) = sep.separate(term, sol_listener);
     match ot.get_total_loss() == 0.0 {
         true => Some(compacted_sol),
         false => None,
