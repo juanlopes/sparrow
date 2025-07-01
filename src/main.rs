@@ -5,7 +5,7 @@ use log::{info, warn, Level};
 use rand::prelude::SmallRng;
 use rand::SeedableRng;
 use sparrow::config::*;
-use sparrow::optimizer::{optimize, Terminator};
+use sparrow::optimizer::optimize;
 use sparrow::util::io;
 use sparrow::util::io::{MainCli, SPOutput};
 use std::fs;
@@ -16,6 +16,8 @@ use jagua_rs::io::svg::s_layout_to_svg;
 use sparrow::EPOCH;
 
 use anyhow::{bail, Result};
+use sparrow::util::svg_exporter::SvgExporter;
+use sparrow::util::ctrlc_terminator::CtrlCTerminator;
 
 fn main() -> Result<()>{
     fs::create_dir_all(OUTPUT_DIR)?;
@@ -62,12 +64,30 @@ fn main() -> Result<()>{
     let instance = jagua_rs::probs::spp::io::import(&importer, &ext_instance)?;
 
     info!("[MAIN] loaded instance {} with #{} items", ext_instance.name, instance.total_item_qty());
+    
+    let mut svg_exporter = {
+        let final_svg_path = Some(format!("{OUTPUT_DIR}/final_{}.svg", ext_instance.name));
 
-    let output_folder_path = format!("{OUTPUT_DIR}/sols_{}", ext_instance.name);
+        let intermediate_svg_dir = match cfg!(feature = "only_final_svg") {
+            true => None,
+            false => Some(format!("{OUTPUT_DIR}/sols_{}", ext_instance.name))
+        };
 
-    let terminator = Terminator::new_with_ctrlc_handler();
+        let live_svg_path = match cfg!(feature = "live_svg") {
+            true => Some(format!("{LIVE_DIR}/.live_solution.svg")),
+            false => None
+        };
+        
+        SvgExporter::new(
+            final_svg_path,
+            intermediate_svg_dir,
+            live_svg_path
+        )
+    };
+    
+    let mut ctrlc_terminator = CtrlCTerminator::new();
 
-    let solution = optimize(instance.clone(), rng, output_folder_path, terminator, explore_dur, compress_dur);
+    let solution = optimize(instance.clone(), rng, &mut svg_exporter, &mut ctrlc_terminator, explore_dur, compress_dur);
 
     {
         let svg = s_layout_to_svg(&solution.layout_snapshot, &instance, DRAW_OPTIONS, "final");
