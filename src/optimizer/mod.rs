@@ -27,7 +27,7 @@ pub fn optimize(instance: SPInstance, mut rng: SmallRng, sol_listener: &mut impl
         &mut expl_separator,
         sol_listener,
         terminator,
-        Some(10)
+        None,
     );
     let final_explore_sol = solutions.last().unwrap().clone();
 
@@ -39,7 +39,7 @@ pub fn optimize(instance: SPInstance, mut rng: SmallRng, sol_listener: &mut impl
         &final_explore_sol,
         sol_listener,
         terminator,
-        ShrinkDecayStrategy::FailureBased(0.9)
+        ShrinkDecayStrategy::TimeBased(terminator.timeout_at().unwrap()),
     );
 
     sol_listener.report(ReportType::Final, &cmpr_sol, &instance);
