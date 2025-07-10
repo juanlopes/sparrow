@@ -1,15 +1,18 @@
 #![cfg_attr(feature = "simd", feature(portable_simd))]
 #![allow(const_item_mutation)]
+#![allow(unused_imports)]
 
 use std::sync::LazyLock;
 use numfmt::{Formatter, Precision, Scales};
 use std::time::Instant;
+
 pub mod optimizer;
 pub mod quantify;
 pub mod sample;
 pub mod util;
 pub mod config;
 pub mod eval;
+pub mod consts;
 
 pub static EPOCH: LazyLock<Instant> = LazyLock::new(Instant::now);
 

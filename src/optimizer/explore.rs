@@ -10,14 +10,14 @@ use ordered_float::OrderedFloat;
 use rand::prelude::{Distribution, IteratorRandom};
 use rand_distr::Normal;
 use slotmap::SecondaryMap;
-use crate::config::{EXPLORE_SHRINK_STEP, EXPLORE_SOL_DISTR_STDDEV, LARGE_AREA_CH_AREA_CUTOFF_PERCENTILE};
+use crate::config::ExplorationConfig;
 use crate::FMT;
-use crate::optimizer::separator::Separator;
+use crate::optimizer::separator::{Separator, SeparatorConfig};
 use crate::sample::uniform_sampler::convert_sample_to_closest_feasible;
 use crate::util::listener::{ReportType, SolutionListener};
 use crate::util::terminator::Terminator;
 
-pub fn exploration_phase(instance: &SPInstance, sep: &mut Separator, sol_listener: &mut impl SolutionListener,  term: &impl Terminator, max_failed_attempts: Option<usize>) -> Vec<SPSolution> {
+pub fn exploration_phase(instance: &SPInstance, sep: &mut Separator, sol_listener: &mut impl SolutionListener,  term: &impl Terminator, config: &ExplorationConfig) -> Vec<SPSolution> {
     let mut current_width = sep.prob.strip_width();
     let mut best_width = current_width;
 
@@ -40,8 +40,8 @@ pub fn exploration_phase(instance: &SPInstance, sep: &mut Separator, sol_listene
                 feasible_solutions.push(local_best.0.clone());
                 sol_listener.report(ReportType::ExplFeas, &local_best.0, instance);
             }
-            let next_width = current_width * (1.0 - EXPLORE_SHRINK_STEP);
-            info!("[EXPL] shrinking strip by {}%: {:.3} -> {:.3}", EXPLORE_SHRINK_STEP * 100.0, current_width, next_width);
+            let next_width = current_width * (1.0 - config.shrink_step);
+            info!("[EXPL] shrinking strip by {}%: {:.3} -> {:.3}", config.shrink_step * 100.0, current_width, next_width);
             sep.change_strip_width(next_width, None);
             current_width = next_width;
             solution_pool.clear();
@@ -54,35 +54,35 @@ pub fn exploration_phase(instance: &SPInstance, sep: &mut Separator, sol_listene
                 Ok(idx) | Err(idx) => solution_pool.insert(idx, (local_best.0.clone(), total_loss)),
             }
 
-            if solution_pool.len() >= max_failed_attempts.unwrap_or(usize::MAX) {
-                info!("[EXPL] reached maximum number of failed attempts ({}) in exploration phase, terminating", solution_pool.len());
+            if solution_pool.len() >= config.max_conseq_failed_attempts.unwrap_or(usize::MAX) {
+                info!("[EXPL] max consecutive failed attempts ({}), terminating", solution_pool.len());
                 break;
             }
 
             //restore to a random solution from the tabu list, better solutions have more chance to be selected
             let selected_sol = {
                 //sample a value in range [0.0, 1.0[ from a normal distribution
-                let distr = Normal::new(0.0, EXPLORE_SOL_DISTR_STDDEV).unwrap();
+                let distr = Normal::new(0.0, config.solution_pool_distribution_stddev).unwrap();
                 let sample = distr.sample(&mut sep.rng).abs().min(0.999);
                 //map it to the range of the solution pool
                 let selected_idx = (sample * solution_pool.len() as f32) as usize;
 
                 let (selected_sol, loss) = &solution_pool[selected_idx];
-                info!("[EXPL] selected starting solution {}/{} from solution pool (l: {}) to disrupt", selected_idx, solution_pool.len(), FMT().fmt2(*loss));
+                info!("[EXPL] starting solution {}/{} selected from solution pool (l: {}) to disrupt", selected_idx, solution_pool.len(), FMT().fmt2(*loss));
                 selected_sol
             };
 
             sep.rollback(selected_sol, None);
-            disrupt_solution(sep);
+            disrupt_solution(sep, config);
         }
     }
 
-    info!("[EXPL] exploration phase finished, returning best feasible solution (width: {:.3}, dens: {:.3}%)",best_width,feasible_solutions.last().unwrap().density(instance) * 100.0);
+    info!("[EXPL] finished, best feasible solution: width: {:.3} ({:.3}%)",best_width,feasible_solutions.last().unwrap().density(instance) * 100.0);
 
     feasible_solutions
 }
 
-fn disrupt_solution(sep: &mut Separator) {
+fn disrupt_solution(sep: &mut Separator, config: &ExplorationConfig) {
     // The general idea is to disrupt a solution by swapping two 'large' items in the layout.
     // 'Large' items are those whose convex hull area falls within a certain top percentile
     // of the total convex hull area of all items in the layout.
@@ -98,7 +98,7 @@ fn disrupt_solution(sep: &mut Separator) {
         .map(|(item, quantity)| item.shape_cd.surrogate().convex_hull_area * (*quantity as f32))
         .sum();
 
-    let cutoff_threshold_area = total_convex_hull_area * LARGE_AREA_CH_AREA_CUTOFF_PERCENTILE;
+    let cutoff_threshold_area = total_convex_hull_area * config.large_item_ch_area_cutoff_percentile;
 
     // Sort items by convex hull area in descending order.
     let sorted_items_by_ch_area = sep
@@ -147,7 +147,7 @@ fn disrupt_solution(sep: &mut Separator) {
                 .filter(|(pk, _)| *pk != pk1) // Ensure the second item is not the same as the first
                 .choose(&mut sep.rng)
         }) // As a fallback, choose any item
-        .expect("[DSRP] failed to choose second item");
+        .expect("[EXPL] failed to choose second item for disruption");
 
     // Step 3: Swap the two items' positions in the layout.
 
@@ -158,7 +158,7 @@ fn disrupt_solution(sep: &mut Separator) {
     let dt1_new = convert_sample_to_closest_feasible(dt2_old, sep.prob.instance.item(pi1.item_id));
     let dt2_new = convert_sample_to_closest_feasible(dt1_old, sep.prob.instance.item(pi2.item_id));
 
-    info!("[EXPL] swapped two large items (ids: {} <-> {})", pi1.item_id, pi2.item_id);
+    info!("[EXPL] disrupting by swapping two large items (id: {} <-> {})", pi1.item_id, pi2.item_id);
 
     let pk1 = sep.move_item(pk1, dt1_new);
     let pk2 = sep.move_item(pk2, dt2_new);
