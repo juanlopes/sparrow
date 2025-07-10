@@ -46,7 +46,8 @@ Alternatively, it is also possible explicitly define explore and compression tim
 cargo run --release  -- \
     -i [path to input JSON] \
     -e [explore time in seconds] \
-    -c [compression time in seconds]
+    -c [compression time in seconds] \
+    -x [to enable early termination]
 ```
 Pressing 'Ctrl + C' immediately moves the algorithm to the next phase.
 

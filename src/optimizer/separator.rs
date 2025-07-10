@@ -18,6 +18,7 @@ use rayon::ThreadPool;
 use std::time::Instant;
 use crate::util::listener::{ReportType, SolutionListener};
 
+#[derive(Debug, Clone, Copy)]
 pub struct SeparatorConfig {
     pub iter_no_imprv_limit: usize,
     pub strike_limit: usize,
