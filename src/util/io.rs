@@ -27,6 +27,10 @@ pub struct MainCli {
     /// Compression time limit in seconds (requires exploration time)
     #[arg(short = 'c', long, requires = "exploration", help = "Set the compression phase time limit (in seconds)")]
     pub compression: Option<u64>,
+
+    /// Enable early and automatic termination
+    #[arg(short = 'x', long, help = "Enable early termination of the optimization process")]
+    pub early_termination: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone)]

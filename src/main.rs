@@ -15,7 +15,7 @@ use jagua_rs::io::import::Importer;
 use sparrow::EPOCH;
 
 use anyhow::{bail, Result};
-use sparrow::consts::{DEFAULT_COMPRESS_TIME_RATIO, DEFAULT_EXPLORE_TIME_RATIO, LOG_LEVEL_FILTER_DEBUG, LOG_LEVEL_FILTER_RELEASE};
+use sparrow::consts::{DEFAULT_COMPRESS_TIME_RATIO, DEFAULT_EXPLORE_TIME_RATIO, DEFAULT_FAIL_DECAY_RATIO_CMPR, DEFAULT_MAX_CONSEQ_FAILS_EXPL, LOG_LEVEL_FILTER_DEBUG, LOG_LEVEL_FILTER_RELEASE};
 use sparrow::util::svg_exporter::SvgExporter;
 use sparrow::util::ctrlc_terminator::CtrlCTerminator;
 
@@ -24,7 +24,7 @@ pub const OUTPUT_DIR: &str = "output";
 pub const LIVE_DIR: &str = "data/live";
 
 fn main() -> Result<()>{
-    let config = DEFAULT_SPARROW_CONFIG;
+    let mut config = DEFAULT_SPARROW_CONFIG;
 
     fs::create_dir_all(OUTPUT_DIR)?;
     let log_file_path = format!("{}/log.txt", OUTPUT_DIR);
@@ -48,6 +48,11 @@ fn main() -> Result<()>{
         },
         _ => bail!("invalid cli pattern (clap should have caught this)"),
     };
+    if args.early_termination {
+        config.expl_cfg.max_conseq_failed_attempts = Some(DEFAULT_MAX_CONSEQ_FAILS_EXPL);
+        config.cmpr_cfg.shrink_decay = ShrinkDecayStrategy::FailureBased(DEFAULT_FAIL_DECAY_RATIO_CMPR);
+        warn!("[MAIN] Early termination is enabled!");
+    }
 
     info!("[MAIN] Configured to explore for {}s and compress for {}s", explore_dur.as_secs(), compress_dur.as_secs());
 
