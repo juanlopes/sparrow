@@ -43,7 +43,7 @@ fn main() -> Result<()>{
             (Duration::from_secs(et), Duration::from_secs(ct))
         },
         (None, None, None) => {
-            warn!("[MAIN] No time limit specified");
+            warn!("[MAIN] no time limit specified");
             (Duration::from_secs(600).mul_f32(DEFAULT_EXPLORE_TIME_RATIO), Duration::from_secs(600).mul_f32(DEFAULT_COMPRESS_TIME_RATIO))
         },
         _ => bail!("invalid cli pattern (clap should have caught this)"),
@@ -51,10 +51,10 @@ fn main() -> Result<()>{
     if args.early_termination {
         config.expl_cfg.max_conseq_failed_attempts = Some(DEFAULT_MAX_CONSEQ_FAILS_EXPL);
         config.cmpr_cfg.shrink_decay = ShrinkDecayStrategy::FailureBased(DEFAULT_FAIL_DECAY_RATIO_CMPR);
-        warn!("[MAIN] Early termination is enabled!");
+        warn!("[MAIN] early termination enabled!");
     }
 
-    info!("[MAIN] Configured to explore for {}s and compress for {}s", explore_dur.as_secs(), compress_dur.as_secs());
+    info!("[MAIN] configured to explore for {}s and compress for {}s", explore_dur.as_secs(), compress_dur.as_secs());
 
     let rng = match config.rng_seed {
         Some(seed) => {
