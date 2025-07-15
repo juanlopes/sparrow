@@ -47,12 +47,21 @@ cargo run --release  -- \
     -i [path to input JSON] \
     -e [explore time in seconds] \
     -c [compression time in seconds] \
-    -x [to enable early termination] \
-    -s [a seed for the random number generator]
 ```
 Pressing 'Ctrl + C' immediately moves the algorithm to the next phase.
 
-Concrete example:
+All CLI options:
+```bash
+-i, --input <INPUT>              Path to the input JSON file
+-t, --global-time <GLOBAL_TIME>  Set a global time limit (in seconds)
+-e, --exploration <EXPLORATION>  Set the exploration phase time limit (in seconds)
+-c, --compression <COMPRESSION>  Set the compression phase time limit (in seconds)
+-x, --early-termination          Enable early termination of the optimization process
+-s, --rng-seed <RNG_SEED>        Fixed seed for the random number generator
+-h, --help                       Print help
+```
+
+**Concrete example**:
 ```bash
 cargo run --release -- \
     -i data/input/swim.json

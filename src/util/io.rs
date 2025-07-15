@@ -32,7 +32,7 @@ pub struct MainCli {
     #[arg(short = 'x', long, help = "Enable early termination of the optimization process")]
     pub early_termination: bool,
 
-    #[arg(short = 's', long, help = "Seed for the random number generator (no seed if not specified)")]
+    #[arg(short = 's', long, help = "Fixed seed for the random number generator")]
     pub rng_seed: Option<u64>,
 }
 
