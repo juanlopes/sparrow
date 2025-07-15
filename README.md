@@ -47,7 +47,8 @@ cargo run --release  -- \
     -i [path to input JSON] \
     -e [explore time in seconds] \
     -c [compression time in seconds] \
-    -x [to enable early termination]
+    -x [to enable early termination] \
+    -s [a seed for the random number generator]
 ```
 Pressing 'Ctrl + C' immediately moves the algorithm to the next phase.
 

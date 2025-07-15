@@ -31,6 +31,9 @@ pub struct MainCli {
     /// Enable early and automatic termination
     #[arg(short = 'x', long, help = "Enable early termination of the optimization process")]
     pub early_termination: bool,
+
+    #[arg(short = 's', long, help = "Seed for the random number generator (no seed if not specified)")]
+    pub rng_seed: Option<u64>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
