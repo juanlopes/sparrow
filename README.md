@@ -110,7 +110,8 @@ The final solution is saved both in SVG and JSON format in `output/final_{name}.
 
 ## Targeting maximum performance
 
-Make sure `target-cpu=native` compiler flag is set, 
+This crate is highly optimized and is floating-point heavy.
+To enable the maximum performance, make sure `target-cpu=native` compiler flag is set, 
 switch to the nightly toolchain (required for [SIMD](https://doc.rust-lang.org/std/simd/index.html) support) 
 and enable the `simd` feature:
 
