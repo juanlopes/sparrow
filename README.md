@@ -12,7 +12,7 @@
 
 ### The state-of-the-art nesting heuristic for 2D irregular strip packing
 `sparrow` can be used to solve 2D irregular strip packing problems, also commonly referred to as nesting problems.
-This optimization algorithm builds on [`jagua-rs`](https://github.com/JeroenGar/jagua-rs): a collision detection engine for 2D irregular cutting & packing problems.
+This optimization algorithm builds on [`jagua-rs`](https://github.com/JeroenGar/jagua-rs): _a collision detection engine for 2D irregular cutting & packing problems_.
 
 ## Nested by `sparrow`
 <p align="center">
@@ -34,23 +34,17 @@ This optimization algorithm builds on [`jagua-rs`](https://github.com/JeroenGar/
 
 ## Usage
 
-General usage:
+**General usage:**
 ```bash
 cargo run --release  -- \
     -i [path to input JSON] \
     -t [timelimit in seconds (default is 600s)]
 ```
-By default 80% of the time is spent exploring and 20% is spent compressing.
-Alternatively, it is also possible explicitly define explore and compression times:
-```bash
-cargo run --release  -- \
-    -i [path to input JSON] \
-    -e [explore time in seconds] \
-    -c [compression time in seconds] \
-```
-Pressing 'Ctrl + C' immediately moves the algorithm to the next phase.
+The optimization process contains two distinct phases: exploration & compression.
+By default 80% of the timelimit is spent exploring and 20% is spent compressing.
+Pressing 'Ctrl + C' immediately moves the algorithm to the next phase, or terminates it.
 
-All CLI options:
+**All CLI options:**
 ```bash
 -i, --input <INPUT>              Path to the input JSON file
 -t, --global-time <GLOBAL_TIME>  Set a global time limit (in seconds)
