@@ -78,12 +78,23 @@ impl Separator {
             let initial_strike_loss = self.ct.get_total_loss();
             debug!("[SEP] [s:{n_strikes},i:{n_iter}]     init_l: {}",FMT().fmt2(initial_strike_loss));
 
-            while n_iter_no_improvement < self.config.iter_no_imprv_limit {
+            while n_iter_no_improvement < self.config.iter_no_imprv_limit && !term.kill() {
+                // Check terminator more frequently during expensive operations
+                if term.kill() {
+                    break 'outer;
+                }
+                
                 let (loss_before, w_loss_before) = (
                     self.ct.get_total_loss(),
                     self.ct.get_total_weighted_loss(),
                 );
                 sep_stats += self.move_colliding_items();
+                
+                // Check terminator again after expensive operation
+                if term.kill() {
+                    break 'outer;
+                }
+                
                 let (loss, w_loss) = (
                     self.ct.get_total_loss(),
                     self.ct.get_total_weighted_loss(),

@@ -56,6 +56,18 @@ fn main() -> Result<()>{
     if let Some(arg_rng_seed) = args.rng_seed {
         config.rng_seed = Some(arg_rng_seed as usize);
     }
+    
+    // Configure the time limits in the config structures
+    config.expl_cfg.time_limit = explore_dur;
+    config.cmpr_cfg.time_limit = compress_dur;
+    
+    // Configure minimum separation if provided in millimeters
+    if let Some(mm_separation) = args.min_separation_mm {
+        let internal_units = io::mm_to_internal_units(mm_separation, args.dpi);
+        config.min_item_separation = Some(internal_units);
+        info!("[MAIN] minimum separation: {:.3}mm = {:.6} internal units (DPI: {:.6})", 
+              mm_separation, internal_units, args.dpi);
+    }
 
     info!("[MAIN] configured to explore for {}s and compress for {}s", explore_dur.as_secs(), compress_dur.as_secs());
 

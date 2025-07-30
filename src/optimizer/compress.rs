@@ -33,6 +33,11 @@ pub fn compression_phase(
         }
     };
     while !term.kill() && let step = shrink_step_size(n_failed_attempts) && step >= config.shrink_range.1 {
+        // Check terminator again before expensive operations
+        if term.kill() {
+            break;
+        }
+        
         match attempt_to_compress(sep, &best, step, term, sol_listener) {
             Some(compacted_sol) => {
                 info!("[CMPR] success at {:.3}% ({:.3} | {:.3}%)", step * 100.0, compacted_sol.strip_width(), compacted_sol.density(instance) * 100.0);
@@ -51,14 +56,29 @@ pub fn compression_phase(
 
 
 fn attempt_to_compress(sep: &mut Separator, init: &SPSolution, r_shrink: f32, term: &impl Terminator, sol_listener: &mut impl SolutionListener) -> Option<SPSolution> {
+    // Early termination check
+    if term.kill() {
+        return None;
+    }
+    
     //restore to the initial solution and width
     sep.change_strip_width(init.strip_width(), None);
     sep.rollback(&init, None);
+
+    // Check terminator again before expensive shrink operation
+    if term.kill() {
+        return None;
+    }
 
     //shrink the container at a random position
     let new_width = init.strip_width() * (1.0 - r_shrink);
     let split_pos = sep.rng.random_range(0.0..sep.prob.strip_width());
     sep.change_strip_width(new_width, Some(split_pos));
+
+    // Final terminator check before separation
+    if term.kill() {
+        return None;
+    }
 
     //try to separate layout, if all collisions are eliminated, return the solution
     let (compacted_sol, ot) = sep.separate(term, sol_listener);

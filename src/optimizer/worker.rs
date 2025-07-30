@@ -3,6 +3,7 @@ use crate::quantify::tracker::CollisionTracker;
 use crate::sample::search;
 use crate::sample::search::SampleConfig;
 use crate::util::assertions::tracker_matches_layout;
+use crate::util::terminator::Terminator;
 use crate::FMT;
 use itertools::Itertools;
 use jagua_rs::entities::{Instance, PItemKey};

@@ -32,6 +32,14 @@ pub struct MainCli {
     #[arg(short = 'x', long, help = "Enable early termination of the optimization process")]
     pub early_termination: bool,
 
+    /// Minimum distance between items in millimeters
+    #[arg(short = 'm', long, help = "Set minimum distance between items in millimeters")]
+    pub min_separation_mm: Option<f32>,
+
+    /// DPI value for unit conversion (default: 3.7795275591)
+    #[arg(long, help = "DPI value for converting millimeters to internal units", default_value = "3.7795275591")]
+    pub dpi: f32,
+
     #[arg(short = 's', long, help = "Fixed seed for the random number generator")]
     pub rng_seed: Option<u64>,
 }
@@ -115,4 +123,10 @@ pub fn read_spp_instance_json(path: &Path) -> Result<ExtSPInstance> {
     let file = File::open(path).context("could not open instance file")?;
     serde_json::from_reader(BufReader::new(file))
         .context("not a valid strip packing instance (ExtSPInstance)")
+}
+
+/// Converts millimeters to internal units using DPI
+/// Formula: internal_units = millimeters * dpi / 25.4
+pub fn mm_to_internal_units(mm: f32, dpi: f32) -> f32 {
+    mm * dpi / 25.4
 }

@@ -96,5 +96,5 @@ pub const DEFAULT_SPARROW_CONFIG: SparrowConfig = SparrowConfig {
         },
     },
     poly_simpl_tolerance: Some(0.001),
-    min_item_separation: None,
+    min_item_separation: Some(0.4464),
 };
