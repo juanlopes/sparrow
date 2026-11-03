@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod integration_tests {
     use anyhow::Result;
-    use jagua_rs::io::import::Importer;
     use rand::prelude::SmallRng;
     use rand::SeedableRng;
     use sparrow::config::DEFAULT_SPARROW_CONFIG;
@@ -31,8 +30,12 @@ mod integration_tests {
         let input_file_path = format!("{INSTANCE_BASE_PATH}/{path}");
         let json_instance = io::read_spp_instance_json(Path::new(&input_file_path))?;
 
-        let importer = Importer::new(config.cde_config, config.poly_simpl_tolerance, config.min_item_separation);
-        let instance = jagua_rs::probs::spp::io::import(&importer, &json_instance)?;
+        let instance = sparrow::margin::import_spp_instance(
+            config.cde_config,
+            config.poly_simpl_tolerance,
+            config.min_item_separation,
+            &json_instance,
+        )?;
 
         println!("[TEST] loaded instance: {}", json_instance.name);
 

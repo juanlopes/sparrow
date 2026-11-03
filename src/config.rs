@@ -16,9 +16,10 @@ pub struct SparrowConfig {
     /// Disabled if `None`.
     /// See [`jagua_rs::io::parser::Parser::new`] for more details.
     pub poly_simpl_tolerance: Option<f32>,
-    /// Defines the minimum distance between items and other hazards.
+    /// Minimum gap between original item contours, and between an item and the
+    /// strip boundary, in input-coordinate units. Applied as a true outward
+    /// offset of each full contour (half this distance on every hazard).
     /// Disabled if `None`.
-    /// See [`jagua_rs::io::parser::Parser::new`] for more details.
     pub min_item_separation: Option<f32>,
 }
 

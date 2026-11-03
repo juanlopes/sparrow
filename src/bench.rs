@@ -14,7 +14,6 @@ use std::path::Path;
 use std::time::{Duration, Instant};
 
 use anyhow::Result;
-use jagua_rs::io::import::Importer;
 use jagua_rs::io::svg::s_layout_to_svg;
 use sparrow::consts::{DEFAULT_COMPRESS_TIME_RATIO, DEFAULT_EXPLORE_TIME_RATIO, DRAW_OPTIONS, LBF_SAMPLE_CONFIG};
 use sparrow::optimizer::compress::compression_phase;
@@ -62,8 +61,12 @@ fn main() -> Result<()> {
         ext_intance.name, n_batches, n_runs_per_iter, num_cpus::get_physical(), time_limit
     );
 
-    let importer = Importer::new(config.cde_config, config.poly_simpl_tolerance, config.min_item_separation);
-    let instance = jagua_rs::probs::spp::io::import(&importer, &ext_intance)?;
+    let instance = sparrow::margin::import_spp_instance(
+        config.cde_config,
+        config.poly_simpl_tolerance,
+        config.min_item_separation,
+        &ext_intance,
+    )?;
 
     let mut final_solutions = vec![];
 

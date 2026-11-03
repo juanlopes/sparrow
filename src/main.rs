@@ -11,7 +11,6 @@ use sparrow::util::io::{MainCli, SPOutput};
 use std::fs;
 use std::path::Path;
 use std::time::Duration;
-use jagua_rs::io::import::Importer;
 use sparrow::EPOCH;
 
 use anyhow::{bail, Result};
@@ -87,8 +86,12 @@ fn main() -> Result<()>{
 
     let ext_instance = io::read_spp_instance_json(Path::new(&input_file_path))?;
 
-    let importer = Importer::new(config.cde_config, config.poly_simpl_tolerance, config.min_item_separation);
-    let instance = jagua_rs::probs::spp::io::import(&importer, &ext_instance)?;
+    let instance = sparrow::margin::import_spp_instance(
+        config.cde_config,
+        config.poly_simpl_tolerance,
+        config.min_item_separation,
+        &ext_instance,
+    )?;
 
     info!("[MAIN] loaded instance {} with #{} items", ext_instance.name, instance.total_item_qty());
     
