@@ -14,12 +14,12 @@ pub struct SparrowConfig {
     pub cde_config: CDEConfig,
     /// Defines the polygon simplification tolerance: maximum allowable inflation of items when simplifying their shape.
     /// Disabled if `None`.
-    /// See [`jagua_rs::io::parser::Parser::new`] for more details.
+    /// See [`jagua_rs::io::import::Importer::new`] for more details.
     pub poly_simpl_tolerance: Option<f32>,
-    /// Defines the minimum distance between items and other hazards.
+    /// Defines a maximum distance and area of a concavity to be considered "narrow" (which will be closed).
     /// Disabled if `None`.
-    /// See [`jagua_rs::io::parser::Parser::new`] for more details.
-    pub min_item_separation: Option<f32>,
+    /// See [`jagua_rs::io::import::Importer::new`] for more details.
+    pub narrow_concavity_cutoff_ratio: Option<(f32, f32)>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -43,7 +43,7 @@ pub struct CompressionConfig {
 #[derive(Debug, Clone, Copy)]
 pub enum ShrinkDecayStrategy {
     /// The shrink ratio decays linearly with time
-    TimeBased(Duration),
+    TimeBased,
     /// The shrink ratio decays by a fixed ratio every time it fails to compress into a feasible solution
     FailureBased(f32),
 }
@@ -70,10 +70,8 @@ pub const DEFAULT_SPARROW_CONFIG: SparrowConfig = SparrowConfig {
     },
     cmpr_cfg: CompressionConfig {
         shrink_range: (0.0005, 0.00001),
-        time_limit: Duration::from_secs(1 * 60),
-        shrink_decay: ShrinkDecayStrategy::TimeBased(
-            Duration::from_secs(1 * 60)
-        ),
+        time_limit: Duration::from_secs(60),
+        shrink_decay: ShrinkDecayStrategy::TimeBased,
         separator_config: SeparatorConfig {
             iter_no_imprv_limit: 100,
             strike_limit: 5,
@@ -87,14 +85,14 @@ pub const DEFAULT_SPARROW_CONFIG: SparrowConfig = SparrowConfig {
         },
     },
     cde_config: CDEConfig {
-        quadtree_depth: 3,
-        cd_threshold: 16,
+        quadtree_depth: 4,
+        cd_threshold: 64,
         item_surrogate_config: SPSurrogateConfig {
             n_pole_limits: [(64, 0.0), (16, 0.8), (8, 0.9)],
-            n_ff_poles: 1,
+            ff_pole_area_ratio: 0.5,
             n_ff_piers: 0,
         },
     },
     poly_simpl_tolerance: Some(0.001),
-    min_item_separation: Some(0.4464),
+    narrow_concavity_cutoff_ratio: Some((0.01, 0.01)),
 };

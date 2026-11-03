@@ -21,6 +21,11 @@ cargo run -- -i data/input/albano.json -t 120 -m 3.0
 **Como funciona:**
 - 80% do tempo é usado para **exploração** (encontrar soluções viáveis)
 - 20% do tempo é usado para **compressão** (otimizar a melhor solução)
+- O limite é rígido: a soma das duas fases não passa de `-t`. Ao atingir o prazo
+  a busca para, inclusive no meio de uma iteração de separação, e o melhor
+  layout completo encontrado até ali é gravado em `output/final_{nome}.json` e
+  `.svg`. A construção inicial (para ter uma solução completa) roda antes da
+  busca; nas instâncias pequenas ela é imediata.
 
 ### 2. **Controle Detalhado** (Para usuários avançados)
 ```bash

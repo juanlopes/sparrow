@@ -1,9 +1,9 @@
 extern crate core;
 use sparrow::util::terminator::Terminator;
 
+use jagua_rs::Instant;
 use ordered_float::OrderedFloat;
-use rand::prelude::SmallRng;
-use rand::{Rng, RngCore, SeedableRng};
+use rand::{Rng, RngExt, SeedableRng};
 use sparrow::config::*;
 use sparrow::optimizer::lbf::LBFBuilder;
 use sparrow::optimizer::separator::Separator;
@@ -11,11 +11,12 @@ use sparrow::util::io;
 use std::env::args;
 use std::fs;
 use std::path::Path;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use anyhow::Result;
 use jagua_rs::io::import::Importer;
 use jagua_rs::io::svg::s_layout_to_svg;
+use rand::rngs::Xoshiro256PlusPlus;
 use sparrow::consts::{DEFAULT_COMPRESS_TIME_RATIO, DEFAULT_EXPLORE_TIME_RATIO, DRAW_OPTIONS, LBF_SAMPLE_CONFIG};
 use sparrow::optimizer::compress::compression_phase;
 use sparrow::optimizer::explore::exploration_phase;
@@ -25,12 +26,12 @@ use sparrow::util::terminator::BasicTerminator;
 pub const OUTPUT_DIR: &str = "output";
 
 fn main() -> Result<()> {
-    let config = DEFAULT_SPARROW_CONFIG;
+    let mut config = DEFAULT_SPARROW_CONFIG;
 
     //the input file is the first argument
     let input_file_path = args().nth(1).expect("first argument must be the input file");
     let time_limit: Duration = args().nth(2).expect("second argument must be the time limit [s]")
-        .parse::<u64>().map(|s| Duration::from_secs(s))
+        .parse::<u64>().map(Duration::from_secs)
         .expect("second argument must be the time limit [s]");
     let n_runs_total = args().nth(3).expect("third argument must be the number of runs")
         .parse().expect("third argument must be the number of runs");
@@ -43,27 +44,30 @@ fn main() -> Result<()> {
     let mut rng = match config.rng_seed {
         Some(seed) => {
             println!("[BENCH] using provided seed: {}", seed);
-            SmallRng::seed_from_u64(seed as u64)
+            Xoshiro256PlusPlus::seed_from_u64(seed as u64)
         }
         None => {
             let seed = rand::random();
             println!("[BENCH] no seed provided, using: {}", seed);
-            SmallRng::seed_from_u64(seed)
+            Xoshiro256PlusPlus::seed_from_u64(seed)
         }
     };
+
+    config.expl_cfg.time_limit = time_limit.mul_f32(DEFAULT_EXPLORE_TIME_RATIO);
+    config.cmpr_cfg.time_limit = time_limit.mul_f32(DEFAULT_COMPRESS_TIME_RATIO);
 
     let n_runs_per_iter = (num_cpus::get_physical() / config.expl_cfg.separator_config.n_workers).min(n_runs_total);
     let n_batches = (n_runs_total as f32 / n_runs_per_iter as f32).ceil() as usize;
 
-    let ext_intance = io::read_spp_instance_json(Path::new(&input_file_path))?;
+    let ext_instance = io::read_spp_input(Path::new(&input_file_path))?.instance;
 
     println!(
         "[BENCH] starting bench for {} ({}x{} runs across {} cores, {:?} timelimit)",
-        ext_intance.name, n_batches, n_runs_per_iter, num_cpus::get_physical(), time_limit
+        ext_instance.name, n_batches, n_runs_per_iter, num_cpus::get_physical(), time_limit
     );
 
-    let importer = Importer::new(config.cde_config, config.poly_simpl_tolerance, config.min_item_separation);
-    let instance = jagua_rs::probs::spp::io::import(&importer, &ext_intance)?;
+    let importer = Importer::new(config.cde_config, config.poly_simpl_tolerance, config.narrow_concavity_cutoff_ratio);
+    let instance = jagua_rs::probs::spp::io::import_instance(&importer, &ext_instance)?;
 
     let mut final_solutions = vec![];
 
@@ -71,48 +75,56 @@ fn main() -> Result<()> {
     for i in 0..n_batches {
         println!("[BENCH] batch {}/{}", i + 1, n_batches);
         println!("[BENCH] system time: {}", jiff::Timestamp::now());
-        let mut iter_solutions = vec![None; n_runs_per_iter];
+        let mut iter_solutions = (0..n_runs_per_iter).map(|_| None).collect::<Vec<_>>();
         rayon::scope(|s| {
             for (j, sol_slice) in iter_solutions.iter_mut().enumerate() {
                 let bench_idx = i * n_runs_per_iter + j;
                 let instance = instance.clone();
-                let mut rng = SmallRng::seed_from_u64(rng.random());
+                let mut rng = Xoshiro256PlusPlus::seed_from_u64(rng.random());
                 let mut terminator = BasicTerminator::new();
 
                 s.spawn(move |_| {
-                    let mut next_rng = || SmallRng::seed_from_u64(rng.next_u64());
-                    let builder = LBFBuilder::new(instance.clone(), next_rng(), LBF_SAMPLE_CONFIG).construct();
-                    let mut expl_separator = Separator::new(builder.instance, builder.prob, next_rng(), config.expl_cfg.separator_config);
+                    let mut next_rng = || Xoshiro256PlusPlus::seed_from_u64(rng.next_u64());
+                    let builder = match LBFBuilder::new(instance, next_rng(), LBF_SAMPLE_CONFIG).and_then(LBFBuilder::construct) {
+                        Ok(builder) => builder,
+                        Err(error) => {
+                            *sol_slice = Some(Err(error));
+                            return;
+                        }
+                    };
+                    let mut expl_separator = Separator::new(builder.prob, next_rng(), config.expl_cfg.separator_config);
 
-                    terminator.new_timeout(time_limit.mul_f32(DEFAULT_EXPLORE_TIME_RATIO));
-                    let solutions = exploration_phase(&instance, &mut expl_separator, &mut DummySolListener, &terminator, &config.expl_cfg);
+                    terminator.new_timeout(config.expl_cfg.time_limit);
+                    let solutions = exploration_phase(&mut expl_separator, &mut DummySolListener, &terminator, &config.expl_cfg);
                     let final_explore_sol = solutions.last().expect("no solutions found during exploration");
 
                     let start_comp = Instant::now();
 
-                    terminator.new_timeout(time_limit.mul_f32(DEFAULT_COMPRESS_TIME_RATIO));
-                    let mut cmpr_separator = Separator::new(expl_separator.instance, expl_separator.prob, next_rng(), config.cmpr_cfg.separator_config);
-                    let cmpr_sol = compression_phase(&instance, &mut cmpr_separator, final_explore_sol, &mut DummySolListener, &terminator, &config.cmpr_cfg);
+                    terminator.new_timeout(config.cmpr_cfg.time_limit);
+                    let mut cmpr_separator = Separator::new(expl_separator.prob, next_rng(), config.cmpr_cfg.separator_config);
+                    let cmpr_sol = compression_phase(&mut cmpr_separator, final_explore_sol, &mut DummySolListener, &terminator, &config.cmpr_cfg);
 
                     println!("[BENCH] [id:{:>3}] finished, expl: {:.3}% ({}s), cmpr: {:.3}% (+{:.3}%) ({}s)",
                              bench_idx,
-                             final_explore_sol.density(&instance) * 100.0, time_limit.mul_f32(DEFAULT_EXPLORE_TIME_RATIO).as_secs(),
-                             cmpr_sol.density(&instance) * 100.0,
-                             cmpr_sol.density(&instance) * 100.0 - final_explore_sol.density(&instance) * 100.0,
+                             final_explore_sol.density() * 100.0, time_limit.mul_f32(DEFAULT_EXPLORE_TIME_RATIO).as_secs(),
+                             cmpr_sol.density() * 100.0,
+                             cmpr_sol.density() * 100.0 - final_explore_sol.density() * 100.0,
                              start_comp.elapsed().as_secs()
                     );
 
                     io::write_svg(
-                        &s_layout_to_svg(&cmpr_sol.layout_snapshot, &instance, DRAW_OPTIONS, &*format!("final_bench_{}", bench_idx)),
+                        &s_layout_to_svg(cmpr_sol.layout_snapshot(), 0, DRAW_OPTIONS, &format!("final_bench_{}", bench_idx)),
                         Path::new(&format!("{OUTPUT_DIR}/final_bench_{}.svg", bench_idx)),
                         log::Level::Info,
-                    ).expect(&*format!("could not write svg output of bench {}", bench_idx));
+                    ).unwrap_or_else(|_| panic!("could not write svg output of bench {}", bench_idx));
 
-                    *sol_slice = Some(cmpr_sol);
+                    *sol_slice = Some(Ok(cmpr_sol));
                 })
             }
         });
-        final_solutions.extend(iter_solutions.into_iter().flatten());
+        for result in iter_solutions {
+            final_solutions.push(result.expect("benchmark worker did not return a result")?);
+        }
     }
 
     //print statistics about the solutions, print best, worst, median and average
@@ -120,16 +132,16 @@ fn main() -> Result<()> {
         .iter()
         .map(|s| {
             let width = s.strip_width();
-            let usage = s.layout_snapshot.density(&instance);
+            let usage = s.layout_snapshot().density();
             (width, usage * 100.0)
         })
         .unzip();
 
-    let best_final_solution = final_solutions.iter().max_by_key(|s| OrderedFloat(s.density(&instance))).unwrap();
+    let best_final_solution = final_solutions.iter().max_by_key(|s| OrderedFloat(s.density())).unwrap();
 
     io::write_svg(
-        &s_layout_to_svg(&best_final_solution.layout_snapshot, &instance, DRAW_OPTIONS, "final_best"),
-        Path::new(format!("{OUTPUT_DIR}/final_best_{}.svg", ext_intance.name).as_str()),
+        &s_layout_to_svg(best_final_solution.layout_snapshot(), 0, DRAW_OPTIONS, "final_best"),
+        Path::new(format!("{OUTPUT_DIR}/final_best_{}.svg", ext_instance.name).as_str()),
         log::Level::Info,
     )?;
 
@@ -165,7 +177,7 @@ pub fn calculate_percentile(v: &[f32], pct: f32) -> f32 {
     // Validate input
     assert!(!v.is_empty(), "Cannot compute percentile of an empty slice");
     assert!(
-        pct >= 0.0 && pct <= 1.0,
+        (0.0..=1.0).contains(&pct),
         "Percent must be between 0.0 and 1.0"
     );
 
@@ -206,7 +218,7 @@ pub fn calculate_stddev(v: &[f32]) -> f32 {
 
 pub fn get_git_commit_hash() -> String {
     let output = std::process::Command::new("git")
-        .args(&["rev-parse", "HEAD"])
+        .args(["rev-parse", "HEAD"])
         .output()
         .expect("Failed to execute git command");
 

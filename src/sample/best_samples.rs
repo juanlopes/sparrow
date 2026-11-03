@@ -4,8 +4,9 @@ use jagua_rs::geometry::DTransformation;
 use std::f32::consts::PI;
 use std::fmt::Debug;
 
-/// Datastructure to store the N best samples, automatically keeps them sorted and evicts the worst.
+/// Data structure to store the N best samples, automatically keeps them sorted and evicts the worst.
 /// It makes sure that no two included samples are too similar.
+/// Also provides an upper bound in loss value for acceptance of new samples.
 #[derive(Debug, Clone)]
 pub struct BestSamples {
     pub size: usize,
@@ -59,7 +60,7 @@ impl BestSamples {
             debug_assert!(
                 self.samples.iter()
                     .filter(|(_, eval)| *eval != SampleEval::Invalid)
-                    .tuple_combinations().all(|(a, b)| {
+                    .array_combinations().all(|[a, b]| {
                         !dtransfs_are_similar(a.0, b.0, self.unique_thresh, self.unique_thresh)
                     }
                 ),
@@ -96,8 +97,8 @@ pub fn dtransfs_are_similar(
     let y_diff = f32::abs(dt1.translation().1 - dt2.translation().1);
 
     if x_diff < x_threshold && y_diff < y_threshold {
-        let r1 = dt1.rotation() % 2.0 * PI;
-        let r2 = dt2.rotation() % 2.0 * PI;
+        let r1 = dt1.rotation() % (2.0 * PI);
+        let r2 = dt2.rotation() % (2.0 * PI);
         let angle_diff = f32::abs(r1 - r2);
         angle_diff < (1.0f32).to_radians()
     } else {

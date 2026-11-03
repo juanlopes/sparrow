@@ -1,10 +1,10 @@
-use jagua_rs::collision_detection::hazards::filter::NoFilter;
 use crate::eval::sample_eval::{SampleEval, SampleEvaluator};
+use jagua_rs::collision_detection::hazards::filter::NoFilter;
 use jagua_rs::entities::Item;
 use jagua_rs::entities::Layout;
-use jagua_rs::geometry::DTransformation;
 use jagua_rs::geometry::geo_traits::TransformableFrom;
 use jagua_rs::geometry::primitives::SPolygon;
+use jagua_rs::geometry::DTransformation;
 
 pub const X_MULTIPLIER: f32 = 10.0;
 pub const Y_MULTIPLIER: f32 = 1.0;
@@ -24,27 +24,27 @@ impl<'a> LBFEvaluator<'a> {
         Self {
             layout,
             item,
-            shape_buff: item.shape_cd.as_ref().clone(),
+            shape_buff: item.shape_cd().as_ref().clone(),
             n_evals: 0
         }
     }
 }
 
 impl<'a> SampleEvaluator for LBFEvaluator<'a> {
-    fn eval(&mut self, dt: DTransformation, _upper_bound: Option<SampleEval>) -> SampleEval {
+    fn evaluate_sample(&mut self, dt: DTransformation, _upper_bound: Option<SampleEval>) -> SampleEval {
         self.n_evals += 1;
         let cde = self.layout.cde();
         let transf = dt.into();
-        match cde.detect_surrogate_collision(self.item.shape_cd.surrogate(), &transf, &NoFilter) {
+        match cde.detect_surrogate_collision(self.item.shape_cd().surrogate(), &transf, &NoFilter) {
             true => SampleEval::Invalid, // Surrogate collides with something
             false => {
-                self.shape_buff.transform_from(&self.item.shape_cd, &transf);
+                self.shape_buff.transform_from(self.item.shape_cd(), &transf);
                 match cde.detect_poly_collision(&self.shape_buff, &NoFilter) {
                     true => SampleEval::Invalid, // Exact shape collides with something
                     false => {
                         // No collisions
-                        let poi = self.shape_buff.poi.center;
-                        let bbox_corner = self.shape_buff.bbox.corners()[0];
+                        let poi = self.shape_buff.poi().center;
+                        let bbox_corner = self.shape_buff.bbox().corners()[0];
                         let loss = X_MULTIPLIER * (poi.0 + bbox_corner.0) + Y_MULTIPLIER * (poi.1 + bbox_corner.1);
                         SampleEval::Clear{loss}
                     }

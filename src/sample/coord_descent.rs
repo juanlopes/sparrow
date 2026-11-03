@@ -2,7 +2,7 @@ use crate::consts::{CD_STEP_FAIL, CD_STEP_SUCCESS};
 use crate::eval::sample_eval::{SampleEval, SampleEvaluator};
 use jagua_rs::geometry::DTransformation;
 use log::trace;
-use rand::Rng;
+use rand::{Rng, RngExt};
 use std::cmp::Ordering;
 use std::fmt::Debug;
 
@@ -45,7 +45,7 @@ pub fn refine_coord_desc(
     // From the CD state, ask for candidate positions to evaluate. If none provided, stop.
     while let Some(c) = cd.ask() {
         // Evaluate the candidates using the evaluator.
-        let c_eval = c.map(|c| evaluator.eval(c, Some(cd.eval)));
+        let c_eval = c.map(|c| evaluator.evaluate_sample(c, Some(cd.eval)));
         
         let best = c.into_iter().zip(c_eval)
             .min_by_key(|(_, eval)| *eval)

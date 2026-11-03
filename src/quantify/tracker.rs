@@ -1,10 +1,11 @@
-use jagua_rs::collision_detection::hazards::collector::{BasicHazardCollector, HazardCollector};
-use jagua_rs::collision_detection::hazards::HazardEntity;
-use jagua_rs::entities::{Layout, PItemKey};
 use crate::consts::{GLS_WEIGHT_DECAY, GLS_WEIGHT_MAX_INC_RATIO, GLS_WEIGHT_MIN_INC_RATIO};
 use crate::quantify::pair_matrix::PairMatrix;
 use crate::quantify::{quantify_collision_poly_container, quantify_collision_poly_poly};
 use crate::util::assertions::tracker_matches_layout;
+use jagua_rs::collision_detection::hazards::collector::{BasicHazardCollector, HazardCollector};
+use jagua_rs::collision_detection::hazards::BasicHazardEntity;
+use jagua_rs::collision_detection::hazards::filter::NoFilter;
+use jagua_rs::entities::{Layout, PItemKey};
 use ordered_float::Float;
 use slotmap::SecondaryMap;
 
@@ -22,12 +23,12 @@ pub type CTSnapshot = CollisionTracker;
 
 impl CollisionTracker {
     pub fn new(l: &Layout) -> Self {
-        let size = l.placed_items.len();
+        let size = l.placed_items().len();
 
         // Create the tracker
         let mut ot = Self {
             size,
-            pk_idx_map: l.placed_items.keys().enumerate()
+            pk_idx_map: l.placed_items().keys().enumerate()
                 .map(|(i, pk)| (pk, i))
                 .collect(),
             pair_collisions: PairMatrix::new(size),
@@ -35,7 +36,7 @@ impl CollisionTracker {
         };
 
         // Recompute the loss for all items
-        l.placed_items.keys().for_each(|pk| {
+        l.placed_items().keys().for_each(|pk| {
             ot.recompute_loss_for_item(pk, l)
         });
 
@@ -46,8 +47,8 @@ impl CollisionTracker {
 
     fn recompute_loss_for_item(&mut self, pk: PItemKey, l: &Layout) {
         let idx = self.pk_idx_map[pk];
-        let pi = &l.placed_items[pk];
-        let shape = &pi.shape;
+        let pi = &l.placed_items()[pk];
+        let shape = pi.shape();
 
         // Reset all current loss values for the item
         for i in 0..self.size {
@@ -56,24 +57,24 @@ impl CollisionTracker {
         self.container_collisions[idx].loss = 0.0;
 
         // Compute which hazards are currently colliding with the item
-        let mut collector = BasicHazardCollector::with_capacity(l.placed_items.len() + 1);
-        l.cde().collect_poly_collisions(shape, &mut collector);
+        let mut collector = BasicHazardCollector::with_capacity(l.placed_items().len() + 1);
+        l.cde().collect_poly_collisions(shape, &NoFilter, &mut collector);
         // Remove the item itself from the detector
-        collector.remove_by_entity(&HazardEntity::from((pk, pi)));
+        collector.remove_by_entity(&BasicHazardEntity::from((pk, pi)));
 
         // For each colliding hazard, quantify the collision and store it in the tracker
         for (_, haz) in collector.iter() {
             match haz {
-                HazardEntity::PlacedItem { pk: other_pk, .. } => {
-                    let shape_other = &l.placed_items[*other_pk].shape;
+                BasicHazardEntity::PlacedItem { pk: other_pk, .. } => {
+                    let shape_other = l.placed_items()[*other_pk].shape();
                     let idx_other = self.pk_idx_map[*other_pk];
 
                     let loss = quantify_collision_poly_poly(shape, shape_other);
                     assert!(loss > 0.0, "loss for a collision should be > 0.0");
                     self.pair_collisions[(idx, idx_other)].loss = loss;
                 }
-                HazardEntity::Exterior => {
-                    let loss = quantify_collision_poly_container(shape, l.container.outer_cd.bbox);
+                BasicHazardEntity::Exterior => {
+                    let loss = quantify_collision_poly_container(shape, l.container().outer_cd().bbox());
                     assert!(loss > 0.0, "loss for a collision should be > 0.0");
                     self.container_collisions[idx].loss = loss;
                 }
@@ -108,17 +109,27 @@ impl CollisionTracker {
         debug_assert!(tracker_matches_layout(self, l));
     }
 
-    pub fn increment_weights(&mut self) {
+
+    /// Algorithm 8 from https://doi.org/10.48550/arXiv.2509.13329
+    pub fn update_weights(&mut self) {
+        // Find the maximum loss across all entries
         let max_loss = self.pair_collisions.data.iter()
             .chain(self.container_collisions.iter())
             .map(|e| e.loss)
             .fold(0.0, |a, b| a.max(b));
 
+        // Go over all entries (pairs) and modify their weights.
         for e in self.pair_collisions.data.iter_mut()
             .chain(self.container_collisions.iter_mut()) {
             let multiplier = match e.loss == 0.0 {
-                true => GLS_WEIGHT_DECAY, // no collision
-                false => GLS_WEIGHT_MIN_INC_RATIO + (GLS_WEIGHT_MAX_INC_RATIO - GLS_WEIGHT_MIN_INC_RATIO) * (e.loss / max_loss),
+                true => {
+                    // No collision at the moment, slowly decay the weight back to 1.0
+                    GLS_WEIGHT_DECAY
+                },
+                false => {
+                    // Collision detected, increase the weight based on 'how bad' the collision is relative to the worst collision
+                    GLS_WEIGHT_MIN_INC_RATIO + (GLS_WEIGHT_MAX_INC_RATIO - GLS_WEIGHT_MIN_INC_RATIO) * (e.loss / max_loss)
+                },
             };
             e.weight = (e.weight * multiplier).max(1.0);
         }
@@ -134,6 +145,8 @@ impl CollisionTracker {
         self.container_collisions[idx].weight
     }
 
+    /// Algorithm 1 from https://doi.org/10.48550/arXiv.2509.13329
+    /// Evaluations between item pairs are stored in this data-structure for quick and easy retrieval.
     pub fn get_pair_loss(&self, pk1: PItemKey, pk2: PItemKey) -> f32 {
         let (idx1, idx2) = (self.pk_idx_map[pk1], self.pk_idx_map[pk2]);
         self.pair_collisions[(idx1, idx2)].loss

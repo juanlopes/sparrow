@@ -2,8 +2,6 @@
 mod integration_tests {
     use anyhow::Result;
     use jagua_rs::io::import::Importer;
-    use rand::prelude::SmallRng;
-    use rand::SeedableRng;
     use sparrow::config::DEFAULT_SPARROW_CONFIG;
     use sparrow::consts::LBF_SAMPLE_CONFIG;
     use sparrow::optimizer::compress::compression_phase;
@@ -15,6 +13,8 @@ mod integration_tests {
     use sparrow::util::terminator::Terminator;
     use std::path::Path;
     use std::time::Duration;
+    use rand::rngs::Xoshiro256PlusPlus;
+    use rand::SeedableRng;
     use test_case::test_case;
     use sparrow::util::listener::DummySolListener;
 
@@ -29,22 +29,26 @@ mod integration_tests {
     fn simulate_optimization(path: &str) -> Result<()> {
         let config = DEFAULT_SPARROW_CONFIG;
         let input_file_path = format!("{INSTANCE_BASE_PATH}/{path}");
-        let json_instance = io::read_spp_instance_json(Path::new(&input_file_path))?;
+        let mut loaded = io::read_spp_input(Path::new(&input_file_path))?;
 
-        let importer = Importer::new(config.cde_config, config.poly_simpl_tolerance, config.min_item_separation);
-        let instance = jagua_rs::probs::spp::io::import(&importer, &json_instance)?;
+        for (idx, item) in loaded.instance.items.iter_mut().enumerate() {
+            item.base.id = 100 + idx as u64 * 7;
+        }
+        let json_instance = &loaded.instance;
+        let importer = Importer::new(config.cde_config, config.poly_simpl_tolerance, config.narrow_concavity_cutoff_ratio);
+        let instance = jagua_rs::probs::spp::io::import_instance(&importer, &json_instance)?;
 
         println!("[TEST] loaded instance: {}", json_instance.name);
 
         let rng = match RNG_SEED {
             Some(seed) => {
                 println!("[TEST] using provided seed: {}", seed);
-                SmallRng::seed_from_u64(seed as u64)
+                Xoshiro256PlusPlus::seed_from_u64(seed as u64)
             }
             None => {
                 let seed = rand::random();
                 println!("[TEST] no seed provided, using: {}", seed);
-                SmallRng::seed_from_u64(seed)
+                Xoshiro256PlusPlus::seed_from_u64(seed)
             }
         };
 
@@ -52,14 +56,18 @@ mod integration_tests {
         let mut sol_listener = DummySolListener;
         terminator.new_timeout(EXPLORE_TIMEOUT);
 
-        let builder = LBFBuilder::new(instance.clone(), rng, LBF_SAMPLE_CONFIG).construct();
-        let mut separator = Separator::new(builder.instance, builder.prob, builder.rng, config.expl_cfg.separator_config);
+        let builder = LBFBuilder::new(instance.clone(), rng, LBF_SAMPLE_CONFIG)?.construct()?;
+        let exported = jagua_rs::probs::spp::io::export(&builder.prob.save(), *sparrow::EPOCH);
+        let restored = jagua_rs::probs::spp::io::import_solution(&instance, &exported)?;
+        assert!(jagua_rs::entities::Layout::from_snapshot(restored.layout_snapshot()).is_collision_free());
+        assert_eq!(restored.layout_snapshot().placed_items().len(), instance.total_item_qty());
+        let mut separator = Separator::new(builder.prob, builder.rng, config.expl_cfg.separator_config);
 
-        let sols = exploration_phase(&instance, &mut separator, &mut sol_listener, &terminator, &config.expl_cfg);
+        let sols = exploration_phase(&mut separator, &mut sol_listener, &terminator, &config.expl_cfg);
         let final_explore_sol = sols.last().expect("no solutions found during exploration");
 
         terminator.new_timeout(COMPRESS_TIMEOUT);
-        compression_phase(&instance, &mut separator, final_explore_sol, &mut sol_listener, &terminator, &config.cmpr_cfg);
+        compression_phase(&mut separator, final_explore_sol, &mut sol_listener, &terminator, &config.cmpr_cfg);
         Ok(())
     }
 }
